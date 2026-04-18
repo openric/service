@@ -1,0 +1,95 @@
+<!--
+  Copyright (C) 2026 Johan Pieterse / Plain Sailing Information Systems
+  Email: johan@plainsailingisystems.co.za
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Landing page for ric.theahg.co.za — the reference OpenRiC API service.
+  Kept intentionally minimal: this is the API host, not the spec site or
+  a community portal. Users looking for any of those are routed to the
+  canonical surface in one click.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenRiC API — ric.theahg.co.za</title>
+  <meta name="description" content="Reference OpenRiC API service — a Heratio-backed deployment of the /api/ric/v1 specification.">
+  <style>
+    :root { --fg:#1f2937; --muted:#6b7280; --bg:#ffffff; --accent:#2563eb; --border:#e5e7eb; --panel:#f8fafc; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--fg); background: var(--bg); line-height: 1.55;
+      max-width: 900px; margin: 0 auto; padding: 2rem 1.2rem 4rem;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    h1 { margin: 0 0 0.25rem; font-size: 1.8rem; }
+    .lede { color: var(--muted); font-size: 1rem; margin: 0 0 2rem; }
+    .endpoint {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.8rem 1rem; font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92rem; display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    }
+    .endpoint .ok { background: #10b981; color: #fff; font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+    h2 { margin: 2rem 0 0.75rem; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem; margin-top: 0.5rem; }
+    .tile { border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; background: #fff; transition: border-color 0.15s, transform 0.15s; display: block; }
+    .tile:hover { border-color: var(--accent); transform: translateY(-2px); text-decoration: none; }
+    .tile h3 { margin: 0 0 0.35rem; font-size: 1rem; color: var(--fg); }
+    .tile p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+    .tile code { font-size: 0.8rem; color: var(--accent); }
+
+    footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+
+  <h1>OpenRiC API</h1>
+  <p class="lede">Reference deployment of the <a href="https://openric.org">OpenRiC specification</a>, serving <code>/api/ric/v1/*</code> against <a href="https://github.com/ArchiveHeritageGroup/heratio">Heratio</a>'s archival database.</p>
+
+  <div class="endpoint">
+    <span class="ok">Live</span>
+    <span><a href="/api/ric/v1/health">/api/ric/v1/health</a></span>
+    <span style="color:var(--muted);">· <a href="/api/ric/v1/vocabulary">/vocabulary</a> · <a href="/api/ric/v1/openapi.json">/openapi.json</a></span>
+  </div>
+
+  <h2>Explore</h2>
+  <div class="tiles">
+    <a class="tile" href="https://viewer.openric.org">
+      <h3>Viewer demo ↗</h3>
+      <p>2D + 3D graph rendering of any OpenRiC-conformant server. Default backend: this API.</p>
+    </a>
+    <a class="tile" href="https://capture.openric.org">
+      <h3>Capture client ↗</h3>
+      <p>Pure-browser data-entry tool. Paste a server URL + API key, create RiC entities directly.</p>
+    </a>
+    <a class="tile" href="https://openric.org">
+      <h3>Specification ↗</h3>
+      <p>The four OpenRiC spec documents, JSON Schemas, SHACL shapes, and conformance fixture pack.</p>
+    </a>
+    <a class="tile" href="https://heratio.theahg.co.za">
+      <h3>Heratio ↗</h3>
+      <p>The operational archival platform backing this API. Open-source GLAM management.</p>
+    </a>
+  </div>
+
+  <h2>Use the API</h2>
+  <p>
+    Every endpoint under <code>/api/ric/v1/*</code> returns <code>application/ld+json</code>. CORS is wide open on reads.
+    Writes (POST, PATCH, DELETE) require an API key with the <code>write</code> scope — pass via <code>X-API-Key</code> header.
+    Ask for a key if you want to integrate.
+  </p>
+  <p>Schemas, vocabulary definitions, and conformance fixtures are on <a href="https://openric.org">openric.org</a>; the reference implementation code is at <a href="https://github.com/ArchiveHeritageGroup/heratio">github.com/ArchiveHeritageGroup/heratio</a>.</p>
+
+  <footer>
+    Licensed <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL&nbsp;3.0</a>. Operated by
+    <a href="https://theahg.co.za">The Archive and Heritage Group (Pty) Ltd</a>. Contact:
+    <a href="mailto:johan@theahg.co.za">johan@theahg.co.za</a>.
+  </footer>
+
+</body>
+</html>

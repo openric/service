@@ -2,66 +2,98 @@
 
 ## What this is
 
-A standalone Laravel 12 app that serves `/api/ric/v1/*` — the same endpoints Heratio exposes from its `ahg-ric` package, but extracted into a separate deployable.
+A standalone Laravel 12 app that serves `/api/ric/v1/*`. It reuses Heratio's
+`ahg-ric`, `ahg-api`, and `ahg-core` packages via a composer `path` repo that
+points at `/usr/share/nginx/heratio/packages/*`. No code duplication — every
+fix pushed to Heratio's packages is picked up here on the next request.
 
-During Phase 4.3 (current), this app shares Heratio's MySQL database. The `ric_*` tables, the `relation` table, and the `object`/`slug`/`ahg_dropdown` helper tables live in the same place as Heratio's. Heratio and this service are both read/write clients.
+During Phase 4.3 (current), this app **shares Heratio's MySQL database** —
+the `ric_*` tables, `relation`, `object`, `slug`, `ahg_dropdown`. Heratio and
+this service are both read/write clients. Phase 4.3 Option B moves RiC tables
+to a separate DB.
 
-## Quick local test
+## Local test
 
 ```bash
-cd /usr/share/nginx/openric-service
+cd /usr/share/nginx/OpenRiC
 php artisan serve --port=8100 --host=127.0.0.1
 # in another shell:
 curl http://127.0.0.1:8100/api/ric/v1/health
 # {"status":"ok","service":"RIC-O Linked Data API","version":"1.0"}
-curl 'http://127.0.0.1:8100/api/ric/v1/autocomplete?q=egypt&limit=3'
 ```
 
-## Production deployment
+## Production wiring — already provisioned
 
-See `ric.theahg.co.za.conf` in this directory — drop into `/etc/nginx/sites-available/`, symlink into `sites-enabled/`, reload nginx.
+The host already has the vhost file at
+`/etc/nginx/sites-available/ric.theahg.co.za.conf`. The current version serves
+the Flask community site at `/` and was waiting for a Laravel app to land at
+`/app`. We don't use the `/app` prefix — instead this service serves
+`/api/ric/v1/*` directly.
 
-DNS: add `ric.theahg.co.za` as A/AAAA or CNAME to the same host running Heratio. Both apps share the same PHP-FPM pool (`php8.3-fpm.sock`) — no extra pool needed because they're cheap and low-traffic.
-
-TLS: the existing `theahg.co.za` Let's Encrypt cert may already cover `ric.theahg.co.za` as a SAN. If not:
+### One-shot apply
 
 ```bash
-certbot --nginx --expand -d ric.theahg.co.za
+sudo cp /usr/share/nginx/OpenRiC/deploy/ric.theahg.co.za.conf /etc/nginx/sites-available/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+The new vhost:
+
+- Keeps the Flask community site (`/`, `/docs`, `/whats-new`, `/explorer`,
+  `/login`, `/register`, `/logout`, `/ric-api`, `/static`) proxying to port 5055.
+- Serves the Laravel API at `/api/ric/v1/*` (longest-prefix match wins, so
+  these never conflict).
+- 301-redirects old `/sparql` and `/oai` → `/api/ric/v1/sparql` and
+  `/api/ric/v1/oai` for back-compat.
+- Drops the dead `/app/*` + `@laravel` blocks that referenced a Laravel app
+  that was moved into Heratio.
+
+### Verify
+
+```bash
+curl -sI https://ric.theahg.co.za/api/ric/v1/health
+# HTTP/2 200
+# content-type: application/json
 ```
 
 ## Mint the service API key (for Heratio → this service auth)
 
-After the nginx vhost is live, run this on the server to create a service-level key with `read,write,delete` scope:
+After the vhost is live, run on the server:
 
 ```bash
-cd /usr/share/nginx/openric-service
-php artisan tinker
+cd /usr/share/nginx/OpenRiC
+# Pick an owner user id (any admin):
+mysql heratio -sNe "SELECT id,username FROM user WHERE username='johanpiet'"
+# e.g. 900148
+
+php artisan ric:mint-service-key --owner=900148 --name="heratio → openric-service"
+# Output:
+#   Key minted (row id=NNN, prefix=xxxxxxxx, scopes=read,write,delete).
+#   Copy the following into Heratio's .env:
+#     RIC_SERVICE_API_KEY=<64-char hex>
+#   This is the LAST time the raw key is shown.
 ```
 
-Then inside tinker:
+## Flip Heratio to use the service
 
-```php
-$key = bin2hex(random_bytes(32));
-\DB::table('ahg_api_key')->insert([
-    'name' => 'heratio → openric-service',
-    'api_key' => hash('sha256', $key),
-    'scopes' => json_encode(['read', 'write', 'delete']),
-    'is_active' => 1,
-    'created_at' => now(),
-    'updated_at' => now(),
-]);
-echo "RIC_SERVICE_API_KEY=$key\n";
-```
-
-Copy the printed `RIC_SERVICE_API_KEY=…` line into Heratio's `.env`, then:
+Edit Heratio's `.env`:
 
 ```
 RIC_API_URL=https://ric.theahg.co.za/api/ric/v1
-RIC_SERVICE_API_KEY=<paste>
+RIC_SERVICE_API_KEY=<paste from the mint command>
+RIC_HTTP_TIMEOUT=5
 ```
 
-Reload Heratio (`php artisan config:clear`). The `RicEntityController::callRicApi()` helper detects the external URL and switches from cookie-forwarding to `X-API-Key` auth automatically.
+Reload config:
+
+```bash
+cd /usr/share/nginx/heratio
+php artisan config:clear
+php artisan ric:verify-split  # should return 15 pass, 0 fail
+```
 
 ## Rollback
 
-Set `RIC_API_URL=` (blank) in Heratio's `.env` — Heratio reverts to its own in-process RiC module. The two services coexist safely; flipping between them is free.
+Blank `RIC_API_URL` in Heratio's `.env`. Heratio reverts to in-process RiC.
+The service at `ric.theahg.co.za/api/ric/v1/*` keeps running harmlessly
+(shared DB — no data loss).
