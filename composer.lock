@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ecb2a98bcc20ee4dc31f2768de0857cd",
+    "content-hash": "e1ccb57288f3d9ceb80ca5e532962caf",
     "packages": [
         {
             "name": "ahg/api",
@@ -96,6 +96,51 @@
                 }
             },
             "description": "RiC (Records in Contexts) Dashboard for Heratio",
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
+        },
+        {
+            "name": "ahg/ric-model",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "./packages/ahg-ric-model",
+                "reference": "979f13add77e6202d9b45b580f3d58e1bfc29948"
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.0",
+                "illuminate/http": "^12.0",
+                "illuminate/support": "^12.0",
+                "php": "^8.3",
+                "symfony/yaml": "^7.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "AhgRicModel\\Providers\\AhgRicModelServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "AhgRicModel\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "AhgRicModel\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "AGPL-3.0-or-later"
+            ],
+            "description": "RiC-CM reference browser for OpenRiC — SPARQL-driven view of the Records in Contexts conceptual model, sourced from RiC-O.",
             "transport-options": {
                 "symlink": false,
                 "relative": true
@@ -5895,6 +5940,82 @@
             "time": "2026-03-30T13:44:50+00:00"
         },
         {
+            "name": "symfony/yaml",
+            "version": "v7.4.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/yaml.git",
+                "reference": "c58fdf7b3d6c2995368264c49e4e8b05bcff2883"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/c58fdf7b3d6c2995368264c49e4e8b05bcff2883",
+                "reference": "c58fdf7b3d6c2995368264c49e4e8b05bcff2883",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/deprecation-contracts": "^2.5|^3",
+                "symfony/polyfill-ctype": "^1.8"
+            },
+            "conflict": {
+                "symfony/console": "<6.4"
+            },
+            "require-dev": {
+                "symfony/console": "^6.4|^7.0|^8.0"
+            },
+            "bin": [
+                "Resources/bin/yaml-lint"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Yaml\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Loads and dumps YAML files",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/yaml/tree/v7.4.8"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-03-24T13:12:05+00:00"
+        },
+        {
             "name": "tijsverkoyen/css-to-inline-styles",
             "version": "v2.4.0",
             "source": {
@@ -8239,7 +8360,8 @@
     "stability-flags": {
         "ahg/core": 20,
         "ahg/api": 20,
-        "ahg/ric": 20
+        "ahg/ric": 20,
+        "ahg/ric-model": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

@@ -14,7 +14,8 @@
         "laravel/tinker": "^3.0",
         "ahg/core": "@dev",
         "ahg/api": "@dev",
-        "ahg/ric": "@dev"
+        "ahg/ric": "@dev",
+        "ahg/ric-model": "@dev"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

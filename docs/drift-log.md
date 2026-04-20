@@ -18,4 +18,4 @@ This log tracks every cherry-pick or drift event between the two trees, so we ca
 
 ### 2026-04
 
-- **2026-04-20** | `fork` | `packages/ahg-core`, `packages/ahg-api`, `packages/ahg-ric` | heratio@`d5160da7e07be50ac0c4e3fa4b8097d5c0714ea8` (v0.116.3) | openric — this entry is committed as part of the Phase-0 release (inaugural `v0.2.0` tag; see `CHANGELOG.md` for the commit) | Initial vendor fork. All three packages copied intact from Heratio — no pruning, no namespace changes. OpenRiC's copy becomes the authoritative source for RiC concerns from this point. Heratio's copy continues to evolve until Heratio transitions to API consumption.
+- **2026-04-20** | `fork` | `packages/ahg-core`, `packages/ahg-api`, `packages/ahg-ric` | heratio@`d5160da7e07be50ac0c4e3fa4b8097d5c0714ea8` (v0.116.3) | openric@`0c78637` (Phase 0 feature commit); tagged as `v0.2.0` (`ec1e0fc`) | Initial vendor fork. All three packages copied intact from Heratio — no pruning, no namespace changes. OpenRiC's copy becomes the authoritative source for RiC concerns from this point. Heratio's copy continues to evolve until Heratio transitions to API consumption.

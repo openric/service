@@ -1,0 +1,34 @@
+{
+    "name": "ahg/ric-model",
+    "description": "RiC-CM reference browser for OpenRiC — SPARQL-driven view of the Records in Contexts conceptual model, sourced from RiC-O.",
+    "type": "library",
+    "license": "AGPL-3.0-or-later",
+    "require": {
+        "php": "^8.3",
+        "illuminate/support": "^12.0",
+        "illuminate/http": "^12.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "symfony/yaml": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AhgRicModel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AhgRicModel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AhgRicModel\\Providers\\AhgRicModelServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable"
+}
