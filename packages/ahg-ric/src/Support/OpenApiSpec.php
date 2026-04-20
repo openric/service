@@ -44,7 +44,8 @@ class OpenApiSpec
                 'schemas' => self::schemas(),
             ],
             'tags' => [
-                ['name' => 'Discovery', 'description' => 'API info, health, vocabulary, OpenAPI spec.'],
+                // --- Entity groupings — how endpoints have always been grouped. ---
+                ['name' => 'Discovery', 'description' => 'API info, health, vocabulary, OpenAPI spec, conformance badge.'],
                 ['name' => 'Agents',    'description' => 'rico:Agent / Person / CorporateBody / Family (ISAAR-CPF).'],
                 ['name' => 'Records',   'description' => 'rico:Record / RecordSet (ISAD archival descriptions).'],
                 ['name' => 'Places',    'description' => 'rico:Place — geographic / topographical entities.'],
@@ -58,9 +59,94 @@ class OpenApiSpec
                 ['name' => 'Uploads',   'description' => 'Multipart file upload.'],
                 ['name' => 'Harvest',   'description' => 'OAI-PMH v2.0 harvester endpoint.'],
                 ['name' => 'Keys',      'description' => 'Self-service API key request flow (no auth required).'],
+                // --- OpenRiC conformance profiles — the same endpoints,      ---
+                // --- grouped by which profile's conformance surface they      ---
+                // --- belong to (per openric-spec core-discovery.md and the    ---
+                // --- forthcoming profile documents). Every operation carries  ---
+                // --- both its entity tag and its profile tag so Swagger UI    ---
+                // --- offers two ways to navigate.                             ---
+                ['name' => 'profile: core-discovery',         'description' => 'Read-only access to records, agents, repositories; vocabulary; autocomplete. The minimum OpenRiC conformance target.'],
+                ['name' => 'profile: authority-context',      'description' => 'Places, Rules, Activities — the contextual entities that qualify records.'],
+                ['name' => 'profile: digital-object-linkage', 'description' => 'Instantiations and Functions — carriers and activity types linked to records.'],
+                ['name' => 'profile: graph-traversal',        'description' => 'Subgraph walks, relation types, experimental SPARQL.'],
+                ['name' => 'profile: export-only',            'description' => 'OAI-PMH harvester verbs.'],
+                ['name' => 'profile: round-trip-editing',     'description' => 'Create / update / delete across every writable entity. Requires X-API-Key with the `write` or `delete` scope.'],
             ],
-            'paths' => self::paths(),
+            'paths' => self::attachProfileTags(self::paths()),
         ];
+    }
+
+    /**
+     * Post-process every operation in $paths to append its OpenRiC-profile
+     * tag alongside the existing entity-group tag. Lets Swagger UI group
+     * endpoints two ways (by entity class, or by conformance profile)
+     * without having to touch all 56 self::op() call sites.
+     *
+     * Read verbs (GET/HEAD) → profile inferred from the entity tag.
+     * Write verbs (POST/PUT/PATCH/DELETE) → `round-trip-editing`.
+     * Operations tagged Discovery/Uploads/Keys → no profile (meta/infra).
+     *
+     * @param array<string, array<string, array<string, mixed>>> $paths
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    private static function attachProfileTags(array $paths): array
+    {
+        // Entity-tag → profile for read verbs. Write verbs on anything in
+        // this map go to round-trip-editing instead.
+        $readProfileByTag = [
+            'Agents'         => 'core-discovery',
+            'Records'        => 'core-discovery',
+            'Repositories'   => 'core-discovery',
+            'Places'         => 'authority-context',
+            'Rules'          => 'authority-context',
+            'Activities'     => 'authority-context',
+            'Instantiations' => 'digital-object-linkage',
+            'Functions'      => 'digital-object-linkage',
+            'Relations'      => 'graph-traversal',
+            'Graph'          => 'graph-traversal',
+            'Harvest'        => 'export-only',
+            // Discovery, Uploads, Keys — no default mapping. Some specific
+            // Discovery paths opt into a profile via $pathOverrides below.
+        ];
+
+        // Path-specific overrides — win over tag-based inference. Use for
+        // cases where a generic tag (e.g. "Discovery") contains a mix of
+        // meta/infra endpoints and ones that genuinely belong to a profile.
+        $pathOverrides = [
+            '/vocabulary'            => 'core-discovery',
+            '/vocabulary/{taxonomy}' => 'core-discovery',
+            '/autocomplete'          => 'core-discovery',
+            // `/`, `/health`, `/openapi.json`, `/docs`, `/conformance/badge`
+            // are deliberately omitted — meta/always-on, no profile.
+        ];
+
+        $writeVerbs = ['post', 'put', 'patch', 'delete'];
+
+        foreach ($paths as $path => &$pathItem) {
+            if (!is_array($pathItem)) { continue; }
+            foreach ($pathItem as $verb => &$op) {
+                if (!is_array($op) || !isset($op['tags'][0])) { continue; }
+                $entityTag = $op['tags'][0];
+                $isWrite   = in_array(strtolower((string) $verb), $writeVerbs, true);
+
+                // Path override first; fall back to tag-based inference.
+                if (isset($pathOverrides[$path])) {
+                    $profileTag = $isWrite ? 'round-trip-editing' : $pathOverrides[$path];
+                } elseif ($isWrite) {
+                    $profileTag = isset($readProfileByTag[$entityTag]) ? 'round-trip-editing' : null;
+                } else {
+                    $profileTag = $readProfileByTag[$entityTag] ?? null;
+                }
+
+                if ($profileTag !== null) {
+                    $op['tags'][] = 'profile: ' . $profileTag;
+                }
+            }
+            unset($op);
+        }
+        unset($pathItem);
+
+        return $paths;
     }
 
     private static function paths(): array
