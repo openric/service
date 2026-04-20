@@ -1,0 +1,40 @@
+##
+# Alternative to the cron-based check: run this as a GitHub Actions
+# scheduled workflow in any repo you control. Commit to
+# .github/workflows/openric-uptime.yml in e.g. openric/service.
+##
+name: OpenRiC uptime
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 min; adjust to taste
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe /api/ric/v1/health
+        run: |
+          set -u
+          URL="https://ric.theahg.co.za/api/ric/v1/health"
+          resp="$(curl --silent --show-error --max-time 15 --fail "$URL")"
+          echo "$resp"
+          echo "$resp" | grep -q '"status":"ok"'
+
+      - name: Notify on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: '[OpenRiC] API health check failed'
+          to: johan@theahg.co.za
+          from: GitHub Actions <gha@openric.org>
+          body: |
+            The scheduled uptime check just failed.
+            Endpoint: https://ric.theahg.co.za/api/ric/v1/health
+            Run: ${{ github.run_id }}
+            See the workflow run for details.
