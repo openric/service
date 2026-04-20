@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.3 — 2026-04-20
+
+- Landing page: Start here (5m/15m on-ramps) + rebalanced framing of OpenRiC vs peer projects
 ## v0.8.2 — 2026-04-20
 
 - Refresh org landing page to match v0.8 state — reference browser shipped as feature-complete, clarify what's next vs what's shipped
