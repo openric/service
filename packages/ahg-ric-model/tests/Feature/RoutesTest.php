@@ -169,6 +169,94 @@ class RoutesTest extends TestCase
         $this->assertStringContainsString(':aria-expanded="open"', $body, 'aria-expanded not bound on expand toggle');
     }
 
+    // --- Phase 4 — detail-view polish --------------------------------------------------
+
+    public function test_entity_detail_inherited_rows_carry_data_inherited_from(): void
+    {
+        $latest = (string) config('ahg-ric-model.versions.latest');
+        $body = $this->get("/reference/ric-cm/{$latest}/entities/RiC-E04")->assertOk()->getContent();
+        // Record inherits plenty from RecordResource; at least one row must have the attribute.
+        $this->assertMatchesRegularExpression(
+            '/<tr\s+data-inherited-from="RiC-E[0-9]+"/',
+            $body,
+            'inherited rows must carry data-inherited-from for portability + tests',
+        );
+    }
+
+    public function test_entity_detail_inherited_tag_anchors_to_ancestor_declared_section(): void
+    {
+        $latest = (string) config('ahg-ric-model.versions.latest');
+        $body = $this->get("/reference/ric-cm/{$latest}/entities/RiC-E04")->assertOk()->getContent();
+        // Clicking "from RecordResource" should jump to its declared-attributes / declared-relations section.
+        $this->assertStringContainsString('#declared-attributes', $body);
+        $this->assertStringContainsString('#declared-relations',  $body);
+    }
+
+    public function test_entity_detail_renders_declared_anchors(): void
+    {
+        $latest = (string) config('ahg-ric-model.versions.latest');
+        $body = $this->get("/reference/ric-cm/{$latest}/entities/RiC-E04")->assertOk()->getContent();
+        $this->assertStringContainsString('id="declared-attributes"', $body);
+        $this->assertStringContainsString('id="declared-relations"',  $body);
+    }
+
+    public function test_entity_detail_renders_scope_notes_and_examples_when_present(): void
+    {
+        $latest = (string) config('ahg-ric-model.versions.latest');
+        // Record (RiC-E04) has a scope note in RiC-O v1.1.
+        $this->get("/reference/ric-cm/{$latest}/entities/RiC-E04")
+            ->assertOk()
+            ->assertSee('Scope notes');
+    }
+
+    public function test_relation_detail_renders_broader_narrower_section_when_present(): void
+    {
+        $latest    = (string) config('ahg-ric-model.versions.latest');
+        $relations = app(\AhgRicModel\Services\OntologyService::class)->listRelations($latest);
+
+        // Find any relation that has a broader or narrower counterpart
+        // (most RiC-R relations do via rdfs:subPropertyOf chains).
+        $target = null;
+        foreach ($relations as $r) {
+            $detail = app(\AhgRicModel\Services\OntologyService::class)->getRelation($r['id'], $latest);
+            if (!empty($detail['broader']) || !empty($detail['narrower'])) {
+                $target = $r['id'];
+                break;
+            }
+        }
+        $this->assertNotNull($target, 'Expected at least one relation with broader or narrower hierarchy in RiC-O v1.1');
+
+        $this->get("/reference/ric-cm/{$latest}/relations/{$target}")
+            ->assertOk()
+            ->assertSee('Hierarchy')
+            ->assertSee('Broader')
+            ->assertSee('Narrower');
+    }
+
+    public function test_attribute_detail_renders_inherited_by_list(): void
+    {
+        $latest     = (string) config('ahg-ric-model.versions.latest');
+        $attributes = app(\AhgRicModel\Services\OntologyService::class)->listAttributes($latest);
+
+        // An attribute declared on an entity with descendants (e.g. Thing) will have
+        // inheritedBy; walk attributes until we find one.
+        $target = null;
+        foreach ($attributes as $a) {
+            $detail = app(\AhgRicModel\Services\OntologyService::class)->getAttribute($a['id'], $latest);
+            if (!empty($detail['inheritedBy'])) {
+                $target = $a['id'];
+                break;
+            }
+        }
+        $this->assertNotNull($target, 'Expected at least one attribute with inheritedBy entries');
+
+        $body = $this->get("/reference/ric-cm/{$latest}/attributes/{$target}")->assertOk()->getContent();
+        $this->assertStringContainsString('Also applies to', $body);
+        $this->assertStringContainsString('ric-tag-inherited', $body);
+        $this->assertMatchesRegularExpression('/data-inherited-from="RiC-E[0-9]+"/', $body,
+            'Inherited-by rows must carry data-inherited-from (portability + tests)');
+    }
+
     // ------------------------------------------------------------------
 
     private function skipIfFusekiUnreachable(): void

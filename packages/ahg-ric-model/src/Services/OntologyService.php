@@ -71,7 +71,9 @@ class OntologyService
         return $this->cached($this->key('entities', $version), function () {
             $rows = $this->sparqlSelect($this->entitiesQuery());
             foreach ($rows as &$row) {
-                $row['parents'] = $this->splitList($row['parents'] ?? null);
+                $row['parents']    = $this->splitList($row['parents'] ?? null);
+                $row['scopeNotes'] = $this->splitMulti($row['scopeNotes'] ?? null);
+                $row['examples']   = $this->splitMulti($row['examples']   ?? null);
             }
             return $rows;
         });
@@ -124,7 +126,9 @@ class OntologyService
         return $this->cached($this->key('attributes', $version), function () {
             $rows = $this->sparqlSelect($this->attributesQuery());
             foreach ($rows as &$row) {
-                $row['domain'] = $this->splitList($row['domain'] ?? null);
+                $row['domain']     = $this->splitList($row['domain'] ?? null);
+                $row['scopeNotes'] = $this->splitMulti($row['scopeNotes'] ?? null);
+                $row['examples']   = $this->splitMulti($row['examples']   ?? null);
             }
             return $rows;
         });
@@ -138,15 +142,34 @@ class OntologyService
         if ($row === null) {
             return null;
         }
-        $entities  = $this->listEntities($version);
+        $entities = $this->listEntities($version);
+
         $domainEntities = [];
+        $inheritedBy    = [];
+        $seenDescendant = [];
+
         foreach ($row['domain'] as $eid) {
             $entity = $this->findById($entities, $eid);
-            if ($entity !== null) {
-                $domainEntities[] = ['id' => $entity['id'], 'name' => $entity['name']];
+            if ($entity === null) {
+                continue;
+            }
+            $domainEntities[] = ['id' => $entity['id'], 'name' => $entity['name']];
+            // Each descendant of this declared-on entity inherits the attribute.
+            // Dedupe across multiple declared-on entities.
+            foreach ($this->resolver->descendants($eid, $entities) as $desc) {
+                if (!isset($seenDescendant[$desc['id']])) {
+                    $seenDescendant[$desc['id']] = true;
+                    $inheritedBy[] = [
+                        'id'            => $desc['id'],
+                        'name'          => $desc['name'],
+                        'inheritedFrom' => ['id' => $entity['id'], 'name' => $entity['name']],
+                    ];
+                }
             }
         }
+
         $row['domainEntities'] = $domainEntities;
+        $row['inheritedBy']    = $inheritedBy;
         return $row;
     }
 
@@ -159,8 +182,13 @@ class OntologyService
     public function listRelations(?string $version = null): array
     {
         return $this->cached($this->key('relations', $version), function () {
-            // Relations return single-valued domain/range — no list splitting.
-            return $this->sparqlSelect($this->relationsQuery());
+            $rows = $this->sparqlSelect($this->relationsQuery());
+            foreach ($rows as &$row) {
+                // domain/range are single-valued — do not split.
+                $row['scopeNotes'] = $this->splitMulti($row['scopeNotes'] ?? null);
+                $row['examples']   = $this->splitMulti($row['examples']   ?? null);
+            }
+            return $rows;
         });
     }
 
@@ -173,6 +201,7 @@ class OntologyService
             return null;
         }
         $entities = $this->listEntities($version);
+
         // Resolve domain + range to {id, name}. Single entries — no expansion.
         if ($row['domain'] !== null) {
             $entity = $this->findById($entities, $row['domain']);
@@ -182,10 +211,78 @@ class OntologyService
             $entity = $this->findById($entities, $row['range']);
             $row['rangeEntity'] = $entity !== null ? ['id' => $entity['id'], 'name' => $entity['name']] : null;
         }
+
         // Browsing aids — descendants of the declared domain/range.
         $row['domainDescendants'] = $row['domain'] !== null ? $this->resolver->descendants($row['domain'], $entities) : [];
         $row['rangeDescendants']  = $row['range']  !== null ? $this->resolver->descendants($row['range'],  $entities) : [];
+
+        // Inverse relation, if any, resolved to a link-ready struct.
+        if (!empty($row['inverseOf'])) {
+            $inv = $this->findById($all, $row['inverseOf']);
+            $row['inverseRelation'] = $inv !== null
+                ? ['id' => $inv['id'], 'name' => $inv['name'] ?? $inv['id']]
+                : ['id' => $row['inverseOf'], 'name' => $row['inverseOf']];
+        } else {
+            $row['inverseRelation'] = null;
+        }
+
+        // Broader (rdfs:subPropertyOf) / narrower (reverse) — scoped to canonical
+        // RiC-CM relations only (other properties with RiC-R markers).
+        $row['broader']  = $this->fetchSubPropertyGraph($row['uri'] ?? '', 'broader');
+        $row['narrower'] = $this->fetchSubPropertyGraph($row['uri'] ?? '', 'narrower');
+
         return $row;
+    }
+
+    /**
+     * Find canonical RiC-CM relations that are directly broader than or
+     * narrower than the given one via rdfs:subPropertyOf. "Broader" = this
+     * URI's super-properties; "narrower" = properties that declare this URI
+     * as their super-property. Filtered to RiC-R-marked properties only so
+     * internal helper properties don't leak into the UI.
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    private function fetchSubPropertyGraph(string $uri, string $direction): array
+    {
+        if ($uri === '') {
+            return [];
+        }
+
+        $ns = $this->ricoNamespace;
+        $sparql = $direction === 'broader'
+            ? <<<SPARQL
+PREFIX rico: <{$ns}>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?id ?name WHERE {
+    <{$uri}> rdfs:subPropertyOf ?other .
+    ?other rico:RiCCMCorrespondingComponent ?marker ;
+           rdfs:label ?name .
+    FILTER(REGEX(STR(?marker), "^RiC-R[0-9]+", "s"))
+    FILTER(lang(?name) = "en")
+    BIND(REPLACE(STR(?marker), "^(RiC-R[0-9]+i?).*", "\$1", "s") AS ?id)
+}
+ORDER BY ?id
+SPARQL
+            : <<<SPARQL
+PREFIX rico: <{$ns}>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?id ?name WHERE {
+    ?other rdfs:subPropertyOf <{$uri}> ;
+           rico:RiCCMCorrespondingComponent ?marker ;
+           rdfs:label ?name .
+    FILTER(REGEX(STR(?marker), "^RiC-R[0-9]+", "s"))
+    FILTER(lang(?name) = "en")
+    BIND(REPLACE(STR(?marker), "^(RiC-R[0-9]+i?).*", "\$1", "s") AS ?id)
+}
+ORDER BY ?id
+SPARQL;
+
+        $rows = $this->sparqlSelect($sparql);
+        return array_map(static fn (array $r): array => [
+            'id'   => $r['id']   ?? '',
+            'name' => $r['name'] ?? ($r['id'] ?? ''),
+        ], $rows);
     }
 
     /**
@@ -233,16 +330,21 @@ class OntologyService
 PREFIX rico: <{$ns}>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT DISTINCT ?id ?uri ?name ?definition
-       (GROUP_CONCAT(DISTINCT ?parentId; separator=",") AS ?parents)
+       (GROUP_CONCAT(DISTINCT ?parentId; separator=",")   AS ?parents)
+       (GROUP_CONCAT(DISTINCT ?scopeNote; separator="|||") AS ?scopeNotes)
+       (GROUP_CONCAT(DISTINCT ?example;   separator="|||") AS ?examples)
 WHERE {
     ?uri a owl:Class ;
          rico:RiCCMCorrespondingComponent ?marker .
     FILTER(REGEX(STR(?marker), "[Cc]or+esponds to RiC-E[0-9]+", "s"))
     BIND(REPLACE(STR(?marker), ".*?(RiC-E[0-9]+).*", "\$1", "s") AS ?id)
 
-    OPTIONAL { ?uri rdfs:label ?name . FILTER(lang(?name) = "en") }
-    OPTIONAL { ?uri rdfs:comment ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri rdfs:label    ?name       . FILTER(lang(?name)       = "en") }
+    OPTIONAL { ?uri rdfs:comment  ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri skos:scopeNote ?scopeNote . FILTER(lang(?scopeNote)  = "en") }
+    OPTIONAL { ?uri skos:example   ?example   . FILTER(lang(?example)    = "en") }
 
     OPTIONAL {
         ?uri rdfs:subClassOf ?parent .
@@ -264,15 +366,20 @@ SPARQL;
 PREFIX rico: <{$ns}>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT DISTINCT ?id ?uri ?name ?definition
-       (GROUP_CONCAT(DISTINCT ?domainId; separator=",") AS ?domain)
+       (GROUP_CONCAT(DISTINCT ?domainId;  separator=",")   AS ?domain)
+       (GROUP_CONCAT(DISTINCT ?scopeNote; separator="|||") AS ?scopeNotes)
+       (GROUP_CONCAT(DISTINCT ?example;   separator="|||") AS ?examples)
 WHERE {
     ?uri rico:RiCCMCorrespondingComponent ?marker .
     FILTER(REGEX(STR(?marker), "[Cc]or+esponds to RiC-A[0-9]+", "s"))
     BIND(REPLACE(STR(?marker), ".*?(RiC-A[0-9]+).*", "\$1", "s") AS ?id)
 
-    OPTIONAL { ?uri rdfs:label ?name . FILTER(lang(?name) = "en") }
-    OPTIONAL { ?uri rdfs:comment ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri rdfs:label     ?name       . FILTER(lang(?name)       = "en") }
+    OPTIONAL { ?uri rdfs:comment   ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri skos:scopeNote ?scopeNote  . FILTER(lang(?scopeNote)  = "en") }
+    OPTIONAL { ?uri skos:example   ?example    . FILTER(lang(?example)    = "en") }
 
     OPTIONAL {
         ?uri rdfs:domain ?d .
@@ -293,15 +400,20 @@ SPARQL;
 PREFIX rico: <{$ns}>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT DISTINCT ?id ?uri ?name ?definition ?domain ?range ?inverseOf
+       (GROUP_CONCAT(DISTINCT ?scopeNote; separator="|||") AS ?scopeNotes)
+       (GROUP_CONCAT(DISTINCT ?example;   separator="|||") AS ?examples)
 WHERE {
     ?uri a owl:ObjectProperty ;
          rico:RiCCMCorrespondingComponent ?marker .
     FILTER(REGEX(STR(?marker), "^RiC-R[0-9]+", "s"))
     BIND(REPLACE(STR(?marker), "^(RiC-R[0-9]+i?).*", "\$1", "s") AS ?id)
 
-    OPTIONAL { ?uri rdfs:label ?name . FILTER(lang(?name) = "en") }
-    OPTIONAL { ?uri rdfs:comment ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri rdfs:label     ?name       . FILTER(lang(?name)       = "en") }
+    OPTIONAL { ?uri rdfs:comment   ?definition . FILTER(lang(?definition) = "en") }
+    OPTIONAL { ?uri skos:scopeNote ?scopeNote  . FILTER(lang(?scopeNote)  = "en") }
+    OPTIONAL { ?uri skos:example   ?example    . FILTER(lang(?example)    = "en") }
 
     OPTIONAL {
         ?uri rdfs:domain ?d .
@@ -321,6 +433,7 @@ WHERE {
         BIND(REPLACE(STR(?invMarker), "^(RiC-R[0-9]+i?).*", "\$1", "s") AS ?inverseOf)
     }
 }
+GROUP BY ?id ?uri ?name ?definition ?domain ?range ?inverseOf
 ORDER BY ?id
 SPARQL;
     }
@@ -390,6 +503,25 @@ SPARQL;
             return [];
         }
         return array_values(array_unique(array_filter(array_map('trim', explode(',', $value)))));
+    }
+
+    /**
+     * Split on the `|||` separator used for multi-valued literal fields
+     * (scope notes, examples) whose values may themselves contain commas
+     * or newlines. Normalises whitespace in each element.
+     *
+     * @return array<int, string>
+     */
+    private function splitMulti(?string $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+        $parts = array_map(
+            static fn (string $s): string => trim(preg_replace('/\s+/', ' ', $s) ?? ''),
+            explode('|||', $value),
+        );
+        return array_values(array_unique(array_filter($parts)));
     }
 
     // ------------------------------------------------------------------
