@@ -45,5 +45,15 @@ class AhgRicModelServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../../config/ahg-ric-model.php' => config_path('ahg-ric-model.php'),
         ], 'ahg-ric-model-config');
+
+        $this->loadRoutesFrom(__DIR__ . '/../../routes/web.php');
+        $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'ahg-ric-model');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \AhgRicModel\Console\Commands\RebuildCacheCommand::class,
+                \AhgRicModel\Console\Commands\LoadOntologyCommand::class,
+            ]);
+        }
     }
 }
