@@ -16,9 +16,18 @@
 
 # OpenRiC
 
-**An open, Records-in-Contexts native platform for archives.**
+**An open, Records in Contexts native platform for archives.**
 
 OpenRiC is a clean-room, open-source implementation of the [**Records in Contexts-Ontology (RiC-O)**](https://github.com/ICA-EGAD/RiC-O) — the semantic standard for archival description published by the [ICA Expert Group on Archival Description (EGAD)](https://www.ica.org/ica-network/expert-groups/egad/). It treats RiC-O as the primary data model, not a bolt-on, and ships as a pluggable Laravel 12 service backed by an RDF triplestore.
+
+<!--
+  Screenshot placeholder: a single PNG of the RiC-E04 Record detail page
+  showing (a) the declared-attributes / declared-relations sections, (b) a
+  collapsed "Inherited" panel, (c) the "(from Record Resource)" ancestor
+  tag would communicate more than prose. Drop it at `docs/org/screenshots/`
+  and reference here once a deployable demo exists.
+-->
+
 
 ---
 
@@ -29,6 +38,7 @@ Two on-ramps, depending on how much time you have.
 ### In 5 minutes — is this the shape of thing you want?
 
 - Skim the [reference-browser user guide](https://github.com/openric/service/blob/main/docs/reference-browser-user-guide.md) — the declared-vs-inherited model is the fastest way to understand what's different about OpenRiC.
+- Scan the [`ahg-ric-model` package README](https://github.com/openric/service/blob/main/packages/ahg-ric-model/README.md) for the package shape and admin commands.
 - Glance at [`docs/plans/`](https://github.com/openric/service/tree/main/docs/plans) to see how the work is scoped and shipped.
 - Decide.
 
@@ -37,24 +47,27 @@ Two on-ramps, depending on how much time you have.
 ```bash
 git clone git@github.com:openric/service.git openric
 cd openric
+composer install
 cp .env.example .env && php artisan key:generate
 
-# Start Fuseki (Docker one-liner; existing install also fine)
+# Start Fuseki. Skip this block if you already have Fuseki on :3030.
+# stain/jena-fuseki is a community-maintained Docker image; an existing
+# local install of Apache Jena Fuseki 4+ works identically.
 docker run -d --name openric-fuseki -p 3030:3030 \
     -e ADMIN_PASSWORD=admin123 stain/jena-fuseki
 
-# Load RiC-O v1.1 into a dedicated dataset
-curl -u admin:admin123 -X POST http://localhost:3030/\$/datasets \
-    --data-urlencode "dbName=openric-model" --data-urlencode "dbType=tdb2"
+# Create a dataset for the ontology, then load RiC-O v1.1 into it.
+curl -u admin:admin123 -X POST 'http://localhost:3030/$/datasets' \
+    --data-urlencode 'dbName=openric-model' --data-urlencode 'dbType=tdb2'
 php artisan ric-model:load-ontology \
     packages/ahg-ric-model/resources/data/ric-o/RiC-O_1-1.rdf \
     --dataset=openric-model
 
-composer install && php artisan serve
+php artisan serve
 # Browse: http://localhost:8000/reference/ric-cm/
 ```
 
-Expected time on a good connection: ~12 minutes. Budget 15 for the first run.
+Expected time on a good connection: ~12 minutes (Docker pull is the dominant factor). Budget 15 for the first run. Readers with Fuseki already installed should finish in under 5.
 
 ---
 
@@ -70,7 +83,7 @@ RiC-O, the OWL expression of RiC-CM, has existed since 2019 and reached v1.1 in 
 
 ## Status
 
-> **v0.8** — early. Foundations and the RiC-CM reference browser are shipping. Public API surface and data model are not yet stable.
+> **v0.8** (2026-04-20) — early. Foundations and the RiC-CM reference browser are shipping. Public API surface and data model are not yet stable.
 
 Track progress in the main repo's `CHANGELOG.md` and `docs/plans/`.
 
@@ -85,7 +98,7 @@ Track progress in the main repo's `CHANGELOG.md` and `docs/plans/`.
   - Expandable class hierarchy with `sessionStorage` persistence.
   - Alpine-driven client-side filter on every list, mobile-responsive, print stylesheet, WCAG keyboard focus + skip link + `aria-expanded` throughout.
   - Graceful degradation when the triplestore is unreachable.
-- **47 tests, 198 assertions.** Pure-PHP `InheritanceResolver` kept Laravel-free for portability (pending upstream PR to `ric-cm-nav`).
+- **47 tests, 198 assertions.** Pure-PHP `InheritanceResolver` kept Laravel-free for portability — designed to be liftable into any other RiC-CM browser whose author wants the pattern.
 
 ### Next
 
@@ -99,15 +112,22 @@ Track progress in the main repo's `CHANGELOG.md` and `docs/plans/`.
 
 ## What's in the stack
 
+### In use today
+
 | Layer | Technology | Role |
 |---|---|---|
 | HTTP | Laravel 12 / PHP 8.3 | Application framework |
-| Triplestore | Apache Jena Fuseki | Primary RDF store (instance data + loaded ontology) |
-| Search | Elasticsearch | Full-text + faceted search over entities |
-| Vector search | Qdrant | Embedding-based semantic search |
-| Cache | Redis | Query + view cache |
+| Triplestore | Apache Jena Fuseki | RDF store (`openric` dataset for instance data; `openric-model` for the loaded RiC-O ontology) |
 | Frontend | Blade + Alpine.js + Bootstrap 5 | Server-rendered, progressive enhancement |
 | Packaging | Composer path repos | Modular plugin architecture |
+
+### Planned — wiring lands with the next phases
+
+| Layer | Technology | Arrives with |
+|---|---|---|
+| Full-text search | Elasticsearch | Core RiC CRUD |
+| Vector search | Qdrant | Semantic search phase |
+| Cache | Redis | Higher-traffic deployment |
 
 No heavy SPA. No proprietary extensions. Everything in the data path is RDF; everything rendered is progressively enhanced HTML.
 
@@ -137,7 +157,7 @@ Every entity has a stable URL. Machines asking for `application/ld+json` get JSO
 
 ### Plugin architecture
 
-Core OpenRiC runs with every plugin disabled. Each feature — compliance regimes, domain-specific workflows, jurisdiction-specific reporting — ships as its own Composer package implementing documented contracts. Upstream inherits nothing jurisdiction-specific.
+Core OpenRiC runs with every plugin disabled. Each feature — compliance regimes, domain-specific workflows, jurisdiction-specific reporting — ships as its own Composer package implementing documented contracts. The core inherits nothing jurisdiction-specific; market-specific modules sit alongside it.
 
 ---
 
@@ -165,11 +185,11 @@ OpenRiC is actively developed. If you work with archives, ontologies, or linked 
 
 ### Peer — a different implementation
 
-- **[RiC-CM NavTool (DLIB, Ionian University)](https://github.com/DLIB-Ionian-University/ric-cm-nav)** by Matthew Damigos — a Vue SPA that browses a curated JSON export of RiC-CM 1.0. Different architectural choices from OpenRiC on three load-bearing points: static bundled JSON vs. live SPARQL against the authoritative OWL; flattened subclass expansion on relation domains vs. declared/inherited separation; client-side data transforms vs. a portable pure-PHP resolver. A good reference for anyone wanting a lightweight SPA view. If its author accepts our pending licensing request, we'll contribute the `InheritanceResolver` pattern back upstream so the wider RiC community benefits from it regardless of which tool they prefer.
+- **[RiC-CM NavTool (DLIB, Ionian University)](https://github.com/DLIB-Ionian-University/ric-cm-nav)** by Matthew Damigos — a Vue SPA that browses a curated JSON export of RiC-CM 1.0. It and OpenRiC make different architectural choices: static bundled JSON vs. live SPARQL against the authoritative OWL; subclass expansion on relation domains vs. an explicit declared/inherited separation; client-side data transforms vs. a portable pure-PHP resolver. A good reference for anyone wanting a lightweight SPA view, and our `InheritanceResolver` is intentionally designed so the same pattern could be lifted into it if that's ever useful to its maintainer.
 
 ### Sibling — same organisation
 
-- **[Heratio](https://github.com/ArchiveHeritageGroup/heratio)** — the broader GLAM platform from the same maintainer. Heratio currently has its own in-process RiC code; the roadmap migrates it to consuming OpenRiC's HTTP API, making OpenRiC the authoritative RiC-O endpoint across the AHG stack.
+- **[Heratio](https://github.com/ArchiveHeritageGroup/heratio)** — the broader GLAM platform from the same maintainer. Heratio currently has its own in-process RiC code; the roadmap migrates it to consuming OpenRiC (once the core RiC CRUD and JSON-LD surface land — see *Next* above), making OpenRiC the authoritative RiC-O endpoint across the AHG stack.
 
 ---
 
