@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.2.0 — 2026-04-20
+
+- Phase 0 — decouple OpenRiC from Heratio; fork ahg-core/api/ric; add bin/release and drift log
 All notable changes to OpenRiC are recorded here. Versions follow [semver](https://semver.org/). Releases are produced by `./bin/release` — see `README.md`.
 
 ## v0.1.0 — 2026-04-09 — genesis
