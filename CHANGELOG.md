@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.0 — 2026-04-20
+
+- Phases 4–6 — RiC-CM reference browser feature-complete: detail-view polish (scope notes, broader/narrower, inherited-from anchors), expandable hierarchy tree, user guide, final audit
+  against plan (10/10 green)
 ## v0.7.0 — 2026-04-20
 
 - Phase 4 — detail views now render full declared/inherited UX: scope notes + examples + broader/narrower relations, data-inherited-from portability markers, cross-page anchor jumps,
