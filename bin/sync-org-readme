@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#===============================================================================
+# OpenRiC — sync org landing page to github.com/openric/.github
+#===============================================================================
+# The landing page's source of truth is docs/org/github-profile-README.md in
+# this repo. GitHub renders the org landing page from profile/README.md in a
+# separate `.github` repo. This helper copies source → deployed, commits, and
+# prints the push command (does NOT push, matching the bin/release rule of
+# never pushing without explicit operator action).
+#
+# Override the clone path with SYNC_DOTGITHUB_DIR if you keep it somewhere
+# other than /tmp.
+#===============================================================================
+set -euo pipefail
+
+SRC="$(cd "$(dirname "$0")/.." && pwd)/docs/org/github-profile-README.md"
+DOTGITHUB_DIR="${SYNC_DOTGITHUB_DIR:-/tmp/openric-dotgithub}"
+DST="$DOTGITHUB_DIR/profile/README.md"
+
+# --- colours ---------------------------------------------------------------
+if [[ -t 1 ]]; then
+    RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
+else
+    RED=''; GREEN=''; YELLOW=''; BLUE=''; CYAN=''; NC=''
+fi
+
+printf "${CYAN}══════════════════════════════════════════════${NC}\n"
+printf "${CYAN}  OpenRiC — Sync org landing page${NC}\n"
+printf "${CYAN}══════════════════════════════════════════════${NC}\n\n"
+
+# --- preflight -------------------------------------------------------------
+[[ -f "$SRC" ]] || {
+    printf "${RED}Error:${NC} source missing: %s\n" "$SRC" >&2
+    exit 1
+}
+
+if [[ ! -d "$DOTGITHUB_DIR/.git" ]]; then
+    printf "${RED}Error:${NC} clone missing at %s\n\n" "$DOTGITHUB_DIR" >&2
+    printf "To create it:\n\n"
+    printf "  ${CYAN}git clone git@github.com:openric/.github.git %s${NC}\n\n" "$DOTGITHUB_DIR"
+    printf "Or point the helper elsewhere:\n\n"
+    printf "  ${CYAN}SYNC_DOTGITHUB_DIR=~/openric-dotgithub %s${NC}\n" "$(basename "$0")"
+    exit 1
+fi
+
+cd "$DOTGITHUB_DIR"
+
+# Refuse to overwrite an unclean working tree — the user may have in-progress
+# edits in the .github repo we'd clobber.
+if [[ -n "$(git status --porcelain)" ]]; then
+    printf "${RED}Error:${NC} .github repo has uncommitted changes; resolve first.\n" >&2
+    git status --short >&2
+    exit 1
+fi
+
+# Fast-forward pull so we're syncing onto the latest.
+printf "${BLUE}[1/4] Pulling latest from origin/main...${NC}\n"
+git pull --ff-only origin main >/dev/null
+
+# --- copy + diff -----------------------------------------------------------
+printf "${BLUE}[2/4] Copying source → deployed...${NC}\n"
+mkdir -p "$(dirname "$DST")"
+cp "$SRC" "$DST"
+
+if git diff --quiet "$DST"; then
+    printf "\n${GREEN}Already in sync. Nothing to commit.${NC}\n"
+    exit 0
+fi
+
+printf "${BLUE}[3/4] Diff:${NC}\n"
+git --no-pager diff --stat "$DST"
+printf "\n"
+
+# --- commit ----------------------------------------------------------------
+printf "${BLUE}[4/4] Committing...${NC}\n"
+git add "$DST"
+git commit -m "profile: sync from OpenRiC docs/org/github-profile-README.md"
+
+# --- summary (NO push) -----------------------------------------------------
+printf "\n${GREEN}════════════════════════════════════════════════════════════════${NC}\n"
+printf "${GREEN}  Commit staged. NOT PUSHED.${NC}\n"
+printf "${GREEN}════════════════════════════════════════════════════════════════${NC}\n\n"
+
+printf "  Commit: $(git rev-parse --short HEAD)\n"
+printf "  Repo:   %s\n\n" "$DOTGITHUB_DIR"
+
+printf "To publish, run:\n\n"
+printf "  ${CYAN}cd %s && git push origin main${NC}\n\n" "$DOTGITHUB_DIR"
+
+printf "To undo locally (before pushing):\n\n"
+printf "  ${YELLOW}cd %s && git reset --hard HEAD~1${NC}\n\n" "$DOTGITHUB_DIR"
