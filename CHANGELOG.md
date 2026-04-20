@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.2 — 2026-04-20
+
+- Refresh org landing page to match v0.8 state — reference browser shipped as feature-complete, clarify what's next vs what's shipped
 ## v0.8.1 — 2026-04-20
 
 - Refresh org landing page to match v0.8 state — reference browser shipped as feature-complete, clarify what's next vs what's shipped
