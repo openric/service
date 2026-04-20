@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.9 — 2026-04-20
+
+- Fix ErrorException on RiC-R relation detail pages where the OWL does not declare a domain or range — OntologyService normalises all optional fields to null in listRelations() and the
+  view model reads them with !empty() guards
 ## v0.8.8 — 2026-04-20
 
 - OpenAPI profile tags — every /api/ric/v1/* operation now carries both its entity-group tag (Agents, Records, …) and its OpenRiC conformance-profile tag (core-discovery,
