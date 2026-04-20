@@ -184,7 +184,16 @@ class OntologyService
         return $this->cached($this->key('relations', $version), function () {
             $rows = $this->sparqlSelect($this->relationsQuery());
             foreach ($rows as &$row) {
-                // domain/range are single-valued — do not split.
+                // domain / range / inverseOf are optional in the SPARQL query:
+                // any of them may be unbound on a given row. Normalise to null
+                // so downstream code can read the keys without PHP 8 strict-mode
+                // "Undefined array key" warnings.
+                $row['domain']     = $row['domain']    ?? null;
+                $row['range']      = $row['range']     ?? null;
+                $row['inverseOf']  = $row['inverseOf'] ?? null;
+                $row['name']       = $row['name']      ?? null;
+                $row['definition'] = $row['definition'] ?? null;
+                $row['uri']        = $row['uri']       ?? null;
                 $row['scopeNotes'] = $this->splitMulti($row['scopeNotes'] ?? null);
                 $row['examples']   = $this->splitMulti($row['examples']   ?? null);
             }
@@ -203,18 +212,27 @@ class OntologyService
         $entities = $this->listEntities($version);
 
         // Resolve domain + range to {id, name}. Single entries — no expansion.
-        if ($row['domain'] !== null) {
+        // domain/range may be null (SPARQL OPTIONAL may not have bound them);
+        // we default the derived fields so the view template always has the
+        // keys it expects to render.
+        $row['domainEntity'] = null;
+        $row['rangeEntity']  = null;
+        if (!empty($row['domain'])) {
             $entity = $this->findById($entities, $row['domain']);
-            $row['domainEntity'] = $entity !== null ? ['id' => $entity['id'], 'name' => $entity['name']] : null;
+            if ($entity !== null) {
+                $row['domainEntity'] = ['id' => $entity['id'], 'name' => $entity['name']];
+            }
         }
-        if ($row['range'] !== null) {
+        if (!empty($row['range'])) {
             $entity = $this->findById($entities, $row['range']);
-            $row['rangeEntity'] = $entity !== null ? ['id' => $entity['id'], 'name' => $entity['name']] : null;
+            if ($entity !== null) {
+                $row['rangeEntity'] = ['id' => $entity['id'], 'name' => $entity['name']];
+            }
         }
 
         // Browsing aids — descendants of the declared domain/range.
-        $row['domainDescendants'] = $row['domain'] !== null ? $this->resolver->descendants($row['domain'], $entities) : [];
-        $row['rangeDescendants']  = $row['range']  !== null ? $this->resolver->descendants($row['range'],  $entities) : [];
+        $row['domainDescendants'] = !empty($row['domain']) ? $this->resolver->descendants($row['domain'], $entities) : [];
+        $row['rangeDescendants']  = !empty($row['range'])  ? $this->resolver->descendants($row['range'],  $entities) : [];
 
         // Inverse relation, if any, resolved to a link-ready struct.
         if (!empty($row['inverseOf'])) {
