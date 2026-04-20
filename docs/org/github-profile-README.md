@@ -22,6 +22,42 @@ OpenRiC is a clean-room, open-source implementation of the [**Records in Context
 
 ---
 
+## Start here
+
+Two on-ramps, depending on how much time you have.
+
+### In 5 minutes — is this the shape of thing you want?
+
+- Skim the [reference-browser user guide](https://github.com/openric/service/blob/main/docs/reference-browser-user-guide.md) — the declared-vs-inherited model is the fastest way to understand what's different about OpenRiC.
+- Glance at [`docs/plans/`](https://github.com/openric/service/tree/main/docs/plans) to see how the work is scoped and shipped.
+- Decide.
+
+### In 15 minutes — run it locally
+
+```bash
+git clone git@github.com:openric/service.git openric
+cd openric
+cp .env.example .env && php artisan key:generate
+
+# Start Fuseki (Docker one-liner; existing install also fine)
+docker run -d --name openric-fuseki -p 3030:3030 \
+    -e ADMIN_PASSWORD=admin123 stain/jena-fuseki
+
+# Load RiC-O v1.1 into a dedicated dataset
+curl -u admin:admin123 -X POST http://localhost:3030/\$/datasets \
+    --data-urlencode "dbName=openric-model" --data-urlencode "dbType=tdb2"
+php artisan ric-model:load-ontology \
+    packages/ahg-ric-model/resources/data/ric-o/RiC-O_1-1.rdf \
+    --dataset=openric-model
+
+composer install && php artisan serve
+# Browse: http://localhost:8000/reference/ric-cm/
+```
+
+Expected time on a good connection: ~12 minutes. Budget 15 for the first run.
+
+---
+
 ## Why this exists
 
 Archival software has been generation-hopping standards for twenty years: ISAD(G), ISAAR(CPF), EAD, MODS, Dublin Core — each a partial, flat picture of a record's context. **Records in Contexts** (RiC) is ICA's consolidated replacement: a graph-shaped model that describes records, agents, activities, places, rules and the relationships between them as first-class entities.
@@ -85,9 +121,15 @@ User data is stored as RDF triples in Fuseki's `openric` dataset, using the `ric
 
 ### Reference browser done right
 
-OpenRiC ships a browsable view of the **RiC-CM 1.0 conceptual model** itself — 19 entities, 42 attributes, 170+ relations, with a clean **declared vs. inherited** separation on every page. Inherited attributes and relations are tagged with the ancestor class they come from, in the style of the [CIDOC-CRM reference](https://cidoc-crm.org/html/cidoc_crm_v7.1.3.html). No silent flattening over subclass hierarchies.
+OpenRiC ships a browsable, **live SPARQL-backed** view of the RiC-CM 1.0 conceptual model — 19 entities, 42 attributes, 151 relations — with one load-bearing UX decision that sets it apart: a clean **declared vs. inherited** separation on every page, in the style of the [CIDOC-CRM reference](https://cidoc-crm.org/html/cidoc_crm_v7.1.3.html).
 
-This was a specific response to a real usability problem in other RiC browsers: when a relation declares its domain as `Agent`, they render it as *Agent + Person + Group + Mechanism + Family* — which reads as a semantic claim about the relation rather than a navigation aid.
+Concretely, that means:
+
+- Every inherited row is tagged with the ancestor class it comes from (`from Record Resource`) and anchor-links back to that ancestor's declared section.
+- Declared domain and range on a relation are shown as **single** entries, never flattened over subclasses. A relation with domain `Agent` is rendered as *Agent* — period. Subclasses appear under a separate, clearly-labelled *browsing aid* panel, never bleeding into the semantic definition.
+- The inheritance computation lives in a pure-PHP `InheritanceResolver` — zero Laravel imports, one-for-one portable to JavaScript — so any upstream or peer browser that wants the same pattern can lift it.
+
+This addresses a real usability problem reviewers have flagged in other RiC browsers, where a relation declaring its domain as `Agent` renders as *Agent + Person + Group + Mechanism + Family* — reading as a semantic claim about the relation rather than a navigation aid. OpenRiC never does this.
 
 ### Content-negotiated entity IDs
 
@@ -115,11 +157,19 @@ OpenRiC is actively developed. If you work with archives, ontologies, or linked 
 
 ---
 
-## Related projects
+## Upstream and peer projects
 
-- **[RiC-O (ICA-EGAD)](https://github.com/ICA-EGAD/RiC-O)** — the ontology OpenRiC implements. Published under CC BY 4.0. OpenRiC bundles RiC-O v1.1 as the loaded model; all reference browser output credits ICA/EGAD per the license.
-- **[RiC-CM NavTool (DLIB, Ionian University)](https://github.com/DLIB-Ionian-University/ric-cm-nav)** — independent Vue SPA browsing RiC-CM. Inspired OpenRiC's reference browser; an upstream contribution is pending.
-- **[Heratio](https://github.com/ArchiveHeritageGroup/heratio)** — the broader GLAM platform from the same organisation. In the current architecture Heratio has its own RiC code; the roadmap migrates it to consuming OpenRiC's HTTP API, making OpenRiC the authoritative RiC-O endpoint across the stack.
+### Upstream — what OpenRiC builds on
+
+- **[RiC-O (ICA-EGAD)](https://github.com/ICA-EGAD/RiC-O)** — the ontology OpenRiC implements. Published by ICA/EGAD under CC BY 4.0. OpenRiC bundles RiC-O v1.1 as the loaded model; every reference-browser page renders the ICA/EGAD credit per the license.
+
+### Peer — a different implementation
+
+- **[RiC-CM NavTool (DLIB, Ionian University)](https://github.com/DLIB-Ionian-University/ric-cm-nav)** by Matthew Damigos — a Vue SPA that browses a curated JSON export of RiC-CM 1.0. Different architectural choices from OpenRiC on three load-bearing points: static bundled JSON vs. live SPARQL against the authoritative OWL; flattened subclass expansion on relation domains vs. declared/inherited separation; client-side data transforms vs. a portable pure-PHP resolver. A good reference for anyone wanting a lightweight SPA view. If its author accepts our pending licensing request, we'll contribute the `InheritanceResolver` pattern back upstream so the wider RiC community benefits from it regardless of which tool they prefer.
+
+### Sibling — same organisation
+
+- **[Heratio](https://github.com/ArchiveHeritageGroup/heratio)** — the broader GLAM platform from the same maintainer. Heratio currently has its own in-process RiC code; the roadmap migrates it to consuming OpenRiC's HTTP API, making OpenRiC the authoritative RiC-O endpoint across the AHG stack.
 
 ---
 
