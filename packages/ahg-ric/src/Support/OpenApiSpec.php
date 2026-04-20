@@ -90,6 +90,20 @@ class OpenApiSpec
             '/vocabulary'  => ['get' => self::op('Discovery', 'Ontology classes + properties', [], $okJsonLd)],
             '/vocabulary/{taxonomy}' => ['get' => self::op('Discovery', 'Single dropdown taxonomy',
                 [['name' => 'taxonomy', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]], $okJsonLd)],
+            '/conformance/badge' => ['get' => self::op('Discovery',
+                'Shields.io-compatible conformance badge. No `profile` param = overall spec version summary. With `?profile=<id>` = declaration state for that profile (brightgreen/lightgrey). See openric-spec conformance/badge.md.',
+                [['name' => 'profile', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'string'],
+                  'description' => 'Profile id to check — e.g. core-discovery, authority-context, graph-traversal.']],
+                ['200' => ['description' => 'shields.io endpoint schema v1',
+                    'content' => ['application/json' => ['schema' => ['type' => 'object',
+                        'required' => ['schemaVersion', 'label', 'message', 'color'],
+                        'properties' => [
+                            'schemaVersion' => ['type' => 'integer', 'const' => 1],
+                            'label'         => ['type' => 'string'],
+                            'message'       => ['type' => 'string'],
+                            'color'         => ['type' => 'string', 'enum' => ['brightgreen', 'yellow', 'lightgrey', 'blue']],
+                        ],
+                    ]]]]])],
 
             // -------- Agents --------
             '/agents' => [

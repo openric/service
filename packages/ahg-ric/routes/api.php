@@ -199,60 +199,98 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         ]);
     });
     
-    // API Info endpoint — service description.
+    // ------------------------------------------------------------------
+    // OpenRiC conformance declaration (single source of truth).
     //
-    // Declares conformance to the OpenRiC specification in
-    // `openric_conformance.profiles[]`. The conformance probe at
-    // openric.org/conformance uses this to verify that a server's
-    // claimed profile(s) match its actual endpoint surface. Format per
-    // openric-spec core-discovery.md §3.1.
-    //
-    // Profile ids declared here match the endpoint surface this server
-    // actually serves. Editing this list without editing the routes
+    // Both `GET /` (service description) and `GET /conformance/badge`
+    // read from this. Editing this list without editing the routes
     // (and vice-versa) is a conformance bug — clients will believe
-    // one thing and see another.
-    Route::get('/', function () {
+    // one thing and see another. Keep `profiles[]` in lockstep with
+    // the endpoint surface the server actually serves.
+    // ------------------------------------------------------------------
+    $openricConformance = [
+        'spec_version' => '0.3.0-draft',
+        'profiles' => [
+            ['id' => 'core-discovery',         'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'authority-context',      'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'digital-object-linkage', 'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'graph-traversal',        'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'export-only',            'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'round-trip-editing',     'version' => '0.3.0-draft', 'conformance' => 'full'],
+        ],
+    ];
+
+    // API Info endpoint — service description. Format per openric-spec
+    // core-discovery.md §3.1 (`openric_conformance` required; at least
+    // one profile must be declared).
+    Route::get('/', function () use ($openricConformance) {
         return response()->json([
             'name' => 'RIC-O Linked Data API',
             'version' => '1.0',
             'description' => 'Linked Data publication endpoints for RIC-O compliant serialization',
             'docs' => url('/api/ric/v1/docs'),
             'openapi' => url('/api/ric/v1/openapi.json'),
-            'openric_conformance' => [
-                'spec_version' => '0.3.0-draft',
-                'profiles' => [
-                    [
-                        'id'          => 'core-discovery',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                    [
-                        'id'          => 'authority-context',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                    [
-                        'id'          => 'digital-object-linkage',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                    [
-                        'id'          => 'graph-traversal',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                    [
-                        'id'          => 'export-only',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                    [
-                        'id'          => 'round-trip-editing',
-                        'version'     => '0.3.0-draft',
-                        'conformance' => 'full',
-                    ],
-                ],
-            ],
+            'openric_conformance' => $openricConformance,
+        ]);
+    });
+
+    // Conformance badge — shields.io-compatible JSON for README embedding.
+    //
+    // Usage:
+    //   /conformance/badge                             → overall spec-version summary
+    //   /conformance/badge?profile=core-discovery      → single-profile declaration state
+    //
+    // Shields.io consumption pattern (README):
+    //   ![Core Discovery](https://img.shields.io/endpoint?url=https%3A%2F%2F<host>%2Fapi%2Fric%2Fv1%2Fconformance%2Fbadge%3Fprofile%3Dcore-discovery)
+    //
+    // Color key:
+    //   brightgreen — profile declared with `conformance: full`
+    //   yellow      — profile declared with `conformance: partial` (future)
+    //   lightgrey   — profile not declared on this server
+    //   blue        — default/summary badge
+    Route::get('/conformance/badge', function (\Illuminate\Http\Request $r) use ($openricConformance) {
+        $requested = $r->query('profile');
+
+        if ($requested === null || $requested === '') {
+            $payload = [
+                'schemaVersion' => 1,
+                'label'         => 'openric',
+                'message'       => sprintf(
+                    '%s · %d profiles',
+                    $openricConformance['spec_version'],
+                    count($openricConformance['profiles']),
+                ),
+                'color'         => 'blue',
+            ];
+        } else {
+            $profile = null;
+            foreach ($openricConformance['profiles'] as $p) {
+                if (($p['id'] ?? null) === $requested) {
+                    $profile = $p;
+                    break;
+                }
+            }
+
+            if ($profile === null) {
+                $payload = [
+                    'schemaVersion' => 1,
+                    'label'         => 'openric ' . $requested,
+                    'message'       => 'not declared',
+                    'color'         => 'lightgrey',
+                ];
+            } else {
+                $payload = [
+                    'schemaVersion' => 1,
+                    'label'         => 'openric ' . $profile['id'],
+                    'message'       => $profile['version'],
+                    'color'         => ($profile['conformance'] === 'full') ? 'brightgreen' : 'yellow',
+                ];
+            }
+        }
+
+        return response()->json($payload, 200, [
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control'               => 'public, max-age=300',
         ]);
     });
 
