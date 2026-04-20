@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.4.0 — 2026-04-20
+
+- Phases 2+3 — RiC-CM reference browser is now live: versioned URLs, Bootstrap 5 views, Alpine-driven client-side filter, mobile responsive, print CSS, WCAG focus indicators
 ## v0.3.0 — 2026-04-20
 
 - Phase 1 — load RiC-O v1.1 into Fuseki /openric-model; ship ahg-ric-model with OntologyService + InheritanceResolver (pure PHP, portable)
