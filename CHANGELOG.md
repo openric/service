@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.7 — 2026-04-20
+
+- Conformance badge endpoint at GET /api/ric/v1/conformance/badge — shields.io-compatible JSON; three modes (summary blue, declared brightgreen, not-declared lightgrey); CORS-open +
+  5-min cache; documented in OpenAPI; usable immediately by implementers to embed a live badge in their README
 ## v0.8.6 — 2026-04-20
 
 - Service description at GET /api/ric/v1/ now emits openric_conformance.profiles declaring the six profiles this server serves; openric-spec --profile probe passes cleanly
