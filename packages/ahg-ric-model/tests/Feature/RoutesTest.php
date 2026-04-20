@@ -233,6 +233,27 @@ class RoutesTest extends TestCase
             ->assertSee('Narrower');
     }
 
+    // --- Phase 5 — hierarchy tree --------------------------------------------------
+
+    public function test_landing_page_renders_expandable_hierarchy_with_session_persistence(): void
+    {
+        $latest = (string) config('ahg-ric-model.versions.latest');
+        $body = $this->get("/reference/ric-cm/{$latest}")->assertOk()->getContent();
+
+        // Progressive-enhancement: tree is native <details>/<summary>, not only JS.
+        $this->assertStringContainsString('<details', $body, 'hierarchy tree should use native <details>');
+        $this->assertStringContainsString('class="ric-tree"', $body, 'tree wrapper missing');
+        $this->assertStringContainsString('role="tree"', $body, 'ARIA tree role missing');
+
+        // Alpine wiring for per-node sessionStorage persistence.
+        $this->assertStringContainsString('x-data="ricTreeNode"', $body, 'per-node Alpine component missing');
+        $this->assertStringContainsString("sessionStorage.getItem('ric-tree:'", $body, 'session persistence read missing');
+        $this->assertStringContainsString("sessionStorage.setItem('ric-tree:'", $body, 'session persistence write missing');
+
+        // Root node (Thing) is present as the top-level opened details.
+        $this->assertStringContainsString('data-node-id="RiC-E01"', $body, 'root node RiC-E01 Thing missing from tree');
+    }
+
     public function test_attribute_detail_renders_inherited_by_list(): void
     {
         $latest     = (string) config('ahg-ric-model.versions.latest');

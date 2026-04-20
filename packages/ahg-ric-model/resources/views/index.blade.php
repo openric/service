@@ -30,7 +30,7 @@
     <h2 class="h5 mb-3">Class hierarchy</h2>
     <div class="card subtle-card">
         <div class="card-body">
-            @include('ahg-ric-model::partials._tree-node', ['nodes' => $hierarchy, 'version' => $version])
+            @include('ahg-ric-model::partials._hierarchy', ['nodes' => $hierarchy, 'version' => $version])
         </div>
     </div>
 

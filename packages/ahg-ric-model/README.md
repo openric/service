@@ -41,6 +41,27 @@ curl -u "$FUSEKI_USER:$FUSEKI_PASSWORD" -X PUT \
 
 See `resources/data/ric-o/loaded-versions.md` for the exact source tag and verification details.
 
+## Commands
+
+```bash
+# Clear + warm the SPARQL cache after loading a new ontology.
+php artisan ric-model:rebuild-cache
+php artisan ric-model:rebuild-cache --model-version=1.0
+
+# Load a new ontology file (default: POST; --replace for PUT).
+php artisan ric-model:load-ontology path/to/RiC-O_x-y.rdf \
+    --dataset=openric-model \
+    --format=rdf+xml
+```
+
+## Dev-time workflow gotcha
+
+Composer path repositories with `symlink: false` **mirror** packages into `vendor/`. `composer update ahg/ric-model` does not always re-mirror if it thinks nothing changed. When iterating on this package's source, the reliable resync is:
+
+```bash
+rm -rf vendor/ahg/ric-model && composer install
+```
+
 ## Attribution
 
 This package bundles and queries **Records in Contexts-Ontology (RiC-O) v1.1**, published by the **International Council on Archives, Expert Group on Archival Description (ICA EGAD)** under **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. Upstream: <https://github.com/ICA-EGAD/RiC-O>.
