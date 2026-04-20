@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.8 — 2026-04-20
+
+- OpenAPI profile tags — every /api/ric/v1/* operation now carries both its entity-group tag (Agents, Records, …) and its OpenRiC conformance-profile tag (core-discovery,
+  authority-context, …). Swagger UI at /api/ric/v1/docs groups endpoints either way; implementers can see at a glance which profile a given endpoint claim covers. Reads inherit profile from entity tag;
+  writes → round-trip-editing; meta endpoints (/, /health, /openapi.json, /docs, /conformance/badge) intentionally profile-free.
 ## v0.8.7 — 2026-04-20
 
 - Conformance badge endpoint at GET /api/ric/v1/conformance/badge — shields.io-compatible JSON; three modes (summary blue, declared brightgreen, not-declared lightgrey); CORS-open +
