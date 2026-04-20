@@ -91,9 +91,9 @@
     "repositories": [
         {
             "type": "path",
-            "url": "/usr/share/nginx/heratio/packages/*",
+            "url": "./packages/*",
             "options": {
-                "symlink": true
+                "symlink": false
             }
         }
     ]

@@ -1,58 +1,77 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# OpenRiC
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+An open-source Records in Contexts (RiC-O) service. Laravel 12 backend with Apache Jena Fuseki as the RDF store.
 
-## About Laravel
+OpenRiC is the authoritative RiC-O implementation for the Archive & Heritage Group stack. Heratio currently consumes RiC features in-process; over time it will migrate to consuming them via OpenRiC's HTTP API.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Repository layout
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+/
+├── app/                       Laravel application code
+├── bin/release                Release script — bumps version, commits, tags
+├── config/                    Laravel config
+├── database/                  Migrations, seeders
+├── docs/
+│   ├── drift-log.md           Cherry-pick log between OpenRiC and Heratio
+│   ├── outreach/              Email drafts, contribution proposals
+│   └── plans/                 Implementation plans (read before executing)
+├── packages/
+│   ├── ahg-core/              Vendored from Heratio — shared base services
+│   ├── ahg-api/               Vendored from Heratio — REST/auth plumbing
+│   └── ahg-ric/               Vendored from Heratio — RiC entity mgmt
+├── public/
+├── resources/                 Views, JS, CSS
+├── routes/                    HTTP + console routes
+├── storage/
+├── tests/
+├── CHANGELOG.md
+├── composer.json
+├── version.json               Source of truth for current version
+└── README.md
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The `packages/` dir holds our own copies of Heratio's shared packages. **Do not symlink them back to Heratio** — that re-couples the two trees. Drift is tracked per-bug-fix in `docs/drift-log.md`.
+
+## Release flow
+
+**Never `git push` without using `bin/release` first.** It enforces the version invariant.
+
+```bash
+./bin/release patch "Fix OntologyService SPARQL escape bug"
+./bin/release minor "Phase 1 — RiC-O load + OntologyService" --issue 7
+./bin/release major "Break: rename route prefix to /reference/ric-cm"
+```
+
+What it does:
+
+1. Requires a clean working tree and `main` branch.
+2. Bumps `version.json` (semver).
+3. Prepends a dated entry to `CHANGELOG.md`.
+4. Commits those two files with message `vX.Y.Z: <message>`.
+5. Creates an annotated git tag `vX.Y.Z`.
+6. **Does NOT push.** Prints the push commands for you to run.
+
+To undo locally (before pushing):
+
+```bash
+git tag -d vX.Y.Z
+git reset --hard HEAD~1
+```
+
+## Environment
+
+See `.env.example` for the full list. Minimum required beyond Laravel defaults:
+
+- `FUSEKI_URL` — the Jena Fuseki endpoint (default `http://localhost:3030`).
+- `FUSEKI_DATASET_DATA=openric` — instance data.
+- `FUSEKI_DATASET_MODEL=openric-model` — RiC-O OWL ontology (populated in Phase 1 of the reference-browser plan).
+- `FUSEKI_USER` / `FUSEKI_PASSWORD` — admin credentials for ontology loads; public SPARQL reads are anonymous.
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Read `docs/plans/` for the current implementation plan before writing code. Follow the architectural decisions captured there; do not introduce new frontend stacks or break the declared package interface without the decision being explicitly reopened.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+AGPL-3.0 (matching the rest of the AHG stack).

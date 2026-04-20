@@ -4,15 +4,15 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "db69d8d0cebbe0636259dbc755281415",
+    "content-hash": "ecb2a98bcc20ee4dc31f2768de0857cd",
     "packages": [
         {
             "name": "ahg/api",
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "/usr/share/nginx/heratio/packages/ahg-api",
-                "reference": "5f8904bcfe718373eae1a33f3388d7c22bf797c5"
+                "url": "./packages/ahg-api",
+                "reference": "6c041d10c6f9060411476d9ef4c7f442bbc34759"
             },
             "require": {
                 "ahg/core": "@dev"
@@ -32,8 +32,8 @@
             },
             "description": "REST API v1 for Heratio",
             "transport-options": {
-                "symlink": true,
-                "relative": false
+                "symlink": false,
+                "relative": true
             }
         },
         {
@@ -41,8 +41,8 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "/usr/share/nginx/heratio/packages/ahg-core",
-                "reference": "b94c29122ba423d3c5952194b218dbc357693eff"
+                "url": "./packages/ahg-core",
+                "reference": "fdac41a20d6cdee0ece962fe90890aff6c9c2f4b"
             },
             "require": {
                 "illuminate/database": "^11.0|^12.0",
@@ -67,8 +67,8 @@
             ],
             "description": "AHG Core - Eloquent models and base services for Heratio",
             "transport-options": {
-                "symlink": true,
-                "relative": false
+                "symlink": false,
+                "relative": true
             }
         },
         {
@@ -76,8 +76,8 @@
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "/usr/share/nginx/heratio/packages/ahg-ric",
-                "reference": "2432062dd9767ed75013723eda940c0bf0e15e2d"
+                "url": "./packages/ahg-ric",
+                "reference": "d6cdfe0878fa369deccf824a23f9c97e861ce87f"
             },
             "require": {
                 "ahg/core": "@dev"
@@ -97,8 +97,8 @@
             },
             "description": "RiC (Records in Contexts) Dashboard for Heratio",
             "transport-options": {
-                "symlink": true,
-                "relative": false
+                "symlink": false,
+                "relative": true
             }
         },
         {
