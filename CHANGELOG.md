@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.5 — 2026-04-20
+
+- Add bin/sync-org-readme helper — one command to copy + commit the landing page into the .github repo (never pushes, matching bin/release policy)
 ## v0.8.4 — 2026-04-20
 
 - Landing page QC — command-order bug, stack-table honesty, peer-project reframing, hyphenation, dated version header
