@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.4 — 2026-04-20
+
+- Landing page QC — command-order bug, stack-table honesty, peer-project reframing, hyphenation, dated version header
 ## v0.8.3 — 2026-04-20
 
 - Landing page: Start here (5m/15m on-ramps) + rebalanced framing of OpenRiC vs peer projects
