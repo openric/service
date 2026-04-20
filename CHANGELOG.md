@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.0 — 2026-04-20
+
+- Phase 1 — load RiC-O v1.1 into Fuseki /openric-model; ship ahg-ric-model with OntologyService + InheritanceResolver (pure PHP, portable)
 ## v0.2.0 — 2026-04-20
 
 - Phase 0 — decouple OpenRiC from Heratio; fork ahg-core/api/ric; add bin/release and drift log
