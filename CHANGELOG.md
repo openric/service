@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.6 — 2026-04-20
+
+- Service description at GET /api/ric/v1/ now emits openric_conformance.profiles declaring the six profiles this server serves; openric-spec --profile probe passes cleanly
 ## v0.8.5 — 2026-04-20
 
 - Add bin/sync-org-readme helper — one command to copy + commit the landing page into the .github repo (never pushes, matching bin/release policy)
