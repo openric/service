@@ -34,19 +34,30 @@ RiC-O, the OWL expression of RiC-CM, has existed since 2019 and reached v1.1 in 
 
 ## Status
 
-> **v0.2** — early. Foundations shipping. Public API surface is not yet stable.
+> **v0.8** — early. Foundations and the RiC-CM reference browser are shipping. Public API surface and data model are not yet stable.
 
 Track progress in the main repo's `CHANGELOG.md` and `docs/plans/`.
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Decouple OpenRiC from Heratio; fork shared packages; add release flow | **Shipped** (`v0.2.0`) |
-| 1 | `ahg-ric-model` package — RiC-CM reference browser services, declared-vs-inherited resolver | **Shipped** (`v0.3.0`) |
-| 2 | Reference browser HTTP surface — versioned routes, Blade views, admin commands | In progress |
-| 3 | Core RiC CRUD (10 entities), content-negotiated entity IDs, JSON-LD export | Planned |
-| 4 | Traditional-view lenses (ISAD(G), ISAAR-CPF) over RiC triples | Planned |
-| 5 | Graph visualisation (Cytoscape.js) of holdings; interactive modeling playground | Planned |
-| 6+ | Semantic search (Qdrant), SHACL validation, workflow, ACL, federation | Planned |
+### Shipped
+
+- **Genuine decoupling from Heratio** — OpenRiC runs standalone with its own vendored copies of `ahg-core`, `ahg-api`, `ahg-ric`. No shared on-disk dependencies. Release flow (`bin/release` + `version.json` + `CHANGELOG.md`) in place.
+- **`ahg-ric-model` package — RiC-CM reference browser, feature-complete.** Browsable live at `/reference/ric-cm/` once deployed:
+  - Live SPARQL against a dedicated Fuseki dataset loaded with RiC-O v1.1 (CC BY 4.0).
+  - 19 entities, 42 attributes, 151 relations, 6 relation attributes.
+  - **Clean declared-vs-inherited separation** on every entity, attribute, and relation page — the flagship differentiator, modelled on the CIDOC-CRM reference. Inherited rows are tagged with the ancestor they come from and anchor-link back to its declared section.
+  - Versioned URLs (`/reference/ric-cm/1.0/…`) for stable citation; unversioned URLs redirect to the latest.
+  - Expandable class hierarchy with `sessionStorage` persistence.
+  - Alpine-driven client-side filter on every list, mobile-responsive, print stylesheet, WCAG keyboard focus + skip link + `aria-expanded` throughout.
+  - Graceful degradation when the triplestore is unreachable.
+- **47 tests, 198 assertions.** Pure-PHP `InheritanceResolver` kept Laravel-free for portability (pending upstream PR to `ric-cm-nav`).
+
+### Next
+
+- **Core RiC CRUD** — 10 entities editable via HTTP, content-negotiated entity IDs (`application/ld+json` vs. HTML), JSON-LD export, SHACL validation.
+- **Traditional-view lenses** — ISAD(G), ISAAR-CPF rendered as projections over the RiC graph, with a per-record toggle.
+- **Graph visualisation** — Cytoscape.js for both user holdings and the RiC-CM conceptual playground.
+- **Semantic search** — Qdrant vector search over entity descriptions.
+- **Workflow, ACL, federation** — depending on community priorities.
 
 ---
 
