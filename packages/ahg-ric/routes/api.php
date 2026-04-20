@@ -199,7 +199,18 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         ]);
     });
     
-    // API Info endpoint
+    // API Info endpoint — service description.
+    //
+    // Declares conformance to the OpenRiC specification in
+    // `openric_conformance.profiles[]`. The conformance probe at
+    // openric.org/conformance uses this to verify that a server's
+    // claimed profile(s) match its actual endpoint surface. Format per
+    // openric-spec core-discovery.md §3.1.
+    //
+    // Profile ids declared here match the endpoint surface this server
+    // actually serves. Editing this list without editing the routes
+    // (and vice-versa) is a conformance bug — clients will believe
+    // one thing and see another.
     Route::get('/', function () {
         return response()->json([
             'name' => 'RIC-O Linked Data API',
@@ -207,6 +218,41 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
             'description' => 'Linked Data publication endpoints for RIC-O compliant serialization',
             'docs' => url('/api/ric/v1/docs'),
             'openapi' => url('/api/ric/v1/openapi.json'),
+            'openric_conformance' => [
+                'spec_version' => '0.3.0-draft',
+                'profiles' => [
+                    [
+                        'id'          => 'core-discovery',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                    [
+                        'id'          => 'authority-context',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                    [
+                        'id'          => 'digital-object-linkage',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                    [
+                        'id'          => 'graph-traversal',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                    [
+                        'id'          => 'export-only',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                    [
+                        'id'          => 'round-trip-editing',
+                        'version'     => '0.3.0-draft',
+                        'conformance' => 'full',
+                    ],
+                ],
+            ],
         ]);
     });
 
