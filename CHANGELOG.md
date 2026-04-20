@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.1 — 2026-04-20
+
+- Refresh org landing page to match v0.8 state — reference browser shipped as feature-complete, clarify what's next vs what's shipped
 ## v0.8.0 — 2026-04-20
 
 - Phases 4–6 — RiC-CM reference browser feature-complete: detail-view polish (scope notes, broader/narrower, inherited-from anchors), expandable hierarchy tree, user guide, final audit
