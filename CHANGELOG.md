@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.0 — 2026-04-20
+
+- Phase 4 — detail views now render full declared/inherited UX: scope notes + examples + broader/narrower relations, data-inherited-from portability markers, cross-page anchor jumps,
+  attribute inherited-by tree
 ## v0.4.0 — 2026-04-20
 
 - Phases 2+3 — RiC-CM reference browser is now live: versioned URLs, Bootstrap 5 views, Alpine-driven client-side filter, mobile responsive, print CSS, WCAG focus indicators
