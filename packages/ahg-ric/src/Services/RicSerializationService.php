@@ -1098,7 +1098,7 @@ class RicSerializationService
         }
 
         return [
-            '@type' => self::RICO_NS . 'Contact',
+            '@type' => self::RICO_NS . 'ContactPoint',
             'rico:streetAddress' => $contact->street_address ?? null,
             'rico:postalCode' => $contact->postal_code ?? null,
             'rico:city' => $contact->city ?? null,
