@@ -15,6 +15,7 @@ use App\Http\Controllers\Controller;
 use AhgRic\Services\RicSerializationService;
 use AhgRic\Services\ShaclValidationService;
 use AhgRic\Services\RicEntityService;
+use AhgRic\Support\ProblemDetails;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +112,7 @@ class LinkedDataApiController extends Controller
             ->first();
 
         if (!$actor) {
-            return response()->json(['error' => 'Agent not found'], 404);
+            return ProblemDetails::notFound('Agent not found');
         }
 
         $ric = $this->serializer->serializeAgent($actor->id);
@@ -194,7 +195,7 @@ class LinkedDataApiController extends Controller
             ->first();
 
         if (!$io) {
-            return response()->json(['error' => 'Record not found'], 404);
+            return ProblemDetails::notFound('Record not found');
         }
 
         $ric = $this->serializer->serializeRecord($io->id);
@@ -219,7 +220,7 @@ class LinkedDataApiController extends Controller
             ->first();
 
         if (!$io) {
-            return response()->json(['error' => 'Record not found'], 404);
+            return ProblemDetails::notFound('Record not found');
         }
 
         // pretty=true returns a JSON string; we need the array so Turtle + RDF/XML
@@ -297,7 +298,7 @@ class LinkedDataApiController extends Controller
         $ric = $this->serializer->serializeFunction($id);
 
         if (isset($ric['error'])) {
-            return response()->json($ric, 404);
+            return ProblemDetails::notFound($ric['error']);
         }
 
         return response()->json($ric, 200, [
@@ -348,7 +349,7 @@ class LinkedDataApiController extends Controller
             ->first();
 
         if (!$repo) {
-            return response()->json(['error' => 'Repository not found'], 404);
+            return ProblemDetails::notFound('Repository not found');
         }
 
         $ric = $this->serializer->serializeRepository($repo->id);
@@ -415,7 +416,7 @@ class LinkedDataApiController extends Controller
         $ric = $this->serializer->serializePlace($id);
 
         if (isset($ric['error'])) {
-            return response()->json($ric, 404);
+            return ProblemDetails::notFound($ric['error']);
         }
 
         return response()->json($ric, 200, [
@@ -484,7 +485,7 @@ class LinkedDataApiController extends Controller
         $ric = $this->serializer->serializeRule($id);
 
         if (isset($ric['error'])) {
-            return response()->json($ric, 404);
+            return ProblemDetails::notFound($ric['error']);
         }
 
         return response()->json($ric, 200, [
@@ -556,7 +557,7 @@ class LinkedDataApiController extends Controller
         $ric = $this->serializer->serializeActivity($id);
 
         if (isset($ric['error'])) {
-            return response()->json($ric, 404);
+            return ProblemDetails::notFound($ric['error']);
         }
 
         return response()->json($ric, 200, [
@@ -629,7 +630,7 @@ class LinkedDataApiController extends Controller
         $ric = $this->serializer->serializeInstantiation($id);
 
         if (isset($ric['error'])) {
-            return response()->json($ric, 404);
+            return ProblemDetails::notFound($ric['error']);
         }
 
         return response()->json($ric, 200, [
@@ -646,10 +647,9 @@ class LinkedDataApiController extends Controller
         $query = $request->get('query');
         
         if (!$query) {
-            return response()->json([
-                'error' => 'SPARQL query required',
+            return ProblemDetails::badRequest('SPARQL query required', [
                 'example' => 'SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10',
-            ], 400);
+            ]);
         }
 
         // Sanitize and execute query
@@ -715,17 +715,16 @@ class LinkedDataApiController extends Controller
         $depth = max(1, min((int) $request->get('depth', 1), 3));
 
         if (!$uri) {
-            return response()->json([
-                'error' => 'uri parameter required',
+            return ProblemDetails::badRequest('uri parameter required', [
                 'example' => '/api/ric/v1/graph?uri=' . url('/informationobject/my-fonds'),
-            ], 400);
+            ]);
         }
 
         // Parse URI → entity type + key. URL shape: <base>/<type>/<id-or-slug>.
         $path = rtrim((string) parse_url($uri, PHP_URL_PATH), '/');
         $parts = $path ? array_values(array_filter(explode('/', $path), 'strlen')) : [];
         if (count($parts) < 2) {
-            return response()->json(['error' => 'uri must point to a single entity (shape: /<type>/<id-or-slug>)'], 400);
+            return ProblemDetails::badRequest('uri must point to a single entity (shape: /<type>/<id-or-slug>)');
         }
         $lastSegment = $parts[count($parts) - 1];
         $entityType  = $parts[count($parts) - 2];
@@ -811,7 +810,7 @@ class LinkedDataApiController extends Controller
         }
 
         if (!$graph || empty($graph['nodes'])) {
-            return response()->json(['error' => "no entity found for uri {$uri}"], 404);
+            return ProblemDetails::notFound("no entity found for uri {$uri}", ['uri' => $uri]);
         }
 
         // Per graph-primitives.md §6 invariant 1: openric:root MUST appear in nodes.
@@ -845,7 +844,7 @@ class LinkedDataApiController extends Controller
         $type = $request->input('type', 'unknown');
 
         if (!$entity) {
-            return response()->json(['error' => 'entity required'], 400);
+            return ProblemDetails::badRequest('entity parameter is required');
         }
 
         $result = $this->validator->validateBeforeSave($entity, $type);
@@ -1432,7 +1431,7 @@ class LinkedDataApiController extends Controller
 
         if ($className === 'RicPlace') {
             $place = DB::table('ric_place')->where('id', $id)->first();
-            if (!$place) return response()->json(['error' => 'Not found'], 404);
+            if (!$place) return ProblemDetails::notFound('Resource not found');
 
             if (in_array('parent', $include) && $place->parent_id) {
                 $result['parent'] = $this->flatPlace($place->parent_id);
@@ -1528,7 +1527,7 @@ class LinkedDataApiController extends Controller
         if ($choices->isEmpty()) {
             $exists = DB::table('ahg_dropdown')->where('taxonomy', $taxonomy)->exists();
             if (!$exists) {
-                return response()->json(['error' => 'Taxonomy not found', 'taxonomy' => $taxonomy], 404);
+                return ProblemDetails::notFound('Taxonomy not found', ['taxonomy' => $taxonomy]);
             }
         }
         return response()->json([
@@ -1588,7 +1587,7 @@ class LinkedDataApiController extends Controller
     {
         $className = DB::table('object')->where('id', $id)->value('class_name');
         if (!$className) {
-            return response()->json(['error' => 'Not found'], 404);
+            return ProblemDetails::notFound('Resource not found');
         }
 
         $info = ['id' => $id, 'class' => $className];
@@ -1762,7 +1761,7 @@ class LinkedDataApiController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createEntity failed', ['type' => $type, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1785,7 +1784,7 @@ class LinkedDataApiController extends Controller
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateEntity failed', ['type' => $type, 'id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1799,7 +1798,7 @@ class LinkedDataApiController extends Controller
     {
         $className = DB::table('object')->where('id', $id)->value('class_name');
         if (!$className) {
-            return response()->json(['error' => 'Entity not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Entity not found', ['id' => $id]);
         }
         $typeMap = [
             'RicPlace' => 'places', 'RicRule' => 'rules',
@@ -1807,7 +1806,7 @@ class LinkedDataApiController extends Controller
         ];
         $type = $typeMap[$className] ?? null;
         if (!$type) {
-            return response()->json(['error' => "Cannot delete entity of class {$className}"], 422);
+            return ProblemDetails::validationFailed("Cannot delete entity of class {$className}", ['class' => $className]);
         }
         return $this->deleteEntity($type, $id);
     }
@@ -1829,7 +1828,7 @@ class LinkedDataApiController extends Controller
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] deleteEntity failed', ['type' => $type, 'id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1859,7 +1858,7 @@ class LinkedDataApiController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createAgent failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1870,14 +1869,14 @@ class LinkedDataApiController extends Controller
     {
         $exists = DB::table('actor')->where('id', $id)->exists();
         if (!$exists) {
-            return response()->json(['error' => 'Agent not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Agent not found', ['id' => $id]);
         }
         try {
             $this->entities->updateAgent($id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateAgent failed', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1888,14 +1887,14 @@ class LinkedDataApiController extends Controller
     {
         $exists = DB::table('actor')->where('id', $id)->exists();
         if (!$exists) {
-            return response()->json(['error' => 'Agent not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Agent not found', ['id' => $id]);
         }
         try {
             $this->entities->deleteAgent($id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] deleteAgent failed', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1925,7 +1924,7 @@ class LinkedDataApiController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createRecord failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1936,14 +1935,14 @@ class LinkedDataApiController extends Controller
     {
         $exists = DB::table('information_object')->where('id', $id)->exists();
         if (!$exists) {
-            return response()->json(['error' => 'Record not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Record not found', ['id' => $id]);
         }
         try {
             $this->entities->updateRecord($id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateRecord failed', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1955,17 +1954,17 @@ class LinkedDataApiController extends Controller
     {
         $exists = DB::table('information_object')->where('id', $id)->exists();
         if (!$exists) {
-            return response()->json(['error' => 'Record not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Record not found', ['id' => $id]);
         }
         try {
             $this->entities->deleteRecord($id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\RuntimeException $e) {
             // e.g. "has descendants"
-            return response()->json(['error' => $e->getMessage()], 409);
+            return ProblemDetails::conflict($e->getMessage());
         } catch (\Throwable $e) {
             Log::error('[RiC API] deleteRecord failed', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -1987,35 +1986,35 @@ class LinkedDataApiController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createRepository failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
     public function updateRepository(Request $request, int $id): JsonResponse
     {
         if (!DB::table('repository')->where('id', $id)->exists()) {
-            return response()->json(['error' => 'Repository not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Repository not found', ['id' => $id]);
         }
         try {
             $this->entities->updateRepository($id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
     public function deleteRepository(int $id): JsonResponse
     {
         if (!DB::table('repository')->where('id', $id)->exists()) {
-            return response()->json(['error' => 'Repository not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Repository not found', ['id' => $id]);
         }
         try {
             $this->entities->deleteRepository($id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\RuntimeException $e) {
-            return response()->json(['error' => $e->getMessage()], 409);
+            return ProblemDetails::conflict($e->getMessage());
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -2037,33 +2036,33 @@ class LinkedDataApiController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createFunction failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
     public function updateFunction(Request $request, int $id): JsonResponse
     {
         if (!DB::table('function_object')->where('id', $id)->exists()) {
-            return response()->json(['error' => 'Function not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Function not found', ['id' => $id]);
         }
         try {
             $this->entities->updateFunction($id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
     public function deleteFunctionEntity(int $id): JsonResponse
     {
         if (!DB::table('function_object')->where('id', $id)->exists()) {
-            return response()->json(['error' => 'Function not found', 'id' => $id], 404);
+            return ProblemDetails::notFound('Function not found', ['id' => $id]);
         }
         try {
             $this->entities->deleteFunction($id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -2086,7 +2085,7 @@ class LinkedDataApiController extends Controller
             );
             return response()->json(['id' => $id], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -2102,7 +2101,7 @@ class LinkedDataApiController extends Controller
             );
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -2115,7 +2114,7 @@ class LinkedDataApiController extends Controller
             $this->entities->deleteRelation($id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return ProblemDetails::validationFailed($e->getMessage());
         }
     }
 
@@ -2127,11 +2126,11 @@ class LinkedDataApiController extends Controller
     public function uploadContent(Request $request): JsonResponse
     {
         if (!$request->hasFile('file')) {
-            return response()->json(['error' => 'no_file', 'message' => 'POST a multipart form with a "file" part.'], 400);
+            return ProblemDetails::badRequest('POST a multipart form with a "file" part.', ['code' => 'no_file']);
         }
         $file = $request->file('file');
         if (!$file->isValid()) {
-            return response()->json(['error' => 'invalid_file', 'message' => $file->getErrorMessage()], 422);
+            return ProblemDetails::validationFailed($file->getErrorMessage(), ['code' => 'invalid_file']);
         }
 
         // Capture file metadata BEFORE move() — once the temp file moves,
@@ -2142,7 +2141,7 @@ class LinkedDataApiController extends Controller
 
         $maxBytes = (int) env('OPENRIC_UPLOAD_MAX_BYTES', 100 * 1024 * 1024); // 100 MB default
         if ($origSize > $maxBytes) {
-            return response()->json(['error' => 'too_large', 'message' => "Max upload size is {$maxBytes} bytes."], 413);
+            return ProblemDetails::payloadTooLarge("Max upload size is {$maxBytes} bytes.", ['code' => 'too_large', 'max_bytes' => $maxBytes]);
         }
 
         // Destination: /usr/share/nginx/OpenRiC/storage/app/uploads/YYYY/MM/{uuid}.{ext}
@@ -2217,12 +2216,12 @@ class LinkedDataApiController extends Controller
     public function thumbnail(Request $request, int $id): \Symfony\Component\HttpFoundation\Response
     {
         $row = DB::table('digital_object')->where('id', $id)->first(['path', 'mime_type']);
-        if (!$row) return response()->json(['error' => 'not_found'], 404);
+        if (!$row) return ProblemDetails::notFound('Digital object not found', ['code' => 'not_found']);
 
         $sourceAbs = storage_path('app/uploads/' . $row->path);
-        if (!file_exists($sourceAbs)) return response()->json(['error' => 'source_missing'], 404);
+        if (!file_exists($sourceAbs)) return ProblemDetails::notFound('Source file missing on disk', ['code' => 'source_missing']);
         if (!str_starts_with((string) $row->mime_type, 'image/')) {
-            return response()->json(['error' => 'not_an_image', 'mime' => $row->mime_type], 415);
+            return ProblemDetails::unsupportedMediaType('Thumbnailable requires an image source.', ['code' => 'not_an_image', 'mime' => $row->mime_type]);
         }
 
         $w = (int) $request->query('w', \AhgRic\Support\Thumbnailer::DEFAULT_WIDTH);
@@ -2230,7 +2229,7 @@ class LinkedDataApiController extends Controller
 
         $thumbPath = \AhgRic\Support\Thumbnailer::ensure($sourceAbs, $w, $h);
         if (!$thumbPath) {
-            return response()->json(['error' => 'thumbnail_failed'], 500);
+            return ProblemDetails::internalError('Thumbnail generation failed', ['code' => 'thumbnail_failed']);
         }
 
         return redirect(\AhgRic\Support\Thumbnailer::publicUrlFor($sourceAbs, $w, $h), 302);

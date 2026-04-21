@@ -446,8 +446,8 @@ class OpenApiSpec
 
     private static function errorResp(): array
     {
-        return ['description' => 'Not found',
-            'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Error']]]];
+        return ['description' => 'Not found — RFC 7807 problem+json',
+            'content' => ['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/ProblemDetails']]]];
     }
 
     private static function schemas(): array
@@ -456,8 +456,38 @@ class OpenApiSpec
             'Health' => ['type' => 'object', 'properties' => [
                 'status' => ['type' => 'string', 'example' => 'ok'],
                 'service' => ['type' => 'string'], 'version' => ['type' => 'string']]],
-            'Error'  => ['type' => 'object', 'properties' => [
-                'error' => ['type' => 'string'], 'id' => ['type' => 'integer']]],
+            'ProblemDetails' => ['type' => 'object',
+                'description' => 'RFC 7807 Problem Details. Every error response from the /api/ric/v1 surface returns this shape with Content-Type: application/problem+json. Implementations MAY emit additional fields alongside the base set.',
+                'required' => ['type', 'title', 'status', 'detail', 'instance'],
+                'properties' => [
+                    'type' => ['type' => 'string', 'format' => 'uri',
+                        'description' => 'Stable error-type URI. Clients SHOULD dispatch on this. All types live under https://openric.org/errors/.',
+                        'example' => 'https://openric.org/errors/not-found',
+                        'enum' => [
+                            'https://openric.org/errors/not-found',
+                            'https://openric.org/errors/bad-request',
+                            'https://openric.org/errors/validation-failed',
+                            'https://openric.org/errors/authentication-required',
+                            'https://openric.org/errors/forbidden',
+                            'https://openric.org/errors/conflict',
+                            'https://openric.org/errors/payload-too-large',
+                            'https://openric.org/errors/unsupported-media-type',
+                            'https://openric.org/errors/internal-error',
+                        ]],
+                    'title' => ['type' => 'string',
+                        'description' => 'Short, human-readable summary. Localised freely. Clients SHOULD NOT dispatch on this.',
+                        'example' => 'Not Found'],
+                    'status' => ['type' => 'integer',
+                        'description' => 'HTTP status code, matching the Response status line.',
+                        'example' => 404],
+                    'detail' => ['type' => 'string',
+                        'description' => 'Human-readable explanation specific to this occurrence.',
+                        'example' => 'Agent not found'],
+                    'instance' => ['type' => 'string',
+                        'description' => 'The request path (with query string, if any) that produced the error.',
+                        'example' => '/api/ric/v1/agents/missing-id'],
+                ],
+                'additionalProperties' => true],
             'SuccessResponse' => ['type' => 'object', 'properties' => [
                 'success' => ['type' => 'boolean'], 'id' => ['type' => 'integer']]],
             'CreateResponse' => ['type' => 'object', 'properties' => [
