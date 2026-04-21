@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $pageTitle ?? 'RiC-CM Reference' }} — OpenRiC</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -62,7 +63,24 @@
                 <li class="nav-item"><a class="nav-link" href="{{ route('reference.ric-cm.relations.index', ['version' => $version]) }}">Relations</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('reference.ric-cm.relation-attributes.index', ['version' => $version]) }}">Relation Attributes</a></li>
             </ul>
-            <span class="navbar-text small text-muted">RiC-CM v{{ $version }}</span>
+            <ul class="navbar-nav ms-auto align-items-md-center">
+                <li class="nav-item"><a class="nav-link" href="https://openric.org/guides/getting-started.html" target="_blank" rel="noopener">Start here <span aria-hidden="true">↗</span></a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">openric.org</a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="https://openric.org/spec/" target="_blank" rel="noopener">Spec ↗</a></li>
+                        <li><a class="dropdown-item" href="https://openric.org/guides/" target="_blank" rel="noopener">Guides ↗</a></li>
+                        <li><a class="dropdown-item" href="https://openric.org/faq.html" target="_blank" rel="noopener">FAQ ↗</a></li>
+                        <li><a class="dropdown-item" href="https://openric.org/architecture.html" target="_blank" rel="noopener">Architecture ↗</a></li>
+                        <li><a class="dropdown-item" href="https://openric.org/conformance/" target="_blank" rel="noopener">Conformance ↗</a></li>
+                        <li><a class="dropdown-item" href="https://openric.org/governance.html" target="_blank" rel="noopener">Governance ↗</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="https://github.com/openric/spec/discussions" target="_blank" rel="noopener">Discussions ↗</a></li>
+                        <li><a class="dropdown-item" href="https://github.com/openric/spec" target="_blank" rel="noopener">GitHub ↗</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item"><span class="navbar-text small text-muted ms-md-2">RiC-CM v{{ $version }}</span></li>
+            </ul>
         </div>
     </div>
 </nav>
