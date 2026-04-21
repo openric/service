@@ -679,6 +679,56 @@ class RicSerializationService
             ];
         }
 
+        // rico:resultsOrResultedIn — records this activity produced.
+        // Relation: Activity (subject) -> Record (object) via dropdown_code='results_from'.
+        // Emitted as stubs; Provenance & Event profile requires this on rico:Production
+        // and rico:Accumulation (openric-spec provenance-event.md §3.1/§3.2).
+        $results = DB::table('relation as rel')
+            ->join('ric_relation_meta as rm', 'rel.id', '=', 'rm.relation_id')
+            ->join('information_object as io', 'rel.object_id', '=', 'io.id')
+            ->leftJoin('information_object_i18n as io_i18n', function ($j) use ($culture) {
+                $j->on('io.id', '=', 'io_i18n.id')->where('io_i18n.culture', '=', $culture);
+            })
+            ->leftJoin('term_i18n as lvl_i18n', function ($j) use ($culture) {
+                $j->on('io.level_of_description_id', '=', 'lvl_i18n.id')->where('lvl_i18n.culture', '=', $culture);
+            })
+            ->leftJoin('slug as io_slug', 'io.id', '=', 'io_slug.object_id')
+            ->where('rel.subject_id', $activityId)
+            ->where('rm.dropdown_code', 'results_from')
+            ->select(['io.id', 'io_i18n.title', 'lvl_i18n.name as level', 'io_slug.slug'])
+            ->get();
+
+        if ($results->isNotEmpty()) {
+            $ricAct['rico:resultsOrResultedIn'] = $results->map(fn($r) => [
+                '@id'        => $this->baseUri . '/informationobject/' . ($r->slug ?: $r->id),
+                '@type'      => 'rico:' . ($this->levelToRic[strtolower($r->level ?? '')] ?? 'Record'),
+                'rico:title' => $r->title,
+            ])->values()->toArray();
+        }
+
+        // rico:hasOrHadParticipant — agents who performed this activity.
+        // Relation: Activity (subject) -> Agent (object) via dropdown_code='performed_by'.
+        // Backing data uses rico:isOrWasPerformedBy (RiC-O subproperty of hasOrHadParticipant);
+        // the serializer emits the broader profile-level predicate the spec mandates.
+        $participants = DB::table('relation as rel')
+            ->join('ric_relation_meta as rm', 'rel.id', '=', 'rm.relation_id')
+            ->join('actor as ac', 'rel.object_id', '=', 'ac.id')
+            ->leftJoin('actor_i18n as ac_i18n', function ($j) use ($culture) {
+                $j->on('ac.id', '=', 'ac_i18n.id')->where('ac_i18n.culture', '=', $culture);
+            })
+            ->where('rel.subject_id', $activityId)
+            ->where('rm.dropdown_code', 'performed_by')
+            ->select(['ac.id', 'ac.entity_type_id', 'ac_i18n.authorized_form_of_name as name'])
+            ->get();
+
+        if ($participants->isNotEmpty()) {
+            $ricAct['rico:hasOrHadParticipant'] = $participants->map(fn($a) => [
+                '@id'       => $this->baseUri . '/actor/' . $a->id,
+                '@type'     => 'rico:' . ($this->actorTypeToRic[strtolower($a->entity_type_id ?? '')] ?? 'Agent'),
+                'rico:name' => $a->name,
+            ])->values()->toArray();
+        }
+
         return $ricAct;
     }
 
