@@ -208,15 +208,22 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // one thing and see another. Keep `profiles[]` in lockstep with
     // the endpoint surface the server actually serves.
     // ------------------------------------------------------------------
+    // Tracking openric-spec v0.36.0 (profile matrix complete; 7 profiles declared).
+    // The reference server claims 6 of the 7. Provenance & Event is deliberately
+    // NOT listed — the serializer emits the required shape (service v0.8.13) but
+    // the backing data has ~218 Production rows missing resultsOrResultedIn /
+    // hasOrHadParticipant relations. A claim here would be dishonest until the
+    // data-backfill task lands. See docs/drift-log.md (2026-04-21 entry for
+    // v0.8.13) and openric-spec/spec/profiles/provenance-event.md §9 Q5.
     $openricConformance = [
-        'spec_version' => '0.3.0-draft',
+        'spec_version' => '0.36.0',
         'profiles' => [
-            ['id' => 'core-discovery',         'version' => '0.3.0-draft', 'conformance' => 'full'],
-            ['id' => 'authority-context',      'version' => '0.3.0-draft', 'conformance' => 'full'],
-            ['id' => 'digital-object-linkage', 'version' => '0.3.0-draft', 'conformance' => 'full'],
-            ['id' => 'graph-traversal',        'version' => '0.3.0-draft', 'conformance' => 'full'],
-            ['id' => 'export-only',            'version' => '0.3.0-draft', 'conformance' => 'full'],
-            ['id' => 'round-trip-editing',     'version' => '0.3.0-draft', 'conformance' => 'full'],
+            ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
+            ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],
+            ['id' => 'graph-traversal',        'version' => '0.5.0', 'conformance' => 'full'],
+            ['id' => 'digital-object-linkage', 'version' => '0.6.0', 'conformance' => 'full'],
+            ['id' => 'round-trip-editing',     'version' => '0.7.0', 'conformance' => 'full'],
+            ['id' => 'export-only',            'version' => '0.9.0', 'conformance' => 'full'],
         ],
     ];
 
