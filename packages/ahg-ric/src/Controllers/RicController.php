@@ -77,7 +77,9 @@ class RicController extends Controller
     /**
      * Get graph summary for an entity by its RiC URI.
      *
-     * OpenRiC primary entry point. Accepts ?uri=https://… (URL-encoded).
+     * OpenRiC primary entry point. Accepts:
+     *   ?uri=<URL-encoded RiC URI>  (required)
+     *   ?max_nodes=<1..500>         (optional, widget default 50)
      * Widget/explorer use this; int-ID route stays for Heratio compat.
      */
     public function getGraphSummaryByUri(Request $request)
@@ -87,11 +89,13 @@ class RicController extends Controller
             return response()->json(['success' => false, 'error' => 'Valid uri query parameter is required'], 400);
         }
 
+        $maxNodes = (int) $request->query('max_nodes', 50);
+
         $service = app(RelationshipService::class);
 
         return response()->json([
             'success' => true,
-            'graph' => $service->getGraphSummaryByUri($uri),
+            'graph' => $service->getGraphSummaryByUri($uri, null, $maxNodes),
         ]);
     }
 

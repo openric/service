@@ -15,6 +15,14 @@ Route::prefix('ric-api')->middleware('web')->group(function () {
     Route::get('/relations/{id}', [RicController::class, 'getRelations'])->where('id', '[0-9]+')->name('ric.public-relations');
     Route::get('/graph-summary/{id}', [RicController::class, 'getGraphSummary'])->where('id', '[0-9]+')->name('ric.public-graph-summary');
     Route::get('/graph-summary-by-uri', [RicController::class, 'getGraphSummaryByUri'])->name('ric.public-graph-summary-by-uri');
+    // Dev-only: standalone demo of _context-sidebar. Gated on APP_DEBUG
+    // so it can never leak into production.
+    Route::get('/dev/widget', function (\Illuminate\Http\Request $r) {
+        abort_unless(config('app.debug'), 404);
+        $uri = $r->query('uri', 'https://ric.theahg.co.za/entity/record/901990');
+        abort_unless(filter_var($uri, FILTER_VALIDATE_URL), 400);
+        return view('ahg-ric::_dev-widget', ['resourceUri' => $uri]);
+    })->name('ric.dev-widget');
     Route::get('/timeline/{id}', [RicController::class, 'getTimeline'])->where('id', '[0-9]+')->name('ric.public-timeline');
     Route::get('/explain/{sourceId}/{targetId}', [RicController::class, 'explainRelation'])->name('ric.public-explain');
 });

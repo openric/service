@@ -103,9 +103,15 @@ class RelationshipService
      *
      * OpenRiC entry point — no int-ID → URI translation required.
      * Widget and explorer consume this.
+     *
+     * maxNodes caps the returned subgraph (hard ceiling 500 to protect
+     * the renderer on hub entities). truncated=true flags when the cap hit.
      */
-    public function getGraphSummaryByUri(string $uri, ?string $centerLabel = null): array
+    public function getGraphSummaryByUri(string $uri, ?string $centerLabel = null, int $maxNodes = 50): array
     {
+        $maxNodes = max(1, min($maxNodes, 500));
+        $sparqlLimit = $maxNodes * 2;
+
         $query = <<<SPARQL
 PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
 SELECT ?s ?p ?o ?sLabel ?oLabel ?sType ?oType WHERE {
@@ -125,13 +131,14 @@ SELECT ?s ?p ?o ?sLabel ?oLabel ?sType ?oType WHERE {
     OPTIONAL { ?s a ?sType . FILTER(STRSTARTS(STR(?sType), "https://www.ica.org/standards/RiC/ontology#")) }
   }
   OPTIONAL { <{$uri}> rico:title ?centerLabel }
-} LIMIT 100
+} LIMIT {$sparqlLimit}
 SPARQL;
 
         $result = $this->executeSparql($query);
         $nodes = [];
         $edges = [];
         $nodeIndex = [];
+        $truncated = false;
 
         if ($result && isset($result['results']['bindings'])) {
             // Add center node
@@ -143,6 +150,11 @@ SPARQL;
             ];
 
             foreach ($result['results']['bindings'] as $row) {
+                if (count($nodes) >= $maxNodes) {
+                    $truncated = true;
+                    break;
+                }
+
                 $sUri = $row['s']['value'];
                 $oUri = $row['o']['value'];
                 $pred = $row['p']['value'];
@@ -180,6 +192,8 @@ SPARQL;
             'edges' => $edges,
             'total_nodes' => count($nodes),
             'total_edges' => count($edges),
+            'truncated' => $truncated,
+            'max_nodes' => $maxNodes,
         ];
     }
 
