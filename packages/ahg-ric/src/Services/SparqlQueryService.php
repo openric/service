@@ -27,7 +27,7 @@ class SparqlQueryService
 
     public function __construct()
     {
-        $this->fusekiEndpoint = config('heratio.fuseki_endpoint', 'http://localhost:3030/heratio');
+        $this->fusekiEndpoint = config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
         $this->pythonScript = __DIR__ . '/../../tools/ric_semantic_search.py';
     }
 

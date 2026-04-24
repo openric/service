@@ -670,7 +670,7 @@ class LinkedDataApiController extends Controller
      */
     private function executeSparql(string $query): array
     {
-        $endpoint = config('heratio.fuseki_endpoint', 'http://localhost:3030/heratio');
+        $endpoint = config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
         $url = $endpoint . '/sparql';
 
         $ch = curl_init();

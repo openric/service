@@ -11,7 +11,7 @@ related:
 
 ## Executive summary
 
-Build a RiC-CM 1.0 reference browser inside OpenRiC, modelled on the DLIB Ionian University NavTool but architecturally improved in one specific way: a clean **declared vs. inherited** separation on entity and relation pages (CIDOC-CRM style), with ancestor provenance tagged on every inherited row. Deliverable is a new package **`ahg-ric-model`** living in **OpenRiC's own `packages/` directory** — not Heratio's. Stack: Blade + Alpine.js on `ahg-theme-b5` (no new frontend stack); data sourced from Fuseki (RiC-O) via a new `OntologyService`, with a hybrid fallback (YAML asset) for the 42 RiC-CM attributes if RiC-O doesn't cover them. Scope: reference browser only — the Modeling Playground (graph viz) is deferred to Phase 5 alongside the user-holdings graph.
+Build a RiC-CM 1.0 reference browser inside OpenRiC, modelled on the DLIB Ionian University NavTool but architecturally improved in one specific way: a clean **declared vs. inherited** separation on entity and relation pages (CIDOC-CRM style), with ancestor provenance tagged on every inherited row. Deliverable is a new package **`ahg-ric-model`** living in **OpenRiC's own `packages/` directory** — not Heratio's. Stack: Blade + Alpine.js on `ahg-theme-b5` (no new frontend stack); data sourced from Fuseki (RiC-O) via a new `OntologyService`, with a hybrid fallback (YAML asset) for the 42 RiC-CM attributes if RiC-O doesn't cover them. Scope: reference browser only — graph visualisation is **out of scope for OpenRiC** (collaboration with DLIB Ionian / NavTool team instead — see `docs/outreach/damigos-reply.md`).
 
 **Strategic context**: OpenRiC is being genuinely decoupled from Heratio. The end state is OpenRiC as the authoritative RiC-O implementation, with Heratio eventually consuming RiC features via HTTP API instead of shared in-process packages. This plan therefore begins with a Phase 0 fork of `ahg-core`, `ahg-api`, `ahg-ric` from Heratio into OpenRiC — kept **intact (unpruned)** so the interface remains identical when Heratio switches to API consumption later.
 
@@ -607,7 +607,8 @@ None blocking. Two items to track:
 
 ## Not in this plan (deferred)
 
-- **Modeling Playground** (graph viz) — Phase 5 of OpenRiC roadmap, alongside user-holdings graph. Lib choice (Cytoscape.js vs. v-network-graph vs. D3) is a joint decision with that work.
+- **RiC-CM Modeling Playground** (graph viz of the **conceptual model**) — **out of scope for OpenRiC** (decision 2026-04-24). Collaborate with DLIB Ionian University (Matt Damigos) instead, who flagged direct overlap with their archival linked-data research. See `docs/outreach/damigos-reply.md` and the `project_damigos_collaboration` memory.
+- **User-holdings graph** (graph viz of the **user's actual archival data** in `/openric`) — **IN SCOPE**, planned separately in `docs/plans/user-holdings-graph.md`. Sequenced after this reference-browser ships so entity URIs are clickable destinations from graph nodes. Most code is already ported from Heratio (`RicController` graph methods, `explorer.blade.php`); remaining work is rebind + harden, ~2 weeks.
 - **SPARQL query playground** — browser UI for running arbitrary SPARQL against Fuseki. Tempting but out of scope; would live in its own package if needed.
 - **Validator integration** — "this entity I'm cataloguing should probably be RiC-E07 Activity, not RiC-E06 Record Part" suggestions. Phase 6+ when we have enough user data for training or rules.
 - **i18n of the reference model** — RiC-CM 1.0 is English-only; translations would require ICA/EGAD cooperation. Revisit when translations exist upstream.

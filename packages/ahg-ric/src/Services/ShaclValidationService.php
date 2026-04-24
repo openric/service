@@ -29,7 +29,7 @@ class ShaclValidationService
     public function __construct()
     {
         $this->shapesPath = __DIR__ . '/../../tools/ric_shacl_shapes.ttl';
-        $this->fusekiEndpoint = config('heratio.fuseki_endpoint', 'http://localhost:3030/heratio');
+        $this->fusekiEndpoint = config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
         $this->validatorScript = __DIR__ . '/../../tools/ric_shacl_validator.py';
     }
 

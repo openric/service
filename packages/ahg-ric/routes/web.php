@@ -14,6 +14,7 @@ Route::prefix('ric-api')->middleware('web')->group(function () {
     Route::get('/relations/types', [RicEntityController::class, 'getRelationTypes'])->name('ric.public-relation-types');
     Route::get('/relations/{id}', [RicController::class, 'getRelations'])->where('id', '[0-9]+')->name('ric.public-relations');
     Route::get('/graph-summary/{id}', [RicController::class, 'getGraphSummary'])->where('id', '[0-9]+')->name('ric.public-graph-summary');
+    Route::get('/graph-summary-by-uri', [RicController::class, 'getGraphSummaryByUri'])->name('ric.public-graph-summary-by-uri');
     Route::get('/timeline/{id}', [RicController::class, 'getTimeline'])->where('id', '[0-9]+')->name('ric.public-timeline');
     Route::get('/explain/{sourceId}/{targetId}', [RicController::class, 'explainRelation'])->name('ric.public-explain');
 });

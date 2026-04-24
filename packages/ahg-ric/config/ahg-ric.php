@@ -27,13 +27,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fuseki Triplestore Endpoint
+    | Fuseki Triplestore Endpoint (composed)
     |--------------------------------------------------------------------------
     |
-    | The URL of the Apache Jena Fuseki server endpoint.
+    | Combined base URL + user-data dataset path. SPARQL query/update services
+    | read this when they need a single URL. Derived from FUSEKI_URL +
+    | FUSEKI_DATASET_DATA so the two sources cannot drift.
     |
     */
-    'fuseki_endpoint' => env('FUSEKI_ENDPOINT', 'http://localhost:3030/heratio'),
+    'fuseki_endpoint' => rtrim(env('FUSEKI_URL', 'http://localhost:3030'), '/')
+        . '/' . trim(env('FUSEKI_DATASET_DATA', 'openric'), '/'),
 
     /*
     |--------------------------------------------------------------------------
@@ -129,10 +132,11 @@ return [
     |
     */
     'fuseki' => [
-        'url'      => env('RIC_FUSEKI_URL'),
-        'dataset'  => env('RIC_FUSEKI_DATASET', 'ric'),
-        'user'     => env('RIC_FUSEKI_USER'),
-        'pass'     => env('RIC_FUSEKI_PASS'),
+        'url'           => env('FUSEKI_URL', 'http://localhost:3030'),
+        'dataset'       => env('FUSEKI_DATASET_DATA', 'openric'),
+        'dataset_model' => env('FUSEKI_DATASET_MODEL', 'openric-model'),
+        'user'          => env('FUSEKI_USER'),
+        'pass'          => env('FUSEKI_PASSWORD'),
     ],
 
     /*

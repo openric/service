@@ -100,7 +100,7 @@ class RicSerializationService
     {
         $this->baseUri = config('app.url', 'http://localhost');
         $this->instanceId = SettingHelper::get('ahg_ric_instance_id', 'default');
-        $this->fusekiEndpoint = config('heratio.fuseki_endpoint', 'http://localhost:3030/heratio');
+        $this->fusekiEndpoint = config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
     }
 
     /**

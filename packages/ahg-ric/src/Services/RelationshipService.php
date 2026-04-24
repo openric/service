@@ -45,22 +45,28 @@ class RelationshipService
 
     protected function loadConfig(): void
     {
-        $config = [];
-        if (Schema::hasTable('setting') && Schema::hasTable('setting_i18n')) {
-            $rows = DB::table('setting')
+        $envEndpoint = config('ahg-ric.fuseki_endpoint');
+        $envUser     = config('ahg-ric.fuseki.user');
+        $envPass     = config('ahg-ric.fuseki.pass');
+        $envBaseUri  = env('RIC_BASE_URI') ?: rtrim(config('app.url', ''), '/');
+        $envInstance = env('RIC_INSTANCE_ID', 'openric');
+
+        $setting = [];
+        if (empty($envEndpoint) && Schema::hasTable('setting') && Schema::hasTable('setting_i18n')) {
+            $setting = DB::table('setting')
                 ->join('setting_i18n', 'setting.id', '=', 'setting_i18n.id')
                 ->where('setting.scope', 'ric')
                 ->where('setting_i18n.culture', 'en')
                 ->pluck('setting_i18n.value', 'setting.name')
                 ->toArray();
-            $config = $rows;
         }
 
-        $this->fusekiEndpoint = ($config['fuseki_endpoint'] ?? config('ric.fuseki.url', 'http://localhost:3030/ric')) . '/query';
-        $this->fusekiUsername = $config['fuseki_username'] ?? config('ric.fuseki.user', '');
-        $this->fusekiPassword = $config['fuseki_password'] ?? config('ric.fuseki.password', '');
-        $this->baseUri = $config['ric_base_uri'] ?? 'https://archives.theahg.co.za/ric';
-        $this->instanceId = $config['ric_instance_id'] ?? 'atom-psis';
+        $endpoint = $envEndpoint ?: ($setting['fuseki_endpoint'] ?? 'http://localhost:3030/openric');
+        $this->fusekiEndpoint = rtrim($endpoint, '/') . '/query';
+        $this->fusekiUsername = $envUser  ?: ($setting['fuseki_username'] ?? '');
+        $this->fusekiPassword = $envPass  ?: ($setting['fuseki_password'] ?? '');
+        $this->baseUri        = $envBaseUri ?: ($setting['ric_base_uri'] ?? 'https://ric.theahg.co.za');
+        $this->instanceId     = $envInstance ?: ($setting['ric_instance_id'] ?? 'openric');
     }
 
     /**
@@ -89,6 +95,17 @@ class RelationshipService
             return ['nodes' => [], 'edges' => [], 'total_nodes' => 0, 'total_edges' => 0];
         }
 
+        return $this->getGraphSummaryByUri($uri, $this->resolveEntityName($entityId));
+    }
+
+    /**
+     * Get a graph summary for an entity identified by its URI directly.
+     *
+     * OpenRiC entry point — no int-ID → URI translation required.
+     * Widget and explorer consume this.
+     */
+    public function getGraphSummaryByUri(string $uri, ?string $centerLabel = null): array
+    {
         $query = <<<SPARQL
 PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
 SELECT ?s ?p ?o ?sLabel ?oLabel ?sType ?oType WHERE {
@@ -119,7 +136,11 @@ SPARQL;
         if ($result && isset($result['results']['bindings'])) {
             // Add center node
             $nodeIndex[$uri] = true;
-            $nodes[] = ['id' => $uri, 'label' => $this->resolveEntityName($entityId), 'type' => 'center'];
+            $nodes[] = [
+                'id' => $uri,
+                'label' => $centerLabel ?: $this->extractLabel($uri),
+                'type' => 'center',
+            ];
 
             foreach ($result['results']['bindings'] as $row) {
                 $sUri = $row['s']['value'];
@@ -369,17 +390,19 @@ SPARQL;
 
     protected function resolveEntityUri(int $entityId): ?string
     {
-        // Check ric_sync_status for the Fuseki URI
+        // Check ric_sync_status for a stored RiC URI (column is ric_uri,
+        // not fuseki_uri — the earlier name was wrong).
         if (Schema::hasTable('ric_sync_status')) {
             $row = DB::table('ric_sync_status')
                 ->where('entity_id', $entityId)
                 ->first();
-            if ($row && !empty($row->fuseki_uri)) {
-                return $row->fuseki_uri;
+            if ($row && !empty($row->ric_uri)) {
+                return $row->ric_uri;
             }
         }
 
-        // Build URI from convention
+        // Build URI from convention — legacy Heratio form. OpenRiC callers
+        // should use getGraphSummaryByUri() with the actual URI instead.
         return $this->baseUri . '/' . $this->instanceId . '/entity/' . $entityId;
     }
 

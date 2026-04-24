@@ -62,7 +62,7 @@ class RicController extends Controller
     }
 
     /**
-     * Get graph summary for an entity.
+     * Get graph summary for an entity by numeric ID (legacy Heratio path).
      */
     public function getGraphSummary(int $id)
     {
@@ -71,6 +71,27 @@ class RicController extends Controller
         return response()->json([
             'success' => true,
             'graph' => $service->getGraphSummary($id),
+        ]);
+    }
+
+    /**
+     * Get graph summary for an entity by its RiC URI.
+     *
+     * OpenRiC primary entry point. Accepts ?uri=https://… (URL-encoded).
+     * Widget/explorer use this; int-ID route stays for Heratio compat.
+     */
+    public function getGraphSummaryByUri(Request $request)
+    {
+        $uri = $request->query('uri');
+        if (!is_string($uri) || $uri === '' || !filter_var($uri, FILTER_VALIDATE_URL)) {
+            return response()->json(['success' => false, 'error' => 'Valid uri query parameter is required'], 400);
+        }
+
+        $service = app(RelationshipService::class);
+
+        return response()->json([
+            'success' => true,
+            'graph' => $service->getGraphSummaryByUri($uri),
         ]);
     }
 
@@ -485,10 +506,10 @@ class RicController extends Controller
         $fusekiPass    = config('ahg-ric.fuseki.pass');
 
         if (empty($fusekiUrl)) {
-            $reasons[] = 'RIC_FUSEKI_URL is not set in .env.';
+            $reasons[] = 'FUSEKI_URL is not set in .env.';
         }
         if (empty($fusekiDataset)) {
-            $reasons[] = 'RIC_FUSEKI_DATASET is not set in .env.';
+            $reasons[] = 'FUSEKI_DATASET_DATA is not set in .env.';
         }
 
         if (empty($reasons) && !empty($fusekiUrl)) {
@@ -821,9 +842,9 @@ class RicController extends Controller
     protected function checkFusekiStatusQuick(): array
     {
         $config = $this->getFusekiConfig();
-        $endpoint = ($config['fuseki_endpoint'] ?? config('services.ric.fuseki_endpoint', 'http://localhost:3030/ric')) . '/query';
-        $username = $config['fuseki_username'] ?? config('services.ric.fuseki_username', 'admin');
-        $password = $config['fuseki_password'] ?? config('services.ric.fuseki_password', '');
+        $endpoint = ($config['fuseki_endpoint'] ?? config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric')) . '/query';
+        $username = $config['fuseki_username'] ?? config('ahg-ric.fuseki.user', 'admin');
+        $password = $config['fuseki_password'] ?? config('ahg-ric.fuseki.pass', '');
 
         try {
             $ch = curl_init($endpoint);
@@ -858,18 +879,35 @@ class RicController extends Controller
     // =========================================================================
 
     /**
-     * Load Fuseki config from ahg_settings table.
+     * Load Fuseki config — env-first, ahg_settings table as fallback.
+     *
+     * OpenRiC writes canonical Fuseki connection data to .env
+     * (FUSEKI_URL / FUSEKI_DATASET_DATA / FUSEKI_USER / FUSEKI_PASSWORD),
+     * surfaced through config/ahg-ric.php. Heratio-style instances may
+     * also have values in the ahg_settings MySQL table — those only apply
+     * when the env side is empty.
      */
     protected function getFusekiConfig(): array
     {
+        $env = array_filter([
+            'fuseki_endpoint' => config('ahg-ric.fuseki_endpoint'),
+            'fuseki_username' => config('ahg-ric.fuseki.user'),
+            'fuseki_password' => config('ahg-ric.fuseki.pass'),
+            'ric_base_uri'    => rtrim(config('app.url', ''), '/') ?: null,
+            'ric_instance_id' => config('ahg-ric.instance_id'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $table = [];
         try {
-            return DB::table('ahg_settings')
+            $table = DB::table('ahg_settings')
                 ->where('setting_group', 'fuseki')
                 ->pluck('setting_value', 'setting_key')
                 ->toArray();
         } catch (\Exception $e) {
-            return [];
+            // Table may not exist in non-Heratio installs — env already covers us.
         }
+
+        return $env + $table;
     }
 
     /**
@@ -897,9 +935,9 @@ class RicController extends Controller
         }
 
         $config = $this->getFusekiConfig();
-        $fusekiEndpoint = $config['fuseki_endpoint'] ?? config('services.ric.fuseki_endpoint', 'http://localhost:3030/ric');
-        $fusekiUsername = $config['fuseki_username'] ?? config('services.ric.fuseki_username', 'admin');
-        $fusekiPassword = $config['fuseki_password'] ?? config('services.ric.fuseki_password', '');
+        $fusekiEndpoint = $config['fuseki_endpoint'] ?? config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
+        $fusekiUsername = $config['fuseki_username'] ?? config('ahg-ric.fuseki.user', 'admin');
+        $fusekiPassword = $config['fuseki_password'] ?? config('ahg-ric.fuseki.pass', '');
 
         // RiC-O type mapping
         $ricTypes = [
@@ -1041,11 +1079,11 @@ class RicController extends Controller
         }
 
         $config = $this->getFusekiConfig();
-        $fusekiEndpoint = ($config['fuseki_endpoint'] ?? config('services.ric.fuseki_endpoint', 'http://localhost:3030/ric')) . '/query';
-        $fusekiUsername  = $config['fuseki_username'] ?? config('services.ric.fuseki_username', 'admin');
-        $fusekiPassword  = $config['fuseki_password'] ?? config('services.ric.fuseki_password', '');
-        $baseUri         = $config['ric_base_uri'] ?? config('services.ric.base_uri', 'https://archives.theahg.co.za/ric');
-        $instanceId      = $config['ric_instance_id'] ?? config('services.ric.instance_id', 'atom-psis');
+        $fusekiEndpoint = ($config['fuseki_endpoint'] ?? config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric')) . '/query';
+        $fusekiUsername  = $config['fuseki_username'] ?? config('ahg-ric.fuseki.user', 'admin');
+        $fusekiPassword  = $config['fuseki_password'] ?? config('ahg-ric.fuseki.pass', '');
+        $baseUri         = $config['ric_base_uri'] ?? rtrim(config('app.url', 'https://ric.theahg.co.za'), '/');
+        $instanceId      = $config['ric_instance_id'] ?? config('ahg-ric.instance_id', 'openric');
 
         if ($recordId === 'overview') {
             $graphData = $this->buildOverviewGraph($fusekiEndpoint, $fusekiUsername, $fusekiPassword);
@@ -2298,9 +2336,9 @@ SPARQL;
     public function shaclValidate()
     {
         $config = $this->getFusekiConfig();
-        $fusekiEndpoint = $config['fuseki_endpoint'] ?? config('services.ric.fuseki_endpoint', 'http://localhost:3030/ric');
-        $fusekiUsername  = $config['fuseki_username'] ?? config('services.ric.fuseki_username', 'admin');
-        $fusekiPassword  = $config['fuseki_password'] ?? config('services.ric.fuseki_password', '');
+        $fusekiEndpoint = $config['fuseki_endpoint'] ?? config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric');
+        $fusekiUsername  = $config['fuseki_username'] ?? config('ahg-ric.fuseki.user', 'admin');
+        $fusekiPassword  = $config['fuseki_password'] ?? config('ahg-ric.fuseki.pass', '');
 
         // Read SHACL shapes file
         $shapesPath = base_path('packages/ahg-ric/tools/ric_shacl_shapes.ttl');
@@ -2490,11 +2528,11 @@ SPARQL;
         }
 
         $config = $this->getFusekiConfig();
-        $fusekiEndpoint = ($config['fuseki_endpoint'] ?? config('services.ric.fuseki_endpoint', 'http://localhost:3030/ric')) . '/query';
-        $fusekiUsername  = $config['fuseki_username'] ?? config('services.ric.fuseki_username', 'admin');
-        $fusekiPassword  = $config['fuseki_password'] ?? config('services.ric.fuseki_password', '');
-        $baseUri         = $config['ric_base_uri'] ?? config('services.ric.base_uri', 'https://archives.theahg.co.za/ric');
-        $instanceId      = $config['ric_instance_id'] ?? config('services.ric.instance_id', 'atom-psis');
+        $fusekiEndpoint = ($config['fuseki_endpoint'] ?? config('ahg-ric.fuseki_endpoint', 'http://localhost:3030/openric')) . '/query';
+        $fusekiUsername  = $config['fuseki_username'] ?? config('ahg-ric.fuseki.user', 'admin');
+        $fusekiPassword  = $config['fuseki_password'] ?? config('ahg-ric.fuseki.pass', '');
+        $baseUri         = $config['ric_base_uri'] ?? rtrim(config('app.url', 'https://ric.theahg.co.za'), '/');
+        $instanceId      = $config['ric_instance_id'] ?? config('ahg-ric.instance_id', 'openric');
 
         // Build graph data
         $graphData = $this->buildGraphData(
