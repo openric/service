@@ -16,6 +16,7 @@ Route::prefix('ric-api')->middleware('web')->group(function () {
     Route::get('/graph-summary/{id}', [RicController::class, 'getGraphSummary'])->where('id', '[0-9]+')->name('ric.public-graph-summary');
     Route::get('/graph-summary-by-uri', [RicController::class, 'getGraphSummaryByUri'])->name('ric.public-graph-summary-by-uri');
     Route::get('/expand', [RicController::class, 'expandNode'])->name('ric.public-expand');
+    Route::get('/expand-group', [RicController::class, 'expandGroup'])->name('ric.public-expand-group');
     Route::get('/search', [RicController::class, 'searchByLabel'])->name('ric.public-search');
     // Dev-only: standalone demo of _context-sidebar. Gated on APP_DEBUG
     // so it can never leak into production.

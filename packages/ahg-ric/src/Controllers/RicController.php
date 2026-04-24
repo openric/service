@@ -99,6 +99,43 @@ class RicController extends Controller
     }
 
     /**
+     * Paginated expansion of a GroupCollapse synthetic node.
+     *
+     * Accepts:
+     *   ?node=<center URI>         (required)
+     *   ?predicate=<predicate URI> (required)
+     *   ?direction=out|in          (required)
+     *   ?page=<1..>                (optional, default 1)
+     *   ?per_page=<1..200>         (optional, default 50)
+     */
+    public function expandGroup(Request $request)
+    {
+        $center    = $request->query('node');
+        $predicate = $request->query('predicate');
+        $direction = (string) $request->query('direction', 'out');
+
+        if (!is_string($center) || !filter_var($center, FILTER_VALIDATE_URL)) {
+            return response()->json(['success' => false, 'error' => 'Valid node query parameter is required'], 400);
+        }
+        if (!is_string($predicate) || !filter_var($predicate, FILTER_VALIDATE_URL)) {
+            return response()->json(['success' => false, 'error' => 'Valid predicate query parameter is required'], 400);
+        }
+        if (!in_array($direction, ['out', 'in'], true)) {
+            return response()->json(['success' => false, 'error' => 'direction must be out or in'], 400);
+        }
+
+        $page    = (int) $request->query('page', 1);
+        $perPage = (int) $request->query('per_page', 50);
+
+        $service = app(RelationshipService::class);
+
+        return response()->json([
+            'success' => true,
+            'group'   => $service->expandGroup($center, $predicate, $direction, $page, $perPage),
+        ]);
+    }
+
+    /**
      * Label-search across /openric — returns [{uri, label, type}].
      *
      * Accepts:
@@ -126,8 +163,9 @@ class RicController extends Controller
      * Get graph summary for an entity by its RiC URI.
      *
      * OpenRiC primary entry point. Accepts:
-     *   ?uri=<URL-encoded RiC URI>  (required)
-     *   ?max_nodes=<1..500>         (optional, widget default 50)
+     *   ?uri=<URL-encoded RiC URI>     (required)
+     *   ?max_nodes=<1..500>            (optional, widget default 50)
+     *   ?collapse_threshold=<1..>      (optional, default config value)
      * Widget/explorer use this; int-ID route stays for Heratio compat.
      */
     public function getGraphSummaryByUri(Request $request)
@@ -137,13 +175,14 @@ class RicController extends Controller
             return response()->json(['success' => false, 'error' => 'Valid uri query parameter is required'], 400);
         }
 
-        $maxNodes = (int) $request->query('max_nodes', 50);
+        $maxNodes  = (int) $request->query('max_nodes', 50);
+        $threshold = $request->has('collapse_threshold') ? (int) $request->query('collapse_threshold') : null;
 
         $service = app(RelationshipService::class);
 
         return response()->json([
             'success' => true,
-            'graph' => $service->getGraphSummaryByUri($uri, null, $maxNodes),
+            'graph'   => $service->getGraphSummaryByUri($uri, null, $maxNodes, $threshold),
         ]);
     }
 

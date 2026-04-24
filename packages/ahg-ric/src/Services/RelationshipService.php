@@ -27,6 +27,7 @@
 
 namespace AhgRic\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -105,96 +106,253 @@ class RelationshipService
      * Widget and explorer consume this.
      *
      * maxNodes caps the returned subgraph (hard ceiling 500 to protect
-     * the renderer on hub entities). truncated=true flags when the cap hit.
+     * the renderer on hub entities). Any (predicate, direction) bucket
+     * whose neighbour count exceeds $collapseThreshold collapses into a
+     * single synthetic GroupCollapse node (so a Person with 200 Records
+     * renders as Person + 1 group — expand via /ric-api/expand-group).
+     *
+     * Response:
+     *   nodes:    [{id, label, type, …}]
+     *   edges:    [{source, target, label}]
+     *   truncated:   bool        — any capping applied?
+     *   reasons:     string[]    — subset of ['max_nodes','hub_collapsed']
+     *   max_nodes:   int         — echoed cap
+     *   threshold:   int         — echoed collapse threshold
      */
-    public function getGraphSummaryByUri(string $uri, ?string $centerLabel = null, int $maxNodes = 50): array
-    {
+    public function getGraphSummaryByUri(
+        string $uri,
+        ?string $centerLabel = null,
+        int $maxNodes = 50,
+        ?int $collapseThreshold = null
+    ): array {
         $maxNodes = max(1, min($maxNodes, 500));
-        $sparqlLimit = $maxNodes * 2;
+        $collapseThreshold = $collapseThreshold
+            ?? (int) config('ahg-ric.hub_collapse.threshold', 25);
+        $collapseThreshold = max(1, $collapseThreshold);
 
+        $cacheKey = 'ric-graph:summary:' . md5($uri . '|' . $maxNodes . '|' . $collapseThreshold);
+        $ttl = (int) config('ahg-ric.graph_cache_seconds', 900);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($uri, $centerLabel, $maxNodes, $collapseThreshold) {
+            // Step 1 — count relations per (predicate, direction) bucket.
+            // Cheap single COUNT; we act on the shape before fetching details.
+            $buckets = $this->relationBuckets($uri);
+
+            // Step 2 — partition buckets: above threshold → synthetic group
+            // node; below → fetch actual neighbours via a second targeted query.
+            $smallPredsOut = [];
+            $smallPredsIn  = [];
+            $groups = [];
+            foreach ($buckets as $b) {
+                if ($b['count'] > $collapseThreshold) {
+                    $groups[] = $b;
+                } elseif ($b['direction'] === 'out') {
+                    $smallPredsOut[] = $b['predicate'];
+                } else {
+                    $smallPredsIn[]  = $b['predicate'];
+                }
+            }
+
+            $reasons = [];
+            $nodes = [];
+            $edges = [];
+            $nodeIndex = [];
+
+            // Centre node
+            $nodeIndex[$uri] = true;
+            $nodes[] = [
+                'id'    => $uri,
+                'label' => $centerLabel ?: $this->lookupLabel($uri) ?: $this->extractLabel($uri),
+                'type'  => 'center',
+            ];
+
+            // Group-collapse nodes (one per hub bucket)
+            foreach ($groups as $b) {
+                $groupId = 'group:' . md5($uri . '|' . $b['predicate'] . '|' . $b['direction']);
+                $nodeIndex[$groupId] = true;
+                $nodes[] = [
+                    'id'           => $groupId,
+                    'label'        => $b['count'] . ' · ' . $this->extractLabel($b['predicate']),
+                    'type'         => 'GroupCollapse',
+                    'count'        => $b['count'],
+                    'center_uri'   => $uri,
+                    'predicate'    => $b['predicate'],
+                    'predicate_label' => $this->extractLabel($b['predicate']),
+                    'direction'    => $b['direction'],
+                ];
+                $edges[] = [
+                    'source' => $b['direction'] === 'out' ? $uri : $groupId,
+                    'target' => $b['direction'] === 'out' ? $groupId : $uri,
+                    'label'  => $this->extractLabel($b['predicate']) . ' (' . $b['count'] . ')',
+                    'group'  => true,
+                ];
+            }
+            if ($groups) {
+                $reasons[] = 'hub_collapsed';
+            }
+
+            // Small-bucket details (only query if there's anything to fetch)
+            if ($smallPredsOut || $smallPredsIn) {
+                foreach ($this->fetchDetails($uri, $smallPredsOut, $smallPredsIn) as $row) {
+                    if (count($nodes) >= $maxNodes) {
+                        $reasons[] = 'max_nodes';
+                        break;
+                    }
+                    $sUri = $row['s']['value'];
+                    $oUri = $row['o']['value'];
+                    $pred = $row['p']['value'];
+
+                    if (!isset($nodeIndex[$sUri])) {
+                        $nodeIndex[$sUri] = true;
+                        $nodes[] = [
+                            'id'    => $sUri,
+                            'label' => $row['sLabel']['value'] ?? $this->extractLabel($sUri),
+                            'type'  => isset($row['sType']) ? $this->extractType($row['sType']['value']) : 'Unknown',
+                        ];
+                    }
+                    if (!isset($nodeIndex[$oUri])) {
+                        if (count($nodes) >= $maxNodes) {
+                            $reasons[] = 'max_nodes';
+                            break;
+                        }
+                        $nodeIndex[$oUri] = true;
+                        $nodes[] = [
+                            'id'    => $oUri,
+                            'label' => $row['oLabel']['value'] ?? $this->extractLabel($oUri),
+                            'type'  => isset($row['oType']) ? $this->extractType($row['oType']['value']) : 'Unknown',
+                        ];
+                    }
+
+                    $edges[] = [
+                        'source' => $sUri,
+                        'target' => $oUri,
+                        'label'  => $this->extractLabel($pred),
+                    ];
+                }
+            }
+
+            $reasons = array_values(array_unique($reasons));
+
+            return [
+                'nodes'       => $nodes,
+                'edges'       => $edges,
+                'total_nodes' => count($nodes),
+                'total_edges' => count($edges),
+                'truncated'   => !empty($reasons),
+                'reasons'     => $reasons,
+                'max_nodes'   => $maxNodes,
+                'threshold'   => $collapseThreshold,
+            ];
+        });
+    }
+
+    /**
+     * Relation-bucket count per (predicate, direction) for a given center URI.
+     */
+    protected function relationBuckets(string $uri): array
+    {
         $query = <<<SPARQL
-PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
-SELECT ?s ?p ?o ?sLabel ?oLabel ?sType ?oType WHERE {
+SELECT ?p (COUNT(?n) AS ?c) ?d WHERE {
   {
-    <{$uri}> ?p ?o .
-    BIND(<{$uri}> AS ?s)
-    FILTER(isURI(?o) && ?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)
-    OPTIONAL { ?o rico:title ?oLabel }
-    OPTIONAL { ?o a ?oType . FILTER(STRSTARTS(STR(?oType), "https://www.ica.org/standards/RiC/ontology#")) }
+    <{$uri}> ?p ?n .
+    BIND("out" AS ?d)
+    FILTER(isURI(?n) && ?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)
   }
   UNION
   {
-    ?s ?p <{$uri}> .
-    BIND(<{$uri}> AS ?o)
-    FILTER(isURI(?s) && ?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)
-    OPTIONAL { ?s rico:title ?sLabel }
-    OPTIONAL { ?s a ?sType . FILTER(STRSTARTS(STR(?sType), "https://www.ica.org/standards/RiC/ontology#")) }
+    ?n ?p <{$uri}> .
+    BIND("in" AS ?d)
+    FILTER(isURI(?n) && ?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)
   }
-  OPTIONAL { <{$uri}> rico:title ?centerLabel }
-} LIMIT {$sparqlLimit}
+}
+GROUP BY ?p ?d
+ORDER BY DESC(?c)
 SPARQL;
 
         $result = $this->executeSparql($query);
-        $nodes = [];
-        $edges = [];
-        $nodeIndex = [];
-        $truncated = false;
-
+        $buckets = [];
         if ($result && isset($result['results']['bindings'])) {
-            // Add center node
-            $nodeIndex[$uri] = true;
-            $nodes[] = [
-                'id' => $uri,
-                'label' => $centerLabel ?: $this->extractLabel($uri),
-                'type' => 'center',
-            ];
-
             foreach ($result['results']['bindings'] as $row) {
-                if (count($nodes) >= $maxNodes) {
-                    $truncated = true;
-                    break;
-                }
-
-                $sUri = $row['s']['value'];
-                $oUri = $row['o']['value'];
-                $pred = $row['p']['value'];
-
-                // Add source node
-                if (!isset($nodeIndex[$sUri])) {
-                    $nodeIndex[$sUri] = true;
-                    $nodes[] = [
-                        'id' => $sUri,
-                        'label' => $row['sLabel']['value'] ?? $this->extractLabel($sUri),
-                        'type' => isset($row['sType']) ? $this->extractType($row['sType']['value']) : 'Unknown',
-                    ];
-                }
-
-                // Add target node
-                if (!isset($nodeIndex[$oUri])) {
-                    $nodeIndex[$oUri] = true;
-                    $nodes[] = [
-                        'id' => $oUri,
-                        'label' => $row['oLabel']['value'] ?? $this->extractLabel($oUri),
-                        'type' => isset($row['oType']) ? $this->extractType($row['oType']['value']) : 'Unknown',
-                    ];
-                }
-
-                $edges[] = [
-                    'source' => $sUri,
-                    'target' => $oUri,
-                    'label' => $this->extractLabel($pred),
+                $buckets[] = [
+                    'predicate' => $row['p']['value'],
+                    'direction' => $row['d']['value'],
+                    'count'     => (int) $row['c']['value'],
                 ];
             }
         }
+        return $buckets;
+    }
 
-        return [
-            'nodes' => $nodes,
-            'edges' => $edges,
-            'total_nodes' => count($nodes),
-            'total_edges' => count($edges),
-            'truncated' => $truncated,
-            'max_nodes' => $maxNodes,
-        ];
+    /**
+     * Fetch actual neighbour rows for predicates below the collapse threshold.
+     * Returns SPARQL bindings shape so callers can re-use the existing indexer.
+     */
+    protected function fetchDetails(string $uri, array $outPreds, array $inPreds): array
+    {
+        if (!$outPreds && !$inPreds) {
+            return [];
+        }
+
+        $parts = [];
+        if ($outPreds) {
+            $values = implode(' ', array_map(fn ($p) => "<{$p}>", $outPreds));
+            $parts[] = <<<SPARQL
+  {
+    VALUES ?p { {$values} }
+    <{$uri}> ?p ?o .
+    BIND(<{$uri}> AS ?s)
+    FILTER(isURI(?o))
+    OPTIONAL { ?o rico:title ?oLabel }
+    OPTIONAL { ?o a ?oType . FILTER(STRSTARTS(STR(?oType), "https://www.ica.org/standards/RiC/ontology#")) }
+  }
+SPARQL;
+        }
+        if ($inPreds) {
+            $values = implode(' ', array_map(fn ($p) => "<{$p}>", $inPreds));
+            $parts[] = <<<SPARQL
+  {
+    VALUES ?p { {$values} }
+    ?s ?p <{$uri}> .
+    BIND(<{$uri}> AS ?o)
+    FILTER(isURI(?s))
+    OPTIONAL { ?s rico:title ?sLabel }
+    OPTIONAL { ?s a ?sType . FILTER(STRSTARTS(STR(?sType), "https://www.ica.org/standards/RiC/ontology#")) }
+  }
+SPARQL;
+        }
+
+        $union = implode(" UNION\n", $parts);
+        $query = "PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>\nSELECT ?s ?p ?o ?sLabel ?oLabel ?sType ?oType WHERE {\n{$union}\n}";
+
+        $result = $this->executeSparql($query);
+        return $result['results']['bindings'] ?? [];
+    }
+
+    /**
+     * Look up a human label for a URI (rico:title, skos:prefLabel, rdfs:label,
+     * rico:textualValue). Null when the store has none.
+     */
+    protected function lookupLabel(string $uri): ?string
+    {
+        $query = <<<SPARQL
+PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?l WHERE {
+  {
+    <{$uri}> rico:title ?l .
+  } UNION {
+    <{$uri}> skos:prefLabel ?l .
+  } UNION {
+    <{$uri}> rdfs:label ?l .
+  } UNION {
+    <{$uri}> rico:textualValue ?l .
+  }
+} LIMIT 1
+SPARQL;
+        $result = $this->executeSparql($query);
+        $row = $result['results']['bindings'][0] ?? null;
+        return $row['l']['value'] ?? null;
     }
 
     /**
@@ -409,6 +567,92 @@ SPARQL;
     public function expandNode(string $uri, int $maxNodes = 25): array
     {
         return $this->getGraphSummaryByUri($uri, null, $maxNodes);
+    }
+
+    /**
+     * Paginated expansion of a single (center, predicate, direction) bucket.
+     * Called when a user clicks a GroupCollapse node in the graph.
+     *
+     * @return array{
+     *   center_uri: string,
+     *   predicate: string,
+     *   direction: string,
+     *   page: int,
+     *   per_page: int,
+     *   total: int,
+     *   has_more: bool,
+     *   nodes: array<int, array{id:string,label:string,type:string}>,
+     *   edges: array<int, array{source:string,target:string,label:string}>
+     * }
+     */
+    public function expandGroup(
+        string $centerUri,
+        string $predicateUri,
+        string $direction,
+        int $page = 1,
+        int $perPage = 50
+    ): array {
+        $direction = $direction === 'in' ? 'in' : 'out';
+        $page      = max(1, $page);
+        $perPage   = max(1, min($perPage, 200));
+
+        $cacheKey = 'ric-graph:group:' . md5(implode('|', [$centerUri, $predicateUri, $direction, $page, $perPage]));
+        $ttl = (int) config('ahg-ric.graph_cache_seconds', 900);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($centerUri, $predicateUri, $direction, $page, $perPage) {
+            // Total count for pagination.
+            $countQ = $direction === 'out'
+                ? "SELECT (COUNT(?n) AS ?c) WHERE { <{$centerUri}> <{$predicateUri}> ?n FILTER(isURI(?n)) }"
+                : "SELECT (COUNT(?n) AS ?c) WHERE { ?n <{$predicateUri}> <{$centerUri}> FILTER(isURI(?n)) }";
+            $countRes = $this->executeSparql($countQ);
+            $total = (int) ($countRes['results']['bindings'][0]['c']['value'] ?? 0);
+
+            $offset = ($page - 1) * $perPage;
+            $pageQ = $direction === 'out'
+                ? "PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+SELECT ?n ?nLabel ?nType WHERE {
+  <{$centerUri}> <{$predicateUri}> ?n
+  FILTER(isURI(?n))
+  OPTIONAL { ?n rico:title ?nLabel }
+  OPTIONAL { ?n a ?nType . FILTER(STRSTARTS(STR(?nType), \"https://www.ica.org/standards/RiC/ontology#\")) }
+} ORDER BY ?n LIMIT {$perPage} OFFSET {$offset}"
+                : "PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+SELECT ?n ?nLabel ?nType WHERE {
+  ?n <{$predicateUri}> <{$centerUri}>
+  FILTER(isURI(?n))
+  OPTIONAL { ?n rico:title ?nLabel }
+  OPTIONAL { ?n a ?nType . FILTER(STRSTARTS(STR(?nType), \"https://www.ica.org/standards/RiC/ontology#\")) }
+} ORDER BY ?n LIMIT {$perPage} OFFSET {$offset}";
+
+            $result = $this->executeSparql($pageQ);
+            $nodes = [];
+            $edges = [];
+            if ($result && isset($result['results']['bindings'])) {
+                foreach ($result['results']['bindings'] as $row) {
+                    $nUri = $row['n']['value'];
+                    $nodes[] = [
+                        'id'    => $nUri,
+                        'label' => $row['nLabel']['value'] ?? $this->extractLabel($nUri),
+                        'type'  => isset($row['nType']) ? $this->extractType($row['nType']['value']) : 'Unknown',
+                    ];
+                    $edges[] = $direction === 'out'
+                        ? ['source' => $centerUri, 'target' => $nUri, 'label' => $this->extractLabel($predicateUri)]
+                        : ['source' => $nUri, 'target' => $centerUri, 'label' => $this->extractLabel($predicateUri)];
+                }
+            }
+
+            return [
+                'center_uri' => $centerUri,
+                'predicate'  => $predicateUri,
+                'direction'  => $direction,
+                'page'       => $page,
+                'per_page'   => $perPage,
+                'total'      => $total,
+                'has_more'   => ($page * $perPage) < $total,
+                'nodes'      => $nodes,
+                'edges'      => $edges,
+            ];
+        });
     }
 
     /**

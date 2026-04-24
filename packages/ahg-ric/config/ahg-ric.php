@@ -80,6 +80,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Graph Cache TTL (seconds)
+    |--------------------------------------------------------------------------
+    |
+    | User-holdings graph summary + expand responses are cached via Laravel
+    | Cache keyed on (uri, maxNodes, collapseThreshold). Default 15 minutes.
+    |
+    */
+    'graph_cache_seconds' => env('RIC_GRAPH_CACHE_SECONDS', 900),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hub-collapse threshold
+    |--------------------------------------------------------------------------
+    |
+    | When a (predicate, direction) relation bucket has more than this many
+    | neighbours, the graph summary collapses the whole bucket into one
+    | GroupCollapse synthetic node — the client reveals individual nodes by
+    | calling /ric-api/expand-group. Overridable per-request via
+    | ?collapse_threshold=N.
+    |
+    */
+    'hub_collapse' => [
+        'threshold' => (int) env('RIC_HUB_COLLAPSE_THRESHOLD', 25),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API Rate Limiting
     |--------------------------------------------------------------------------
     |

@@ -8,10 +8,12 @@ const API = {
   search: '/ric-api/search',
   summary: '/ric-api/graph-summary-by-uri',
   expand: '/ric-api/expand',
+  expandGroup: '/ric-api/expand-group',
 };
 
 const TYPE_COLOR = {
   center:        '#ffd166',
+  GroupCollapse: '#6b7280',   // grey — visually distinct from typed entities
   Record:        '#45b7d1',
   RecordSet:     '#4ecdc4',
   RecordPart:    '#89c2d9',
@@ -144,6 +146,11 @@ class Explorer {
   }
 
   async expand(uri, maxNodes = 25) {
+    // Check whether the clicked node is a GroupCollapse — if so, paginate.
+    const node = this.state.nodes.get(uri);
+    if (node && node.type === 'GroupCollapse') {
+      return this.expandGroup(node, 1);
+    }
     try {
       const r = await fetch(`${API.expand}?node=${encodeURIComponent(uri)}&max_nodes=${maxNodes}`, { headers: { Accept: 'application/json' } });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -151,35 +158,101 @@ class Explorer {
       if (!data.success || !data.graph) return;
       this.ingest(data.graph, uri);
       if (this.state.instance) {
-        const d = this.graphData();
-        this.state.instance.graphData(d);
+        this.state.instance.graphData(this.graphData());
       } else {
         this.render();
       }
     } catch (_) { /* silent — explorer keeps its current view */ }
   }
 
+  async expandGroup(groupNode, page) {
+    const perPage = 50;
+    const params = new URLSearchParams({
+      node:      groupNode.centerUri || groupNode.center_uri,
+      predicate: groupNode.predicate,
+      direction: groupNode.direction,
+      page:      String(page),
+      per_page:  String(perPage),
+    });
+    try {
+      const r = await fetch(`${API.expandGroup}?${params}`, { headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      if (!data.success || !data.group) return;
+      const g = data.group;
+
+      // Ingest individual nodes + edges
+      g.nodes.forEach(n => {
+        if (!this.state.nodes.has(n.id)) {
+          this.state.nodes.set(n.id, {
+            id: n.id, label: n.label || n.id, type: n.type || 'Unknown',
+            color: colorFor(n.type || 'Unknown'), val: 4,
+          });
+        }
+      });
+      g.edges.forEach(e => {
+        const dup = this.state.edges.find(x =>
+          x.sourceId === e.source && x.targetId === e.target && x.label === e.label);
+        if (!dup) this.state.edges.push({ sourceId: e.source, targetId: e.target, label: e.label });
+      });
+
+      // On first page: swap the group node's label to "Page 1/M" and remember page state.
+      const existing = this.state.nodes.get(groupNode.id);
+      if (existing) {
+        existing.page = g.page;
+        existing.hasMore = g.has_more;
+        existing.total = g.total;
+        existing.label = `${Math.min(g.page * g.per_page, g.total)}/${g.total} · ${existing.predicateLabel || this.extractPredLabel(groupNode.predicate)}`;
+        if (!g.has_more) {
+          // Group is fully expanded — demote it visually (shrink + dim).
+          existing.val = 3;
+          existing.color = '#374151';
+        }
+      }
+
+      if (this.state.instance) {
+        this.state.instance.graphData(this.graphData());
+      } else {
+        this.render();
+      }
+    } catch (_) { /* silent */ }
+  }
+
+  extractPredLabel(uri) {
+    const hash = uri.lastIndexOf('#');
+    const slash = uri.lastIndexOf('/');
+    return uri.slice(Math.max(hash, slash) + 1);
+  }
+
   ingest(graph, originUri = null) {
     (graph.nodes || []).forEach(n => {
       const id = n.id;
       if (!this.state.nodes.has(id)) {
+        const isCenter = n.type === 'center' || id === this.state.seedUri;
+        const isGroup  = n.type === 'GroupCollapse';
         this.state.nodes.set(id, {
           id,
           label: n.label || id,
           type:  n.type  || 'Unknown',
           color: colorFor(n.type || 'Unknown'),
-          val:   n.type === 'center' || id === this.state.seedUri ? 8 : 4,
+          val:   isCenter ? 8 : (isGroup ? 7 : 4),
+          // GroupCollapse metadata — referenced on click.
+          centerUri:      n.center_uri || null,
+          predicate:      n.predicate || null,
+          predicateLabel: n.predicate_label || null,
+          direction:      n.direction || null,
+          count:          n.count || 0,
         });
       }
     });
     (graph.edges || []).forEach(e => {
-      // Deduplicate
       const dup = this.state.edges.find(x =>
         (x.sourceId === e.source && x.targetId === e.target && x.label === e.label)
      || (x.sourceId === e.target && x.targetId === e.source && x.label === e.label));
       if (!dup) this.state.edges.push({ sourceId: e.source, targetId: e.target, label: e.label });
     });
     this.state.truncated = !!graph.truncated;
+    this.state.reasons   = Array.isArray(graph.reasons) ? graph.reasons : [];
   }
 
   graphData() {
@@ -193,7 +266,11 @@ class Explorer {
 
   updateStatus() {
     const n = this.state.nodes.size;
-    const chip = this.state.truncated ? ' (capped)' : '';
+    const reasons = this.state.reasons || [];
+    let chip = '';
+    if (reasons.includes('hub_collapsed') && reasons.includes('max_nodes')) chip = ' (hub + cap)';
+    else if (reasons.includes('hub_collapsed'))                             chip = ' (hubs collapsed)';
+    else if (reasons.includes('max_nodes'))                                 chip = ' (capped)';
     this.nodeCount.textContent = `${n} nodes${chip}`;
     this.legend.style.display = n > 0 ? 'block' : 'none';
   }

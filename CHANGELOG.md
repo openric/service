@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.8.19 — 2026-04-24
+
+- User-holdings graph — Phase 3 (hub-collapse + perf budget). `RelationshipService::getGraphSummaryByUri` rewritten as a two-step SPARQL: first a cheap `GROUP BY ?p ?direction` COUNT to discover relation-bucket shape, then a selective details query via `VALUES ?p` for buckets below threshold. Buckets whose neighbour count exceeds the configured threshold collapse into a single synthetic `GroupCollapse` node (`{id: group:<hash>, type: 'GroupCollapse', count: N, center_uri, predicate, predicate_label, direction}`) plus one edge from the centre — so a Person with 200 Records renders as Person + 1 group node, not 201 individual nodes. Response shape gains structured `reasons: string[]` (subset of `['hub_collapsed', 'max_nodes']`), `threshold: int`, `max_nodes: int` — widget and explorer surface the flags distinctly instead of a single "capped" chip.
+
+- New paginated expansion path for hub buckets: `RelationshipService::expandGroup(centerUri, predicateUri, direction, page, perPage)` with endpoint `GET /ric-api/expand-group?node=…&predicate=…&direction=out|in&page=1&per_page=50`. Returns `{center_uri, predicate, direction, page, per_page, total, has_more, nodes, edges}`. Per-page cap 200 (hard), default 50.
+
+- Configurable thresholds in `config/ahg-ric.php`:
+  - `hub_collapse.threshold` (default 25, env `RIC_HUB_COLLAPSE_THRESHOLD`) — per-bucket count above which the collapse engages. Per-request override via `?collapse_threshold=N` on graph-summary-by-uri.
+  - `graph_cache_seconds` (default 900, env `RIC_GRAPH_CACHE_SECONDS`) — TTL for `Cache::remember`-wrapped graph + group responses, keyed on `(uri, maxNodes, threshold)` and `(center, predicate, direction, page, perPage)` respectively.
+
+- Cache layer: `Cache::remember` now wraps `getGraphSummaryByUri` and `expandGroup`. Invalidation is manual — new artisan command `php artisan ric:graph-cache:clear` flushes the cache (whole-cache flush because most drivers can't prefix-delete; operators with Redis can pattern-delete `ric-graph:*` directly). Write-paths into Fuseki are separate and don't know about the graph cache, so TTL-based staleness bounds it for now; event-driven invalidation deferred until we have a write-event bus.
+
+- Explorer (`resources/js/explorer.js`) grew GroupCollapse handling: group nodes render grey (`#6b7280`), larger size (val=7 vs. 4 for typed entities). Clicking a group node fires `expandGroup(groupNode, page=1)` against the new endpoint, ingests the paginated nodes + edges into the existing state, and updates the group node's label to `"N/M · predicate"`. Fully-expanded groups dim to `#374151` and shrink. Status bar now shows explicit reason chips: `(hubs collapsed)`, `(capped)`, or `(hub + cap)`. Bundle rebuilt via `npm run build` — same size profile as Phase 2 (~1.9 MB / 507 KB gzipped).
+
+- Widget (`_context-sidebar.blade.php`) renders hub buckets before the typed-entity list under a "Large buckets" header — each bucket shown as "<predicate> — <count>". Footer chips updated to match the explorer: separate `hubs collapsed` (info blue) and `capped at N` (warning yellow) badges with tooltips explaining each.
+
+- Smoke tests (`/openric`, record 901990 is the hub — 68 outgoing `rico:hasOrHadPlaceOfOrigin`):
+  - default `threshold=25`: `nodes=2 edges=1 reasons=['hub_collapsed']`, one GroupCollapse with `count=68`.
+  - `collapse_threshold=1000 max_nodes=200`: collapse suppressed, `nodes=69 groups=0` — confirms threshold actually controls behaviour.
+  - `expand-group` `page=1 per_page=20`: returns 20 nodes + 20 edges, `has_more=true total=68`.
+  - `expand-group` `page=4 per_page=20`: returns last 8 nodes, `has_more=false` (20×3 + 8 = 68).
+  - `expand-group` invalid `direction` / `predicate` → HTTP 400.
+  - Cache hit second-call latency: 64 ms end-to-end (includes curl + artisan-serve overhead).
+  - `php artisan ric:graph-cache:clear` flushes and is picked up on next request.
+  - Regression: Phase 2 `/admin/ric/explorer` still 200, `/ric-api/search?q=France` still returns 2.
+
+- Known limits (deferred):
+  - Cache is whole-cache-flush on clear (not tag-aware) — good enough for database cache driver in OpenRiC today, will want Redis + tag invalidation for multi-tenant use.
+  - No event-driven invalidation yet. If a write lands in Fuseki, the graph cache is stale until TTL expires (15 min) or `ric:graph-cache:clear` is run. Phase 4+ hookup to `RicEntityService` write events is the clean way to close this.
+  - Hub detection scales with distinct predicates × 2 directions (cheap). Label lookup for the centre node is a separate SPARQL round-trip — could be folded into the count query later if latency bites.
+  - ACL hash not yet part of the cache key — OpenRiC has no user ACLs on the graph path today. When one lands, the cache key needs extending to include it or the cache must be scoped per-ACL.
+
+- Note: `vendor/ahg/ric` is a path-repo copy (`"symlink": false`); after pulling run `rm -rf vendor/ahg/ric && composer install`. Re-run `npm run build` to pick up the explorer.js changes.
+
 ## v0.8.18 — 2026-04-24
 
 - User-holdings graph — Phase 2 (explorer route + theme integration). `packages/ahg-ric/resources/views/explorer.blade.php` rewritten as a self-contained page: dropped `@extends('theme::layouts.1col')` (no Heratio theme in OpenRiC), loads Bootstrap 5 + Font Awesome from CDN for chrome, bundles the graph renderer via Vite (`@vite(['resources/js/explorer.js'])`). Dropped the Heratio-only create-entity modal, timeline view, semantic-search link, and 'Back to RiC Dashboard' button — out of scope for the minimum viable explorer. New `resources/js/explorer.js` (~280 lines) is a self-contained ES module: imports `force-graph` (2D) and `3d-force-graph` (3D, which bundles three.js under the hood), exposes `window.RicExplorer.boot(rootEl)`, supports search→seed→expand→2D/3D toggle→fullscreen, dedupes nodes+edges across expansions, and honours the server `truncated` flag. Dependencies added to `package.json`: `3d-force-graph ^1.80.0`, `force-graph ^1.51.4`, `three ^0.162.0`. `vite.config.js` input expanded to include `resources/js/explorer.js`; `npm run build` produces `public/build/assets/explorer-*.js` (~1.9 MB / 507 KB gzipped — three.js dominates; loaded only when the explorer page is opened).

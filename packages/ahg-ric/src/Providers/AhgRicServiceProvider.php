@@ -95,6 +95,7 @@ class AhgRicServiceProvider extends ServiceProvider
                 \AhgRic\Console\Commands\IssueKey::class,
                 \AhgRic\Console\Commands\RebuildNestedSet::class,
                 \AhgRic\Console\Commands\SeedDemo::class,
+                \AhgRic\Console\Commands\ClearGraphCache::class,
             ]);
         }
 

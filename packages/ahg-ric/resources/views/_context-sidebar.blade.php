@@ -83,8 +83,10 @@
 
       var centerId = null;
       var groups = {};
+      var hubGroups = [];   // GroupCollapse synthetic nodes — rendered first as "large buckets"
       graph.nodes.forEach(function(n){
         if (n.type === 'center') { centerId = n.id; return; }
+        if (n.type === 'GroupCollapse') { hubGroups.push(n); return; }
         var t = n.type || 'Other';
         (groups[t] = groups[t] || []).push(n);
       });
@@ -95,6 +97,21 @@
       });
 
       var html = '<div class="list-group list-group-flush">';
+
+      // Hub-collapsed buckets first — one line per large relation group.
+      if (hubGroups.length) {
+        html += '<div class="list-group-item px-3 py-2 bg-light">';
+        html += '<strong class="small text-muted"><i class="fas fa-layer-group me-1"></i>Large buckets</strong>';
+        hubGroups.forEach(function(h){
+          var predLabel = esc(h.predicate_label || '');
+          html += '<div class="small ps-3 d-flex justify-content-between align-items-center">';
+          html += '<span><i class="fas fa-caret-right text-muted me-1"></i>' + predLabel + '</span>';
+          html += '<span class="badge bg-secondary">' + h.count + '</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
       types.forEach(function(t){
         var items = groups[t];
         var icon = typeIcons[t] || 'fas fa-circle text-secondary';
@@ -115,12 +132,16 @@
       });
       html += '</div>';
 
-      var total = graph.total_nodes - 1;
+      var total = graph.total_nodes - 1 - hubGroups.length;
       var rels  = graph.total_edges;
       html += '<div class="px-3 py-2 border-top small text-muted">';
-      html +=   '<i class="fas fa-info-circle me-1"></i>' + total + ' related, ' + rels + ' relationships';
-      if (graph.truncated) {
-        html += ' <span class="badge bg-warning text-dark ms-1">capped at ' + graph.max_nodes + '</span>';
+      html += '<i class="fas fa-info-circle me-1"></i>' + total + ' related, ' + rels + ' relationships';
+      var reasons = Array.isArray(graph.reasons) ? graph.reasons : [];
+      if (reasons.indexOf('hub_collapsed') !== -1) {
+        html += ' <span class="badge bg-info text-dark ms-1" title="Relations with &gt;' + (graph.threshold || '?') + ' neighbours collapsed into buckets — click Open in Graph Explorer to drill in">hubs collapsed</span>';
+      }
+      if (reasons.indexOf('max_nodes') !== -1) {
+        html += ' <span class="badge bg-warning text-dark ms-1" title="Response was capped at max_nodes — more neighbours exist">capped at ' + graph.max_nodes + '</span>';
       }
       html += '</div>';
 
