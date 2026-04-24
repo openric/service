@@ -75,6 +75,54 @@ class RicController extends Controller
     }
 
     /**
+     * Expand the neighbourhood of a graph node (explorer-click).
+     *
+     * Accepts:
+     *   ?node=<URL-encoded RiC URI>  (required)
+     *   ?max_nodes=<1..500>          (optional, default 25)
+     */
+    public function expandNode(Request $request)
+    {
+        $uri = $request->query('node');
+        if (!is_string($uri) || $uri === '' || !filter_var($uri, FILTER_VALIDATE_URL)) {
+            return response()->json(['success' => false, 'error' => 'Valid node query parameter is required'], 400);
+        }
+
+        $maxNodes = (int) $request->query('max_nodes', 25);
+
+        $service = app(RelationshipService::class);
+
+        return response()->json([
+            'success' => true,
+            'graph'   => $service->expandNode($uri, $maxNodes),
+        ]);
+    }
+
+    /**
+     * Label-search across /openric — returns [{uri, label, type}].
+     *
+     * Accepts:
+     *   ?q=<2+ chars>    (required)
+     *   ?limit=<1..50>   (optional, default 15)
+     */
+    public function searchByLabel(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['success' => true, 'results' => []]);
+        }
+
+        $limit = (int) $request->query('limit', 15);
+
+        $service = app(RelationshipService::class);
+
+        return response()->json([
+            'success' => true,
+            'results' => $service->searchByLabel($q, $limit),
+        ]);
+    }
+
+    /**
      * Get graph summary for an entity by its RiC URI.
      *
      * OpenRiC primary entry point. Accepts:

@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.8.18 — 2026-04-24
+
+- User-holdings graph — Phase 2 (explorer route + theme integration). `packages/ahg-ric/resources/views/explorer.blade.php` rewritten as a self-contained page: dropped `@extends('theme::layouts.1col')` (no Heratio theme in OpenRiC), loads Bootstrap 5 + Font Awesome from CDN for chrome, bundles the graph renderer via Vite (`@vite(['resources/js/explorer.js'])`). Dropped the Heratio-only create-entity modal, timeline view, semantic-search link, and 'Back to RiC Dashboard' button — out of scope for the minimum viable explorer. New `resources/js/explorer.js` (~280 lines) is a self-contained ES module: imports `force-graph` (2D) and `3d-force-graph` (3D, which bundles three.js under the hood), exposes `window.RicExplorer.boot(rootEl)`, supports search→seed→expand→2D/3D toggle→fullscreen, dedupes nodes+edges across expansions, and honours the server `truncated` flag. Dependencies added to `package.json`: `3d-force-graph ^1.80.0`, `force-graph ^1.51.4`, `three ^0.162.0`. `vite.config.js` input expanded to include `resources/js/explorer.js`; `npm run build` produces `public/build/assets/explorer-*.js` (~1.9 MB / 507 KB gzipped — three.js dominates; loaded only when the explorer page is opened).
+
+- Two new backend endpoints to drive the explorer:
+  - `GET /ric-api/search?q=…&limit=15` — SPARQL-based label search across `/openric`. Matches `rico:title` ∪ `skos:prefLabel` ∪ `rico:textualValue` ∪ `rdfs:label` via `CONTAINS(LCASE(...))`. Returns `[{uri, label, type}]` for any `rico:` or `skos:` entity. Short-circuits to empty results on queries < 2 chars. `RelationshipService::searchByLabel(string $query, int $limit = 15)`.
+  - `GET /ric-api/expand?node=<uri>&max_nodes=25` — fetches the neighbourhood of any URI-identified node. Wraps `getGraphSummaryByUri` under the hood so it inherits the `truncated` + `max_nodes` response contract. `RelationshipService::expandNode(string $uri, int $maxNodes = 25)`.
+
+- Smoke tests (all against `/openric`, verified via `php artisan serve`):
+  - `GET /admin/ric/explorer` → 200, 6,262 bytes, contains `ric-explorer-root` / `RicExplorer.boot` / `ric-autocomplete-input` / Vite-injected `explorer-*.js` markers.
+  - `GET /ric-api/search?q=France` → 2 results: a `Place` and its `PlaceName` (`https://ric.theahg.co.za/entity/place/901207` + name). Type extraction strips namespace.
+  - `GET /ric-api/expand?node=…&max_nodes=20` on hub record 901990 → `nodes=20 edges=19 truncated=true` (record has 69 total).
+  - `GET /ric-api/expand?node=not-a-url` → `HTTP 400`.
+  - `GET /ric-api/search?q=` (empty) → `success=true results=0` (no SPARQL call).
+  - Regression: Phase 1 dev-widget still renders (`/ric-api/dev/widget`); Phase 0 `graph-summary-by-uri` still returns capped data.
+
+- Known limits (deferred):
+  - Bootstrap 5 + Font Awesome still load from CDN in `explorer.blade.php` and `_dev-widget.blade.php`. Offline-archive deployments need these bundled via Vite too — deferred to a later hygiene pass.
+  - SPARQL `CONTAINS(LCASE(...))` label search is linear. Fine on `/openric`'s 7,192 triples, wouldn't scale to Heratio-class (17.9M) — an Elasticsearch-backed `/ric-api/search` will slot in behind the same JSON contract if needed.
+  - The legacy `/ric-api/autocomplete` endpoint (Heratio MySQL, Records only, int-ID) is untouched — still there for Heratio-side callers; the explorer uses the new SPARQL `/ric-api/search` instead.
+  - Other Heratio-era views in `packages/ahg-ric/resources/views/` (index, config, sync-status, entities/*, etc.) still `@extends('theme::layouts.1col')` — they're orphaned admin pages, out of Phase 2 scope, will surface whenever their owning feature gets a proper adaptation.
+
+- Note: `vendor/ahg/ric` is a path-repo copy (`"symlink": false`); after pulling run `rm -rf vendor/ahg/ric && composer install`. Vite build assets (`public/build/*`) are produced by `npm install && npm run build`.
+
 ## v0.8.17 — 2026-04-24
 
 - User-holdings graph — Phase 1 (portable relationships widget). `_context-sidebar.blade.php` rewritten as a URI-first include: `@include('ahg-ric::_context-sidebar', ['resourceUri' => $uri, 'explorerUrl' => '/explorer', 'maxNodes' => 50])`. No more Heratio `ric_view_mode` session gate, no more int-ID assumption — any host (Heratio, future OpenRiC frontend, third-party) can mount it by passing a RiC URI. Fetches `/ric-api/graph-summary-by-uri?uri=…&max_nodes=…` and renders entities grouped by RiC-O type with icon/count/top-5 labels and a truncation-warning chip when the server cap engages. Server-side cap added to `RelationshipService::getGraphSummaryByUri(string $uri, ?string $centerLabel = null, int $maxNodes = 50)` — hard ceiling 500, SPARQL LIMIT set to `maxNodes * 2`, response gains `truncated` + `max_nodes` fields so the widget can surface when the graph was capped. `RicController::getGraphSummaryByUri` accepts `?max_nodes=` query param. Dev-demo route `GET /ric-api/dev/widget?uri=…` renders the widget standalone (Bootstrap 5 + Font Awesome from CDN for the demo only) — gated on `APP_DEBUG=true`, 404s otherwise. Smoke tests: `max_nodes=10` returns 10 nodes / `truncated: true`; default cap (no param) returns 50 nodes / `truncated: true` against record 901990 (hub, 69 total relations); invalid URI returns HTTP 400; dev-widget HTML contains the widget markup. Scope note: original plan envisaged mounting the widget directly on OpenRiC entity detail pages, but OpenRiC today is headless (`routes/web.php` redirects all `/informationobject/*`, `/actor/*`, etc. to `OPENRIC_FRONTEND_URL`) — Phase 1 therefore ships the widget as a publishable include + dev-demo, and the 3d-force-graph vendoring originally planned for Phase 1 defers to Phase 2 (explorer), where a graph renderer is actually needed. The Heratio widget this was adapted from is also list-based, not force-graph — decision matches upstream precedent.

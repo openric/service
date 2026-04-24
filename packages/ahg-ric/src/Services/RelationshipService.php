@@ -402,6 +402,67 @@ SPARQL;
         return $grouped;
     }
 
+    /**
+     * Expand the neighbourhood of a node already in the graph — used by the
+     * explorer to lazy-load more nodes on click. Same shape as getGraphSummaryByUri.
+     */
+    public function expandNode(string $uri, int $maxNodes = 25): array
+    {
+        return $this->getGraphSummaryByUri($uri, null, $maxNodes);
+    }
+
+    /**
+     * Label-search across all URI-typed entities in the user-holdings dataset.
+     *
+     * Matches rico:title, skos:prefLabel, or rico:textualValue (Agent/Place
+     * name entities). Returns [{uri, label, type}], type stripped to local name.
+     */
+    public function searchByLabel(string $query, int $limit = 15): array
+    {
+        $q = trim($query);
+        if (mb_strlen($q) < 2) {
+            return [];
+        }
+
+        // SPARQL needs the filter term escaped for inclusion in a string literal.
+        $esc = str_replace(['\\', '"'], ['\\\\', '\"'], mb_strtolower($q));
+        $limit = max(1, min($limit, 50));
+
+        $sparql = <<<SPARQL
+PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?uri ?label ?type WHERE {
+  ?uri a ?type .
+  FILTER(STRSTARTS(STR(?type), "https://www.ica.org/standards/RiC/ontology#")
+     || STRSTARTS(STR(?type), "http://www.w3.org/2004/02/skos/core#"))
+  {
+    ?uri rico:title ?label .
+  } UNION {
+    ?uri skos:prefLabel ?label .
+  } UNION {
+    ?uri rico:textualValue ?label .
+  } UNION {
+    ?uri rdfs:label ?label .
+  }
+  FILTER(CONTAINS(LCASE(STR(?label)), "{$esc}"))
+} LIMIT {$limit}
+SPARQL;
+
+        $result = $this->executeSparql($sparql);
+        $out = [];
+        if ($result && isset($result['results']['bindings'])) {
+            foreach ($result['results']['bindings'] as $row) {
+                $out[] = [
+                    'uri'   => $row['uri']['value'],
+                    'label' => $row['label']['value'],
+                    'type'  => $this->extractType($row['type']['value']),
+                ];
+            }
+        }
+        return $out;
+    }
+
     protected function resolveEntityUri(int $entityId): ?string
     {
         // Check ric_sync_status for a stored RiC URI (column is ric_uri,

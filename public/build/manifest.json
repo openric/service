@@ -1,0 +1,23 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-B-3pcQVw.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-34mOoJaZ.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/explorer.js": {
+    "file": "assets/explorer-CxODe4Pt.js",
+    "name": "explorer",
+    "src": "resources/js/explorer.js",
+    "isEntry": true
+  }
+}
