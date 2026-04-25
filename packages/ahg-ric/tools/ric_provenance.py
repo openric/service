@@ -124,7 +124,7 @@ def list_activities():
     if activity_type:
         filters.append(f'?activity rico:hasActivityType "{activity_type}"')
     if record_uri:
-        filters.append(f'{{ ?activity rico:resultsOrResultedIn <{record_uri}> }} UNION {{ ?activity rico:affectsOrAffected <{record_uri}> }}')
+        filters.append(f'{{ ?activity rico:resultsIn <{record_uri}> }} UNION {{ ?activity rico:affects <{record_uri}> }}')
     if agent_uri:
         filters.append(f'?activity rico:hasOrHadParticipant <{agent_uri}>')
     
@@ -137,10 +137,10 @@ def list_activities():
     WHERE {{
         ?activity a rico:Activity .
         OPTIONAL {{ ?activity rico:hasActivityType ?activityType }}
-        OPTIONAL {{ ?activity openricx:description ?description }}
+        OPTIONAL {{ ?activity rico:description ?description }}
         OPTIONAL {{ ?activity rico:name ?description }}
         OPTIONAL {{ 
-            ?activity rico:isAssociatedWithDate ?dateNode .
+            ?activity rico:isOrWasAssociatedWithDate ?dateNode .
             OPTIONAL {{ ?dateNode rico:expressedDate ?date }}
             OPTIONAL {{ ?dateNode rico:hasBeginningDate ?dateStart }}
             OPTIONAL {{ ?dateNode rico:hasEndDate ?dateEnd }}
@@ -148,11 +148,11 @@ def list_activities():
         OPTIONAL {{
             ?activity rico:hasOrHadParticipant ?participant .
             ?participant a ?participantType .
-            OPTIONAL {{ ?participant rico:hasOrHadAgentName/rico:textualValue ?participantLabel }}
+            OPTIONAL {{ ?participant rico:hasAgentName/rico:textualValue ?participantLabel }}
             OPTIONAL {{ ?participant rico:title ?participantLabel }}
         }}
         OPTIONAL {{
-            {{ ?activity rico:resultsOrResultedIn ?record }} UNION {{ ?activity rico:affectsOrAffected ?record }}
+            {{ ?activity rico:resultsIn ?record }} UNION {{ ?activity rico:affects ?record }}
             OPTIONAL {{ ?record rico:title ?recordLabel }}
         }}
         {filter_clause}
@@ -210,7 +210,7 @@ def get_activity(uri):
     SELECT ?p ?o ?oLabel WHERE {{
         <{uri}> ?p ?o .
         OPTIONAL {{ ?o rico:title ?oLabel }}
-        OPTIONAL {{ ?o rico:hasOrHadAgentName/rico:textualValue ?oLabel }}
+        OPTIONAL {{ ?o rico:hasAgentName/rico:textualValue ?oLabel }}
         OPTIONAL {{ ?o rico:expressedDate ?oLabel }}
     }}
     """
@@ -261,12 +261,12 @@ def create_activity():
     
     if description:
         desc_escaped = description.replace('"', '\\"').replace('\n', '\\n')
-        triples.append(f'<{activity_uri}> openricx:description "{desc_escaped}"')
+        triples.append(f'<{activity_uri}> rico:description "{desc_escaped}"')
     
     # Add date information
     if date_start or date_end or date_expressed:
-        triples.append(f"<{activity_uri}> rico:isAssociatedWithDate <{date_uri}>")
-        triples.append(f"<{date_uri}> a openricx:DateRange")
+        triples.append(f"<{activity_uri}> rico:isOrWasAssociatedWithDate <{date_uri}>")
+        triples.append(f"<{date_uri}> a rico:DateRange")
         if date_expressed:
             triples.append(f'<{date_uri}> rico:expressedDate "{date_expressed}"')
         if date_start:
@@ -281,10 +281,10 @@ def create_activity():
             # Add role if specified
             if participant.get('role'):
                 role_uri = f"{activity_uri}/role/{str(uuid.uuid4())[:4]}"
-                triples.append(f"<{role_uri}> a openricx:AgentRole")
-                triples.append(f'<{role_uri}> openricx:hasRoleType "{participant["role"]}"')
-                triples.append(f"<{role_uri}> openricx:isOrWasAgentRoleOf <{participant['uri']}>")
-                triples.append(f"<{activity_uri}> openricx:hasOrHadAgentRole <{role_uri}>")
+                triples.append(f"<{role_uri}> a rico:AgentRole")
+                triples.append(f'<{role_uri}> rico:hasRoleType "{participant["role"]}"')
+                triples.append(f"<{role_uri}> rico:isOrWasAgentRoleOf <{participant['uri']}>")
+                triples.append(f"<{activity_uri}> rico:hasOrHadAgentRole <{role_uri}>")
     
     # Add affected/resulting records
     for record in records:
@@ -316,21 +316,21 @@ def get_record_timeline(record_uri):
     SELECT ?activity ?activityType ?description ?date ?dateStart ?dateEnd
            ?participant ?participantLabel
     WHERE {{
-        {{ ?activity rico:resultsOrResultedIn <{record_uri}> }}
-        UNION {{ ?activity rico:affectsOrAffected <{record_uri}> }}
+        {{ ?activity rico:resultsIn <{record_uri}> }}
+        UNION {{ ?activity rico:affects <{record_uri}> }}
         UNION {{ <{record_uri}> rico:isOrWasAffectedBy ?activity }}
         
         OPTIONAL {{ ?activity rico:hasActivityType ?activityType }}
-        OPTIONAL {{ ?activity openricx:description ?description }}
+        OPTIONAL {{ ?activity rico:description ?description }}
         OPTIONAL {{ 
-            ?activity rico:isAssociatedWithDate ?dateNode .
+            ?activity rico:isOrWasAssociatedWithDate ?dateNode .
             OPTIONAL {{ ?dateNode rico:expressedDate ?date }}
             OPTIONAL {{ ?dateNode rico:hasBeginningDate ?dateStart }}
             OPTIONAL {{ ?dateNode rico:hasEndDate ?dateEnd }}
         }}
         OPTIONAL {{
             ?activity rico:hasOrHadParticipant ?participant .
-            OPTIONAL {{ ?participant rico:hasOrHadAgentName/rico:textualValue ?participantLabel }}
+            OPTIONAL {{ ?participant rico:hasAgentName/rico:textualValue ?participantLabel }}
         }}
     }}
     ORDER BY ?dateStart ?date
@@ -370,12 +370,12 @@ def get_agent_activities(agent_uri):
     WHERE {{
         ?activity rico:hasOrHadParticipant <{agent_uri}> .
         OPTIONAL {{ ?activity rico:hasActivityType ?activityType }}
-        OPTIONAL {{ ?activity openricx:description ?description }}
+        OPTIONAL {{ ?activity rico:description ?description }}
         OPTIONAL {{ 
-            ?activity rico:isAssociatedWithDate/rico:expressedDate ?date
+            ?activity rico:isOrWasAssociatedWithDate/rico:expressedDate ?date
         }}
         OPTIONAL {{
-            {{ ?activity rico:resultsOrResultedIn ?record }} UNION {{ ?activity rico:affectsOrAffected ?record }}
+            {{ ?activity rico:resultsIn ?record }} UNION {{ ?activity rico:affects ?record }}
             ?record rico:title ?recordLabel
         }}
     }}
@@ -412,22 +412,22 @@ def get_provenance_chain(record_uri):
     query = f"""
     SELECT ?activity ?activityType ?date ?fromAgent ?fromLabel ?toAgent ?toLabel ?place ?placeLabel
     WHERE {{
-        {{ ?activity rico:resultsOrResultedIn <{record_uri}> }}
-        UNION {{ ?activity rico:affectsOrAffected <{record_uri}> }}
+        {{ ?activity rico:resultsIn <{record_uri}> }}
+        UNION {{ ?activity rico:affects <{record_uri}> }}
         
         ?activity rico:hasActivityType ?activityType .
         FILTER(?activityType IN ("Creation", "Transfer", "Accumulation", "Management"))
         
         OPTIONAL {{ 
-            ?activity rico:isAssociatedWithDate/rico:hasBeginningDate ?date
+            ?activity rico:isOrWasAssociatedWithDate/rico:hasBeginningDate ?date
         }}
         OPTIONAL {{
             ?activity rico:hasOrHadParticipant ?fromAgent .
-            ?fromAgent rico:hasOrHadAgentName/rico:textualValue ?fromLabel .
+            ?fromAgent rico:hasAgentName/rico:textualValue ?fromLabel .
         }}
         OPTIONAL {{
             ?activity rico:hasOrHadLocation ?place .
-            ?place rico:hasOrHadPlaceName/rico:textualValue ?placeLabel .
+            ?place rico:hasPlaceName/rico:textualValue ?placeLabel .
         }}
     }}
     ORDER BY ?date

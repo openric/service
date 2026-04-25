@@ -80,8 +80,8 @@ def list_entities():
         {tf} 
         ?e a ?type . 
         OPTIONAL {{ ?e rico:title ?label }} 
-        OPTIONAL {{ ?e rico:hasOrHadAgentName/rico:textualValue ?label }}
-        OPTIONAL {{ ?e rico:hasOrHadPlaceName/rico:textualValue ?label }}
+        OPTIONAL {{ ?e rico:hasAgentName/rico:textualValue ?label }}
+        OPTIONAL {{ ?e rico:hasPlaceName/rico:textualValue ?label }}
         OPTIONAL {{ ?e rico:name ?label }}
         OPTIONAL {{ ?e rico:identifier ?id }} 
     }} LIMIT 500"""
@@ -117,15 +117,15 @@ def get_entity(uri):
         OPTIONAL {{ <{uri}> rico:identifier ?identifier }}
         OPTIONAL {{ <{uri}> rico:scopeAndContent ?scopeAndContent }}
         OPTIONAL {{ <{uri}> rico:history ?history }}
-        OPTIONAL {{ <{uri}> openricx:arrangement ?arrangement }}
-        OPTIONAL {{ <{uri}> rico:hasOrHadAgentName/rico:textualValue ?agentName }}
-        OPTIONAL {{ <{uri}> rico:hasOrHadPlaceName/rico:textualValue ?placeName }}
+        OPTIONAL {{ <{uri}> rico:arrangement ?arrangement }}
+        OPTIONAL {{ <{uri}> rico:hasAgentName/rico:textualValue ?agentName }}
+        OPTIONAL {{ <{uri}> rico:hasPlaceName/rico:textualValue ?placeName }}
         OPTIONAL {{ <{uri}> rico:name ?name }}
-        OPTIONAL {{ <{uri}> openricx:description ?description }}
+        OPTIONAL {{ <{uri}> rico:description ?description }}
         OPTIONAL {{ <{uri}> rico:hasActivityType ?activityType }}
         OPTIONAL {{ <{uri}> rico:hasBeginningDate ?beginDate }}
         OPTIONAL {{ <{uri}> rico:hasEndDate ?endDate }}
-        OPTIONAL {{ <{uri}> openricx:coordinates ?coordinates }}
+        OPTIONAL {{ <{uri}> rico:coordinates ?coordinates }}
     }}
     LIMIT 1
     """
@@ -161,7 +161,7 @@ def get_entity(uri):
         FILTER(STRSTARTS(STR(?targetType), 'https://www.ica.org/standards/RiC/ontology#'))
         FILTER(?p != rdf:type)
         OPTIONAL {{ ?target rico:title ?targetLabel }}
-        OPTIONAL {{ ?target rico:hasOrHadAgentName/rico:textualValue ?targetLabel }}
+        OPTIONAL {{ ?target rico:hasAgentName/rico:textualValue ?targetLabel }}
     }}
     """
     rel_result = sparql_query(rel_query)
@@ -195,12 +195,12 @@ def create_entity():
                 # Handle name based on entity type
                 if t in ['Person', 'Family', 'CorporateBody']:
                     nu = f"{uri}/name"
-                    triples.append(f'<{uri}> rico:hasOrHadAgentName <{nu}>')
+                    triples.append(f'<{uri}> rico:hasAgentName <{nu}>')
                     triples.append(f'<{nu}> a rico:AgentName')
                     triples.append(f'<{nu}> rico:textualValue "{v_escaped}"')
                 elif t == 'Place':
                     nu = f"{uri}/name"
-                    triples.append(f'<{uri}> rico:hasOrHadPlaceName <{nu}>')
+                    triples.append(f'<{uri}> rico:hasPlaceName <{nu}>')
                     triples.append(f'<{nu}> a rico:PlaceName')
                     triples.append(f'<{nu}> rico:textualValue "{v_escaped}"')
                 else:
@@ -233,12 +233,12 @@ def update_entity():
     sparql_update(f"DELETE WHERE {{ <{uri}> rico:identifier ?o }}")
     sparql_update(f"DELETE WHERE {{ <{uri}> rico:scopeAndContent ?o }}")
     sparql_update(f"DELETE WHERE {{ <{uri}> rico:history ?o }}")
-    sparql_update(f"DELETE WHERE {{ <{uri}> openricx:arrangement ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:arrangement ?o }}")
     sparql_update(f"DELETE WHERE {{ <{uri}> rico:name ?o }}")
-    sparql_update(f"DELETE WHERE {{ <{uri}> openricx:description ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:description ?o }}")
     sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasActivityType ?o }}")
-    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasOrHadAgentName ?n . ?n ?p ?o }}")
-    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasOrHadPlaceName ?n . ?n ?p ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasAgentName ?n . ?n ?p ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasPlaceName ?n . ?n ?p ?o }}")
     
     # Insert new values
     triples = []
@@ -248,12 +248,12 @@ def update_entity():
             if p == 'name':
                 if etype in ['Person', 'Family', 'CorporateBody']:
                     nu = f"{uri}/name/{str(uuid.uuid4())[:4]}"
-                    triples.append(f'<{uri}> rico:hasOrHadAgentName <{nu}>')
+                    triples.append(f'<{uri}> rico:hasAgentName <{nu}>')
                     triples.append(f'<{nu}> a rico:AgentName')
                     triples.append(f'<{nu}> rico:textualValue "{v_escaped}"')
                 elif etype == 'Place':
                     nu = f"{uri}/name/{str(uuid.uuid4())[:4]}"
-                    triples.append(f'<{uri}> rico:hasOrHadPlaceName <{nu}>')
+                    triples.append(f'<{uri}> rico:hasPlaceName <{nu}>')
                     triples.append(f'<{nu}> a rico:PlaceName')
                     triples.append(f'<{nu}> rico:textualValue "{v_escaped}"')
                 else:
@@ -276,8 +276,8 @@ def delete_entity():
         return jsonify({'error': 'URI required'}), 400
     
     # Delete name nodes first
-    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasOrHadAgentName ?n . ?n ?p ?o }}")
-    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasOrHadPlaceName ?n . ?n ?p ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasAgentName ?n . ?n ?p ?o }}")
+    sparql_update(f"DELETE WHERE {{ <{uri}> rico:hasPlaceName ?n . ?n ?p ?o }}")
     # Delete the entity
     sparql_update(f"DELETE WHERE {{ <{uri}> ?p ?o }}")
     sparql_update(f"DELETE WHERE {{ ?s ?p <{uri}> }}")
@@ -291,8 +291,8 @@ def search():
     query = f"""SELECT DISTINCT ?e ?type ?label WHERE {{
         ?e a ?type .
         {{ ?e rico:title ?label }} 
-        UNION {{ ?e rico:hasOrHadAgentName/rico:textualValue ?label }}
-        UNION {{ ?e rico:hasOrHadPlaceName/rico:textualValue ?label }}
+        UNION {{ ?e rico:hasAgentName/rico:textualValue ?label }}
+        UNION {{ ?e rico:hasPlaceName/rico:textualValue ?label }}
         UNION {{ ?e rico:name ?label }}
         FILTER(CONTAINS(LCASE(?label), LCASE("{q}")))
         FILTER(STRSTARTS(STR(?type), 'https://www.ica.org/standards/RiC/ontology#'))

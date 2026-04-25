@@ -37,7 +37,7 @@
                 <option value="{{ $p->id }}" {{ (string)($entity->place_id ?? '') === (string)$p->id ? 'selected' : '' }}>{{ $p->name ?: '(unnamed)' }}</option>
             @endforeach
         </select>
-        <div class="form-text">Where the activity took place. Creates a <code>rico:isAssociatedWithPlace</code> link in the graph.</div>
+        <div class="form-text">Where the activity took place. Creates a <code>rico:tookPlaceAt</code> link in the graph.</div>
     </div>
     <div class="mb-3"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="4">{{ $entity->description ?? '' }}</textarea></div>
     <div class="d-flex gap-2">

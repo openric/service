@@ -43,12 +43,12 @@ class RicSeedData extends Seeder
             '@type' => 'rico:Person',
             'rico:identifier' => 'PER-001',
             'rico:name' => 'Jane Smith',
-            'openricx:agentType' => 'Person',
-            'openricx:hasDate' => [
-                '@type' => 'openricx:DateRange',
+            'rico:agentType' => 'Person',
+            'rico:hasDate' => [
+                '@type' => 'rico:DateRange',
                 'rico:normalizedDateValue' => '1850-1920',
             ],
-            'openricx:hasFunction' => [
+            'rico:hasFunction' => [
                 '@id' => 'http://example.org/function/func-001',
             ],
         ];
@@ -67,11 +67,11 @@ class RicSeedData extends Seeder
             '@type' => 'rico:CorporateBody',
             'rico:identifier' => 'ORG-001',
             'rico:name' => 'South African National Archives',
-            'openricx:agentType' => 'Corporate Body',
-            'rico:hasOrHadLocation' => 'Pretoria, South Africa',
-            'rico:authorizingMandate' => [
+            'rico:agentType' => 'Corporate Body',
+            'rico:hasLocation' => 'Pretoria, South Africa',
+            'rico:hasMandate' => [
                 '@type' => 'rico:Mandate',
-                'openricx:text' => 'National Archives Act No. 43 of 1992',
+                'rico:text' => 'National Archives Act No. 43 of 1992',
             ],
         ];
     }
@@ -90,21 +90,19 @@ class RicSeedData extends Seeder
             'rico:identifier' => 'FONDS-001',
             'rico:title' => 'Government Archives: Department of Education',
             'rico:hasRecordSetType' => 'fonds',
-            'openricx:hasDate' => [
-                '@type' => 'openricx:DateRange',
+            'rico:hasDate' => [
+                '@type' => 'rico:DateRange',
                 'rico:normalizedDateValue' => '1910-1994',
             ],
-            'rico:hasOrHadLanguage' => [
+            'rico:hasLanguage' => [
                 ['rico:name' => 'English'],
                 ['rico:name' => 'Afrikaans'],
             ],
-            'openricx:hasAccumulation' => 'Approximately 500 linear meters of records',
-            'openricx:hasRecordResourceRelation' => [
-                '@type' => 'openricx:RecordResourceRelation',
-                'openricx:relationType' => 'creator',
-                // Per spec v0.37.0: rico:agent is not a RiC-O 1.1 property.
-                // Use a typed Agent linking property; for creator role, rico:hasCreator is canonical.
-                'rico:hasCreator' => ['@id' => 'http://example.org/agent/org-001'],
+            'rico:hasAccumulation' => 'Approximately 500 linear meters of records',
+            'rico:hasRecordResourceRelation' => [
+                '@type' => 'rico:RecordResourceRelation',
+                'rico:relationType' => 'creator',
+                'rico:agent' => ['@id' => 'http://example.org/agent/org-001'],
             ],
         ];
     }
@@ -122,17 +120,17 @@ class RicSeedData extends Seeder
             '@type' => 'rico:Record',
             'rico:identifier' => 'ED-001-001',
             'rico:title' => 'Annual Report of the Department of Education, 1920',
-            'openricx:hasRecordType' => 'document',
-            'openricx:hasDate' => [
-                '@type' => 'rico:Date',
+            'rico:hasRecordType' => 'document',
+            'rico:hasDate' => [
+                '@type' => 'rico:SingleDate',
                 'rico:normalizedDateValue' => '1920',
             ],
-            'rico:hasOrHadInstantiation' => [
+            'rico:hasInstantiation' => [
                 [
                     '@type' => 'rico:Instantiation',
-                    'openricx:hasInstantiationType' => 'digital',
+                    'rico:hasInstantiationType' => 'digital',
                     'rico:identifier' => 'DIG-001',
-                    'openricx:hasMimeType' => 'application/pdf',
+                    'rico:hasMimeType' => 'application/pdf',
                 ],
             ],
         ];
@@ -148,15 +146,15 @@ class RicSeedData extends Seeder
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
             ],
             '@id' => 'http://example.org/function/func-001',
-            '@type' => 'openricx:Function',
+            '@type' => 'rico:Function',
             'rico:identifier' => 'FUNC-001',
             'rico:name' => 'Education Policy Development',
-            'openricx:hasFunctionType' => 'policy',
-            'openricx:hasDate' => [
-                '@type' => 'openricx:DateRange',
+            'rico:hasFunctionType' => 'policy',
+            'rico:hasDate' => [
+                '@type' => 'rico:DateRange',
                 'rico:normalizedDateValue' => '1910-1994',
             ],
-            'rico:performsOrPerformed' => [
+            'rico:performs' => [
                 '@id' => 'http://example.org/agent/org-001',
             ],
         ];
@@ -172,18 +170,18 @@ class RicSeedData extends Seeder
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
             ],
             '@id' => 'http://example.org/repository/repo-001',
-            '@type' => 'openricx:Repository',
+            '@type' => 'rico:Repository',
             'rico:identifier' => 'REPO-001',
             'rico:name' => 'National Archives of South Africa',
-            'rico:hasOrHadLocation' => [
+            'rico:hasLocation' => [
                 '@type' => 'rico:Place',
                 'rico:name' => 'Private Bag X236, Pretoria, 0001',
             ],
-            'openricx:contact' => [
-                'openricx:email' => 'archives@national.gov.za',
-                'openricx:telephone' => '+27 12 441 3200',
+            'rico:hasContactPoint' => [
+                'rico:email' => 'archives@national.gov.za',
+                'rico:telephone' => '+27 12 441 3200',
             ],
-            'rico:isOrWasRegulatedBy' => 'Open to public with restrictions',
+            'rico:hasAccessPolicy' => 'Open to public with restrictions',
         ];
     }
 

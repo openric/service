@@ -279,7 +279,7 @@
           "@type": {"type": "string"},
           "rico:identifier": {"type": "string"},
           "rico:name": {"type": "string"},
-          "openricx:agentType": {"type": "string"}
+          "rico:agentType": {"type": "string"}
         }
       },
       "Record": {
@@ -289,7 +289,7 @@
           "@type": {"type": "string"},
           "rico:identifier": {"type": "string"},
           "rico:title": {"type": "string"},
-          "rico:hasOrHadInstantiation": {"type": "array"}
+          "rico:hasInstantiation": {"type": "array"}
         }
       },
       "Function": {

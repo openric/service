@@ -132,14 +132,14 @@ Base URL: `/api/ric/v1`
 - `rico:Person` - Person
 - `rico:CorporateBody` - Corporate body
 - `rico:Family` - Family
-- `openricx:Function` - Function
+- `rico:Function` - Function
 - `rico:Record` - Record (item)
 - `rico:RecordSet` - Record set (fonds, series, etc.)
 - `rico:RecordPart` - Record part
 - `rico:Instantiation` - Digital object
 - `rico:Place` - Place
 - `rico:Activity` - Activity/Event
-- `openricx:DateRange` - Date range
+- `rico:DateRange` - Date range
 - `rico:Language` - Language
 - `rico:Mandate` - Mandate
 

@@ -443,8 +443,8 @@ class RicEntityService
             // Create RiC relation metadata
             DB::table('ric_relation_meta')->insert([
                 'relation_id' => $id,
-                'rico_predicate' => $metadata['predicate'] ?? 'openricx:isAssociatedWith',
-                'inverse_predicate' => $metadata['inverse'] ?? 'openricx:isAssociatedWith',
+                'rico_predicate' => $metadata['predicate'] ?? 'rico:isAssociatedWith',
+                'inverse_predicate' => $metadata['inverse'] ?? 'rico:isAssociatedWith',
                 'domain_class' => $metadata['domain'] ?? null,
                 'range_class' => $metadata['range'] ?? null,
                 'dropdown_code' => $relTypeCode,
@@ -468,8 +468,8 @@ class RicEntityService
 
                 DB::table('ric_relation_meta')->insert([
                     'relation_id' => $invId,
-                    'rico_predicate' => $metadata['inverse'] ?? $metadata['predicate'] ?? 'openricx:isAssociatedWith',
-                    'inverse_predicate' => $metadata['predicate'] ?? 'openricx:isAssociatedWith',
+                    'rico_predicate' => $metadata['inverse'] ?? $metadata['predicate'] ?? 'rico:isAssociatedWith',
+                    'inverse_predicate' => $metadata['predicate'] ?? 'rico:isAssociatedWith',
                     'domain_class' => $metadata['range'] ?? null,
                     'range_class' => $metadata['domain'] ?? null,
                     'dropdown_code' => $relTypeCode,
@@ -525,7 +525,7 @@ class RicEntityService
                 if ($relType) {
                     $metadata = $relType->metadata ? json_decode($relType->metadata, true) : [];
                     $metaFields['dropdown_code'] = $data['relation_type'];
-                    $metaFields['rico_predicate'] = $metadata['predicate'] ?? 'openricx:isAssociatedWith';
+                    $metaFields['rico_predicate'] = $metadata['predicate'] ?? 'rico:isAssociatedWith';
                     $metaFields['inverse_predicate'] = $metadata['inverse'] ?? $metaFields['rico_predicate'];
                     $metaFields['domain_class'] = $metadata['domain'] ?? null;
                     $metaFields['range_class'] = $metadata['range'] ?? null;
@@ -1292,7 +1292,7 @@ class RicEntityService
     }
 
     // ================================================================
-    // FUNCTION (ISDF) — openricx:Function
+    // FUNCTION (ISDF) — rico:Function
     // ================================================================
 
     public function createFunction(array $data): int

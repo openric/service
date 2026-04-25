@@ -314,11 +314,9 @@ XML;
         try {
             $ric = $this->serializer->serializeRecord((int) $row->id);
             $json = json_encode($ric, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            // Wrap in CDATA to escape JSON cleanly. The element name is in the
-            // OpenRiC extension namespace (rico:jsonld is not a real RiC-O term).
-            return "        <rico:Record xmlns:rico=\"https://www.ica.org/standards/RiC/ontology#\""
-                 . " xmlns:openricx=\"https://openric.org/ns/ext/v1#\">\n"
-                 . "          <openricx:jsonld><![CDATA[{$json}]]></openricx:jsonld>\n"
+            // Wrap in CDATA to escape JSON cleanly
+            return "        <rico:Record xmlns:rico=\"https://www.ica.org/standards/RiC/ontology#\">\n"
+                 . "          <rico:jsonld><![CDATA[{$json}]]></rico:jsonld>\n"
                  . "        </rico:Record>";
         } catch (\Throwable $e) {
             return "        <!-- rico_ld serialization failed: " . htmlspecialchars($e->getMessage(), ENT_XML1) . " -->";

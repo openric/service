@@ -174,7 +174,7 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         Route::match(['patch', 'put'], '/repositories/{id}', [LinkedDataApiController::class, 'updateRepository'])->where('id', '[0-9]+');
         Route::delete('/repositories/{id}', [LinkedDataApiController::class, 'deleteRepository'])->where('id', '[0-9]+');
 
-        // Functions (ISDF — openricx:Function)
+        // Functions (ISDF — rico:Function)
         Route::post('/functions', [LinkedDataApiController::class, 'createFunction']);
         Route::match(['patch', 'put'], '/functions/{id}', [LinkedDataApiController::class, 'updateFunction'])->where('id', '[0-9]+');
         Route::delete('/functions/{id}', [LinkedDataApiController::class, 'deleteFunctionEntity'])->where('id', '[0-9]+');
@@ -208,19 +208,15 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // one thing and see another. Keep `profiles[]` in lockstep with
     // the endpoint surface the server actually serves.
     // ------------------------------------------------------------------
-    // Tracking openric-spec v0.37.1 (RiC-O 1.1 namespace remediation complete;
-    // 7 profiles normative + 1 draft sparql-access profile defined).
-    // The reference server claims 6 of the 7 normative profiles. Provenance &
-    // Event is deliberately NOT listed — the serializer emits the required
-    // shape (service v0.8.13+) but the backing data has ~177 Production rows
-    // missing resultsOrResultedIn / hasOrHadParticipant relations. A claim here
-    // would be dishonest until the data-backfill task lands.
-    // sparql-access (Draft) is also NOT listed by default — implementations
-    // wanting to advertise SPARQL MAY add it after mounting /api/ric/v1/sparql
-    // per spec/profiles/sparql-access.md.
-    // See docs/drift-log.md and openric-spec audit/ric-o-1.1-audit.md.
+    // Tracking openric-spec v0.36.0 (profile matrix complete; 7 profiles declared).
+    // The reference server claims 6 of the 7. Provenance & Event is deliberately
+    // NOT listed — the serializer emits the required shape (service v0.8.13) but
+    // the backing data has ~218 Production rows missing resultsOrResultedIn /
+    // hasOrHadParticipant relations. A claim here would be dishonest until the
+    // data-backfill task lands. See docs/drift-log.md (2026-04-21 entry for
+    // v0.8.13) and openric-spec/spec/profiles/provenance-event.md §9 Q5.
     $openricConformance = [
-        'spec_version' => '0.37.1',
+        'spec_version' => '0.36.0',
         'profiles' => [
             ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
             ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],

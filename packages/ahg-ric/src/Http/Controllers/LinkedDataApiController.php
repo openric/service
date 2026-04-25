@@ -91,7 +91,7 @@ class LinkedDataApiController extends Controller
 
         return response()->json([
             '@context' => 'https://www.ica.org/standards/RiC/ontology',
-            '@type' => 'openricx:AgentList',
+            '@type' => 'rico:AgentList',
             'ric:total' => $total,
             'ric:page' => $page,
             'ric:limit' => $limit,
@@ -175,7 +175,7 @@ class LinkedDataApiController extends Controller
 
         return response()->json([
             '@context' => 'https://www.ica.org/standards/RiC/ontology',
-            '@type' => 'openricx:RecordList',
+            '@type' => 'rico:RecordList',
             'ric:total' => $total,
             'ric:page' => $page,
             'ric:items' => $items,
@@ -278,13 +278,13 @@ class LinkedDataApiController extends Controller
 
         $items = array_map(fn($f) => [
             '@id' => url('/function/' . $f->id),
-            '@type' => 'openricx:Function',
+            '@type' => 'rico:Function',
             'rico:name' => $f->name,
         ], $functions->toArray());
 
         return response()->json([
             '@context' => 'https://www.ica.org/standards/RiC/ontology',
-            '@type' => 'openricx:FunctionList',
+            '@type' => 'rico:FunctionList',
             'ric:items' => $items,
         ]);
     }
@@ -331,7 +331,7 @@ class LinkedDataApiController extends Controller
 
         return response()->json([
             '@context' => 'https://www.ica.org/standards/RiC/ontology',
-            '@type' => 'openricx:RepositoryList',
+            '@type' => 'rico:RepositoryList',
             'ric:items' => $items,
         ]);
     }
@@ -399,7 +399,7 @@ class LinkedDataApiController extends Controller
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
             ],
-            '@type' => 'openricx:PlaceList',
+            '@type' => 'rico:PlaceList',
             'openric:total' => $total,
             'openric:page' => $page,
             'openric:limit' => $limit,
@@ -459,7 +459,7 @@ class LinkedDataApiController extends Controller
             '@id' => url('/rule/' . $r->id),
             '@type' => 'rico:Rule',
             'rico:title' => $r->title,
-            'rico:hasOrHadRuleType' => $r->type_id,
+            'rico:ruleType' => $r->type_id,
             'openric:jurisdiction' => $r->jurisdiction,
         ], $items->toArray());
 
@@ -468,7 +468,7 @@ class LinkedDataApiController extends Controller
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
             ],
-            '@type' => 'openricx:RuleList',
+            '@type' => 'rico:RuleList',
             'openric:total' => $total,
             'openric:page' => $page,
             'openric:limit' => $limit,
@@ -540,7 +540,7 @@ class LinkedDataApiController extends Controller
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
             ],
-            '@type' => 'openricx:ActivityList',
+            '@type' => 'rico:ActivityList',
             'openric:total' => $total,
             'openric:page' => $page,
             'openric:limit' => $limit,
@@ -604,7 +604,7 @@ class LinkedDataApiController extends Controller
             '@id' => url('/instantiation/' . $i->id),
             '@type' => 'rico:Instantiation',
             'rico:identifier' => $i->title,
-            'openricx:hasMimeType' => $i->mime_type,
+            'rico:hasMimeType' => $i->mime_type,
             'rico:hasCarrierType' => $i->carrier_type,
         ], $items->toArray());
 
@@ -613,7 +613,7 @@ class LinkedDataApiController extends Controller
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
             ],
-            '@type' => 'openricx:InstantiationList',
+            '@type' => 'rico:InstantiationList',
             'openric:total' => $total,
             'openric:page' => $page,
             'openric:limit' => $limit,
@@ -874,7 +874,7 @@ class LinkedDataApiController extends Controller
                 ['@id' => 'rico:Person', 'rdfs:label' => 'Person'],
                 ['@id' => 'rico:CorporateBody', 'rdfs:label' => 'Corporate Body'],
                 ['@id' => 'rico:Family', 'rdfs:label' => 'Family'],
-                ['@id' => 'openricx:Function', 'rdfs:label' => 'Function'],
+                ['@id' => 'rico:Function', 'rdfs:label' => 'Function'],
                 ['@id' => 'rico:Record', 'rdfs:label' => 'Record'],
                 ['@id' => 'rico:RecordSet', 'rdfs:label' => 'Record Set'],
                 ['@id' => 'rico:RecordPart', 'rdfs:label' => 'Record Part'],
@@ -885,11 +885,11 @@ class LinkedDataApiController extends Controller
             'properties' => [
                 ['@id' => 'rico:name', 'rdfs:label' => 'Name'],
                 ['@id' => 'rico:identifier', 'rdfs:label' => 'Identifier'],
-                ['@id' => 'openricx:hasDateRangeSet', 'rdfs:label' => 'Has Date Range Set'],
+                ['@id' => 'rico:hasDateRangeSet', 'rdfs:label' => 'Has Date Range Set'],
                 ['@id' => 'rico:hasCreator', 'rdfs:label' => 'Has Creator'],
-                ['@id' => 'rico:hasOrHadHolder', 'rdfs:label' => 'Held By'],
-                ['@id' => 'rico:hasOrHadInstantiation', 'rdfs:label' => 'Has Instantiation'],
-                ['@id' => 'rico:hasOrHadSubject', 'rdfs:label' => 'Has Subject'],
+                ['@id' => 'rico:heldBy', 'rdfs:label' => 'Held By'],
+                ['@id' => 'rico:hasInstantiation', 'rdfs:label' => 'Has Instantiation'],
+                ['@id' => 'rico:hasSubject', 'rdfs:label' => 'Has Subject'],
             ],
         ];
 
@@ -943,7 +943,7 @@ class LinkedDataApiController extends Controller
                     => 'rico:hasCreator',
                 str_contains(strtolower($ev->event_type ?? ''), 'accumulat')
                     => 'rico:hasAccumulator',
-                default => 'openricx:isAssociatedWith',
+                default => 'rico:isAssociatedWith',
             };
             $edges[] = [
                 'source' => $rootUri, 'target' => $recUri,
@@ -971,7 +971,7 @@ class LinkedDataApiController extends Controller
             }
             $edges[] = [
                 'source' => $rootUri, 'target' => $recUri,
-                'predicate' => $rel->rico_predicate ?: 'openricx:isAssociatedWith',
+                'predicate' => $rel->rico_predicate ?: 'rico:isAssociatedWith',
                 'label' => 'associated with',
             ];
         }
@@ -1012,7 +1012,7 @@ class LinkedDataApiController extends Controller
             }
             $edges[] = [
                 'source' => $rootUri, 'target' => $recUri,
-                'predicate' => 'rico:isOrWasHolderOf', 'label' => 'has holding',
+                'predicate' => 'rico:hasHolding', 'label' => 'has holding',
             ];
         }
 
@@ -1178,7 +1178,7 @@ class LinkedDataApiController extends Controller
             ];
             $edges[] = [
                 'source' => $recUri, 'target' => $rootUri,
-                'predicate' => 'rico:hasOrHadInstantiation', 'label' => 'has instantiation',
+                'predicate' => 'rico:hasInstantiation', 'label' => 'has instantiation',
             ];
         }
         return ['nodes' => $nodes, 'edges' => $edges];
@@ -1227,7 +1227,7 @@ class LinkedDataApiController extends Controller
                 ];
                 $edges[] = [
                     'source' => $rootUri, 'target' => $parentUri,
-                    'predicate' => 'skos:broader', 'label' => 'broader',
+                    'predicate' => 'rico:hasBroaderConcept', 'label' => 'broader',
                 ];
             }
         }
@@ -1252,7 +1252,7 @@ class LinkedDataApiController extends Controller
             ];
             $edges[] = [
                 'source' => $recUri, 'target' => $rootUri,
-                'predicate' => 'rico:hasOrHadSubject', 'label' => 'has subject',
+                'predicate' => 'rico:hasSubject', 'label' => 'has subject',
             ];
         }
 
@@ -1300,8 +1300,8 @@ class LinkedDataApiController extends Controller
             str_contains($typeLc, 'death')         => 'rico:hasDeathDate',
             str_contains($typeLc, 'creation')      => 'rico:hasCreationDate',
             str_contains($typeLc, 'accumulation')  => 'rico:hasAccumulationDate',
-            str_contains($typeLc, 'existence')     => 'openricx:hasDateOfExistence',
-            default                                => 'openricx:hasDate',
+            str_contains($typeLc, 'existence')     => 'rico:hasDateOfExistence',
+            default                                => 'rico:hasDate',
         };
         $edgeLabel = strtolower(preg_replace('/([A-Z])/', ' $1', substr($predicate, 5)));
 

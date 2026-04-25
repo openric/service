@@ -62,7 +62,7 @@ Cited from actual files read 2026-04-24 — not abstract.
 | 652 | `rico:Record` |
 | 371 | `rico:AgentName` |
 | 235 | `rico:Person` |
-| 184 | `openricx:DateRange` |
+| 184 | `rico:DateRange` |
 | 180 | `rico:Place` |
 | 180 | `rico:PlaceName` |
 | 164 | `skos:Concept` |
@@ -75,8 +75,8 @@ Cited from actual files read 2026-04-24 — not abstract.
 | Count | Predicate |
 |---:|---|
 | 545 | `rico:isOrWasIncludedIn` (record→record-set tree) |
-| 371 | `rico:hasOrHadAgentName` |
-| 289 | `openricx:hasOrHadPlaceOfOrigin` |
+| 371 | `rico:hasAgentName` |
+| 289 | `rico:hasOrHadPlaceOfOrigin` |
 | 131 | `rico:hasOrHadSubject` |
 | 30 | `rico:hasOrHadCreator` |
 | 30 | `rico:history` |
