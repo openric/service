@@ -96,7 +96,7 @@ SELECT ?agent ?name ?type ?dates WHERE {
     ?agent a ?type .
     FILTER(?type IN (rico:Person, rico:CorporateBody, rico:Family))
     
-    ?agent rico:hasAgentName/rico:textualValue ?name .
+    ?agent rico:hasOrHadAgentName/rico:textualValue ?name .
     
     OPTIONAL { ?agent rico:hasBeginningDate ?dates }
     
@@ -369,7 +369,7 @@ INSERT DATA {{
 PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
 
 SELECT ?agent ?name ?type WHERE {{
-    ?agent rico:hasAgentName/rico:textualValue ?name .
+    ?agent rico:hasOrHadAgentName/rico:textualValue ?name .
     ?agent a ?type .
     FILTER(CONTAINS(STR(?agent), "/{agent_uri}"))
     FILTER(?type IN (rico:Person, rico:CorporateBody, rico:Family))

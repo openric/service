@@ -1437,12 +1437,19 @@ SPARQL;
             }
         }
 
-        // Query FindingAid and AuthorityRecord entities
+        // Query FindingAid and AuthorityRecord entities.
+        // Per Florence Clavaud (RiC user group #1) and OpenRiC mapping spec v0.37.0 §3.4.5,
+        // FindingAid and AuthorityRecord are NamedIndividuals of rico:DocumentaryFormType,
+        // published in RiC-O 1.1 under the documentaryFormTypes vocabulary IRI
+        // (https://www.ica.org/standards/RiC/vocabularies/documentaryFormTypes#),
+        // NOT under the rico: ontology namespace. Records of these types are
+        // identified via rico:hasDocumentaryFormType.
         $docTypeQuery = <<<'SPARQL'
 PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+PREFIX dft:  <https://www.ica.org/standards/RiC/vocabularies/documentaryFormTypes#>
 SELECT ?s ?label ?type ?described WHERE {
-  { ?s a rico:FindingAid . BIND("FindingAid" AS ?type) }
-  UNION { ?s a rico:AuthorityRecord . BIND("AuthorityRecord" AS ?type) }
+  { ?s rico:hasDocumentaryFormType dft:FindingAid . BIND("FindingAid" AS ?type) }
+  UNION { ?s rico:hasDocumentaryFormType dft:AuthorityRecord . BIND("AuthorityRecord" AS ?type) }
   OPTIONAL { ?s rico:title ?label }
   OPTIONAL { ?s rico:describesOrDescribed ?described }
 } LIMIT 50
@@ -1825,7 +1832,7 @@ SPARQL;
                         => 'rico:hasCreator',
                     str_contains($evTypeLower, 'accumulat'), str_contains($evTypeLower, 'collect')
                         => 'rico:hasAccumulator',
-                    default => 'rico:isAssociatedWith',
+                    default => 'openricx:isAssociatedWith',
                 };
                 $edges[] = [
                     'source' => $actorUri,
@@ -1974,7 +1981,7 @@ SPARQL;
 
         // RiC-O: relation-table links (only actors, IOs, repositories, terms).
         // Canonical RiC-O predicate sourced from ric_relation_meta when present;
-        // falls back to a generic rico:isAssociatedWith when not.
+        // falls back to a generic openricx:isAssociatedWith when not.
         $relations = DB::table('relation as r')
             ->join('object as o_other', function ($j) use ($recordId) {
                 $j->on(DB::raw("CASE WHEN r.subject_id = {$recordId} THEN r.object_id ELSE r.subject_id END"), '=', 'o_other.id');
@@ -2035,8 +2042,8 @@ SPARQL;
             // Direction: from the record's perspective, if we are the subject of
             // the relation the predicate applies as-is; otherwise use the inverse.
             $predicate = $isSubject
-                ? ($rel->rico_predicate ?: 'rico:isAssociatedWith')
-                : ($rel->inverse_predicate ?: $rel->rico_predicate ?: 'rico:isAssociatedWith');
+                ? ($rel->rico_predicate ?: 'openricx:isAssociatedWith')
+                : ($rel->inverse_predicate ?: $rel->rico_predicate ?: 'openricx:isAssociatedWith');
 
             $edges[] = [
                 'source' => $recordUri,
@@ -2121,7 +2128,7 @@ SPARQL;
             $edges[] = [
                 'source' => $recordUri,
                 'target' => $instUri,
-                'predicate' => 'rico:hasInstantiation',
+                'predicate' => 'rico:hasOrHadInstantiation',
                 'label' => 'has instantiation',
             ];
         }
@@ -2156,7 +2163,7 @@ SPARQL;
                 $nodeIndex[$otherUri] = true;
                 $nodes[] = ['id' => $otherUri, 'label' => $otherName, 'type' => $otherType];
             }
-            $predicate = $rr->rico_predicate ?: 'rico:isAssociatedWith';
+            $predicate = $rr->rico_predicate ?: 'openricx:isAssociatedWith';
             $label = $this->humanisePredicate($predicate);
             if ($rr->subject_id == $recordId) {
                 $edges[] = [
@@ -2643,11 +2650,11 @@ SPARQL;
             'hasCreationDate'     => ['@id' => 'rico:hasCreationDate', '@type' => '@id'],
             'hasAccumulationDate' => ['@id' => 'rico:hasAccumulationDate', '@type' => '@id'],
             'describesOrDescribed'=> ['@id' => 'rico:describesOrDescribed', '@type' => '@id'],
-            'isAssociatedWith'    => ['@id' => 'rico:isAssociatedWith', '@type' => '@id'],
-            'hasProvenanceOf'     => ['@id' => 'rico:hasProvenanceOf', '@type' => '@id'],
+            'isAssociatedWith'    => ['@id' => 'openricx:isAssociatedWith', '@type' => '@id'],
+            'hasProvenanceOf'     => ['@id' => 'rico:isOrganicProvenanceOf', '@type' => '@id'],
             'isEquivalentTo'      => ['@id' => 'rico:isEquivalentTo', '@type' => '@id'],
             'resultsOrResultedFrom' => ['@id' => 'rico:resultsOrResultedFrom', '@type' => '@id'],
-            'isPartOf'            => ['@id' => 'rico:isPartOf', '@type' => '@id'],
+            'isPartOf'            => ['@id' => 'rico:isOrWasPartOf', '@type' => '@id'],
             'hasOrHadSubject'     => ['@id' => 'rico:hasOrHadSubject', '@type' => '@id'],
         ];
 

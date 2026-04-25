@@ -258,11 +258,11 @@ class RiCExtractor:
                 'rico:identifier': row['identifier'],
                 'rico:title': row['title'],
                 'rico:scopeAndContent': row['scope_and_content'],
-                'rico:arrangement': row['arrangement'],
-                'rico:extentAndMedium': row['extent_and_medium'],
+                'openricx:arrangement': row['arrangement'],
+                'openricx:extentAndMedium': row['extent_and_medium'],
                 'rico:history': row['archival_history'],
                 'rico:conditionsOfAccess': row['physical_characteristics'],
-                'rico:findingAids': row['finding_aids'],
+                'openricx:findingAids': row['finding_aids'],
                 '_parent_id': row['parent_id'],
                 '_repository_id': row['repository_id'],
                 '_db_id': row['id'],
@@ -273,9 +273,9 @@ class RiCExtractor:
             }
             
             if row['location_of_originals']:
-                record['rico:locationOfOriginals'] = row['location_of_originals']
+                record['openricx:locationOfOriginals'] = row['location_of_originals']
             if row['location_of_copies']:
-                record['rico:locationOfCopies'] = row['location_of_copies']
+                record['openricx:locationOfCopies'] = row['location_of_copies']
                 
             self.records[row['id']] = record
             
@@ -314,7 +314,7 @@ class RiCExtractor:
             agent = {
                 '@id': self.mint_uri(ric_type, row['id']),
                 '@type': f'rico:{ric_type}',
-                'rico:hasAgentName': {
+                'rico:hasOrHadAgentName': {
                     '@type': 'rico:AgentName',
                     'rico:textualValue': row['authorized_form_of_name'],
                 },
@@ -372,17 +372,17 @@ class RiCExtractor:
                     activity['rico:hasOrHadParticipant'] = {'@id': agent['@id']}
                 
                 if row['start_date'] or row['end_date']:
-                    date_obj = {'@type': 'rico:DateRange'}
+                    date_obj = {'@type': 'openricx:DateRange'}
                     if row['date_display']:
                         date_obj['rico:expressedDate'] = row['date_display']
                     if row['start_date']:
                         date_obj['rico:beginningDate'] = str(row['start_date'])
                     if row['end_date']:
                         date_obj['rico:endDate'] = str(row['end_date'])
-                    activity['rico:isOrWasAssociatedWithDate'] = date_obj
+                    activity['rico:isAssociatedWithDate'] = date_obj
                 
                 if row['description']:
-                    activity['rico:descriptiveNote'] = row['description']
+                    activity['openricx:descriptiveNote'] = row['description']
                     
                 self.activities[row['id']] = activity
     
@@ -446,7 +446,7 @@ class RiCExtractor:
                     self.places[term_id] = {
                         '@id': self.mint_uri('place', term_id),
                         '@type': 'rico:Place',
-                        'rico:hasPlaceName': {
+                        'rico:hasOrHadPlaceName': {
                             '@type': 'rico:PlaceName',
                             'rico:textualValue': term_name,
                         },
@@ -455,7 +455,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': record['@id'],
                     'to': self.places[term_id]['@id'],
-                    'predicate': 'rico:hasOrHadPlaceOfOrigin',
+                    'predicate': 'openricx:hasOrHadPlaceOfOrigin',
                 })
                 
             elif 'genre' in taxonomy_name or 'type' in taxonomy_name:
@@ -471,7 +471,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': record['@id'],
                     'to': self.genres[term_id]['@id'],
-                    'predicate': 'rico:hasOrHadContentOfType',
+                    'predicate': 'openricx:hasOrHadContentOfType',
                 })
     
     def _extract_digital_objects(self):
@@ -511,7 +511,7 @@ class RiCExtractor:
             }
             
             if row['mime_type']:
-                instantiation['rico:hasMimeType'] = row['mime_type']
+                instantiation['openricx:hasMimeType'] = row['mime_type']
             if row['byte_size']:
                 instantiation['rico:hasExtent'] = {
                     '@type': 'rico:Extent',
@@ -523,7 +523,7 @@ class RiCExtractor:
             self.relations.append({
                 'from': record['@id'],
                 'to': instantiation['@id'],
-                'predicate': 'rico:hasInstantiation',
+                'predicate': 'rico:hasOrHadInstantiation',
             })
     
     def _extract_related_materials(self):
@@ -549,7 +549,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': subject_record['@id'],
                     'to': object_record['@id'],
-                    'predicate': 'rico:isAssociatedWith',
+                    'predicate': 'openricx:isAssociatedWith',
                     'note': row['relation_type'],
                 })
     
@@ -594,7 +594,7 @@ class RiCExtractor:
                 rule = {
                     '@id': self.mint_uri('rule', row['id']),
                     '@type': f'rico:{rule_type}',
-                    'rico:ruleType': row['basis_name'] or 'Unspecified',
+                    'rico:hasOrHadRuleType': row['basis_name'] or 'Unspecified',
                 }
                 
                 notes = []
@@ -603,21 +603,21 @@ class RiCExtractor:
                 if row['license_terms']: notes.append(f"License: {row['license_terms']}")
                 if row['statute_note']: notes.append(f"Statute: {row['statute_note']}")
                 if notes:
-                    rule['rico:descriptiveNote'] = '; '.join(notes)
+                    rule['openricx:descriptiveNote'] = '; '.join(notes)
                 
                 jurisdiction = row['copyright_jurisdiction'] or row['statute_jurisdiction']
                 if jurisdiction:
                     rule['rico:hasOrHadJurisdiction'] = jurisdiction
                 
                 if row['start_date'] or row['end_date']:
-                    rule['rico:isOrWasAssociatedWithDate'] = {
-                        '@type': 'rico:DateRange',
+                    rule['rico:isAssociatedWithDate'] = {
+                        '@type': 'openricx:DateRange',
                         'rico:beginningDate': str(row['start_date']) if row['start_date'] else None,
                         'rico:endDate': str(row['end_date']) if row['end_date'] else None,
                     }
                 
                 if row['status_name']:
-                    rule['rico:hasStatus'] = row['status_name']
+                    rule['openricx:hasStatus'] = row['status_name']
                 
                 self.rules[row['id']] = rule
                 self.relations.append({
@@ -635,14 +635,14 @@ class RiCExtractor:
                 rule = {
                     '@id': self.mint_uri('rule', rule_id),
                     '@type': 'rico:Rule',
-                    'rico:ruleType': 'DescriptionRules',
-                    'rico:descriptiveNote': rules_text,
+                    'rico:hasOrHadRuleType': 'DescriptionRules',
+                    'openricx:descriptiveNote': rules_text,
                 }
                 self.rules[rule_id] = rule
                 self.relations.append({
                     'from': record['@id'],
                     'to': rule['@id'],
-                    'predicate': 'rico:isDescribedBy',
+                    'predicate': 'rico:isOrWasDescribedBy',
                 })
     
     def _extract_functions(self):
@@ -666,14 +666,14 @@ class RiCExtractor:
             for row in self.cursor.fetchall():
                 function = {
                     '@id': self.mint_uri('function', row['id']),
-                    '@type': 'rico:Function',
+                    '@type': 'openricx:Function',
                     'rico:hasOrHadName': {
                         '@type': 'rico:Name',
                         'rico:textualValue': row['authorized_form_of_name'],
                     },
                 }
                 if row['description']:
-                    function['rico:descriptiveNote'] = row['description']
+                    function['openricx:descriptiveNote'] = row['description']
                 if row['classification']:
                     function['rico:classification'] = row['classification']
                 if row['history']:
@@ -693,14 +693,14 @@ class RiCExtractor:
                 func_id = f"agent_{agent_id}"
                 function = {
                     '@id': self.mint_uri('function', func_id),
-                    '@type': 'rico:Function',
-                    'rico:descriptiveNote': functions_text,
+                    '@type': 'openricx:Function',
+                    'openricx:descriptiveNote': functions_text,
                 }
                 self.functions[func_id] = function
                 self.relations.append({
                     'from': agent['@id'],
                     'to': function['@id'],
-                    'predicate': 'rico:hasOrHadFunction',
+                    'predicate': 'openricx:hasOrHadFunction',
                 })
     
     def _extract_mandates_from_agents(self):
@@ -710,7 +710,7 @@ class RiCExtractor:
                 mandate = {
                     '@id': self.mint_uri('mandate', agent_id),
                     '@type': 'rico:Mandate',
-                    'rico:descriptiveNote': mandates_text,
+                    'openricx:descriptiveNote': mandates_text,
                 }
                 self.mandates[agent_id] = mandate
                 self.relations.append({
@@ -738,7 +738,7 @@ class RiCExtractor:
             self.repository = {
                 '@id': self.mint_uri('corporatebody', row['id']),
                 '@type': 'rico:CorporateBody',
-                'rico:hasAgentName': {
+                'rico:hasOrHadAgentName': {
                     '@type': 'rico:AgentName',
                     'rico:textualValue': row['authorized_form_of_name'],
                 },
@@ -751,7 +751,7 @@ class RiCExtractor:
             if address_parts:
                 self.repository['rico:hasOrHadLocation'] = {
                     '@type': 'rico:Place',
-                    'rico:hasPlaceName': {
+                    'rico:hasOrHadPlaceName': {
                         '@type': 'rico:PlaceName',
                         'rico:textualValue': ', '.join(address_parts),
                     },
@@ -761,7 +761,7 @@ class RiCExtractor:
             if row['email']: contacts.append(f"Email: {row['email']}")
             if row['website']: contacts.append(f"Website: {row['website']}")
             if contacts:
-                self.repository['rico:descriptiveNote'] = '; '.join(contacts)
+                self.repository['openricx:descriptiveNote'] = '; '.join(contacts)
     
     def _build_creator_shortcuts(self):
         for activity_id, activity in self.activities.items():
@@ -806,12 +806,12 @@ class RiCExtractor:
                     self.relations.append({
                         'from': current_record['@id'],
                         'to': next_record['@id'],
-                        'predicate': 'rico:precedes',
+                        'predicate': 'rico:precedesInTime',
                     })
                     self.relations.append({
                         'from': next_record['@id'],
                         'to': current_record['@id'],
-                        'predicate': 'rico:follows',
+                        'predicate': 'rico:followsInTime',
                     })
         
         for record_id, record in self.records.items():
@@ -821,7 +821,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': parent['@id'],
                     'to': record['@id'],
-                    'predicate': 'rico:includes',
+                    'predicate': 'rico:includesOrIncluded',
                 })
     
     def _build_equivalence_candidates(self):
@@ -888,8 +888,8 @@ class RiCExtractor:
                 
                 # Date
                 if row['check_date']:
-                    activity['rico:isOrWasAssociatedWithDate'] = {
-                        '@type': 'rico:DateRange',
+                    activity['rico:isAssociatedWithDate'] = {
+                        '@type': 'openricx:DateRange',
                         'rico:beginningDate': str(row['check_date']),
                         'rico:expressedDate': str(row['check_date']),
                     }
@@ -910,7 +910,7 @@ class RiCExtractor:
                 if row['hazard_note']: notes.append(f"Hazards: {row['hazard_note']}")
                 if row['technical_assessment']: notes.append(f"Technical: {row['technical_assessment']}")
                 if notes:
-                    activity['rico:descriptiveNote'] = ' | '.join(notes)
+                    activity['openricx:descriptiveNote'] = ' | '.join(notes)
                 
                 # Recommendations
                 recommendations = []
@@ -983,8 +983,8 @@ class RiCExtractor:
                 
                 # Date
                 if row['valuation_date']:
-                    activity['rico:isOrWasAssociatedWithDate'] = {
-                        '@type': 'rico:DateRange',
+                    activity['rico:isAssociatedWithDate'] = {
+                        '@type': 'openricx:DateRange',
                         'rico:beginningDate': str(row['valuation_date']),
                     }
                 
@@ -1010,7 +1010,7 @@ class RiCExtractor:
                 
                 # Notes
                 if row['valuation_note']:
-                    activity['rico:descriptiveNote'] = row['valuation_note']
+                    activity['openricx:descriptiveNote'] = row['valuation_note']
                 
                 # Renewal date
                 if row['renewal_date']:
@@ -1077,8 +1077,8 @@ class RiCExtractor:
                 start_date = row['loan_out_date'] or row['loan_start_date']
                 end_date = row['loan_return_date'] or row['loan_end_date']
                 if start_date or end_date:
-                    activity['rico:isOrWasAssociatedWithDate'] = {
-                        '@type': 'rico:DateRange',
+                    activity['rico:isAssociatedWithDate'] = {
+                        '@type': 'openricx:DateRange',
                         'rico:beginningDate': str(start_date) if start_date else None,
                         'rico:endDate': str(end_date) if end_date else None,
                     }
@@ -1148,7 +1148,7 @@ class RiCExtractor:
                 # Notes
                 notes = row['loan_note'] or row['loan_out_note']
                 if notes:
-                    activity['rico:descriptiveNote'] = notes
+                    activity['openricx:descriptiveNote'] = notes
                 
                 self.loans_out[row['id']] = activity
                 
@@ -1200,8 +1200,8 @@ class RiCExtractor:
                 
                 # Date
                 if row['movement_date']:
-                    activity['rico:isOrWasAssociatedWithDate'] = {
-                        '@type': 'rico:DateRange',
+                    activity['rico:isAssociatedWithDate'] = {
+                        '@type': 'openricx:DateRange',
                         'rico:beginningDate': str(row['movement_date']),
                     }
                 
@@ -1244,7 +1244,7 @@ class RiCExtractor:
                 
                 # Notes
                 if row['movement_note']:
-                    activity['rico:descriptiveNote'] = row['movement_note']
+                    activity['openricx:descriptiveNote'] = row['movement_note']
                 
                 self.movements[row['id']] = activity
                 
@@ -1536,12 +1536,12 @@ class RiCExtractor:
         
         all_predicates = [
             'rico:hasOrHadSubject', 'rico:hasOrHadMainSubject',
-            'rico:hasOrHadPlaceOfOrigin', 'rico:hasOrHadContentOfType',
-            'rico:hasInstantiation', 'rico:isAssociatedWith',
-            'rico:isOrWasRegulatedBy', 'rico:isDescribedBy',
+            'openricx:hasOrHadPlaceOfOrigin', 'openricx:hasOrHadContentOfType',
+            'rico:hasOrHadInstantiation', 'openricx:isAssociatedWith',
+            'rico:isOrWasRegulatedBy', 'rico:isOrWasDescribedBy',
             'rico:hasCreator', 'rico:hasAccumulator',
-            'rico:precedes', 'rico:follows', 'rico:includes',
-            'rico:hasOrHadFunction', 'rico:isEquivalentTo',
+            'rico:precedesInTime', 'rico:followsInTime', 'rico:includesOrIncluded',
+            'openricx:hasOrHadFunction', 'rico:isEquivalentTo',
             'grap:hasHeritageAssetData',
         ]
         
@@ -1550,7 +1550,7 @@ class RiCExtractor:
             record_clean = {k: v for k, v in record.items() if v is not None and not k.startswith('_')}
             
             if self.repository:
-                record_clean['rico:isOrWasHeldBy'] = {'@id': self.repository['@id']}
+                record_clean['rico:hasOrHadHolder'] = {'@id': self.repository['@id']}
             
             record_relations = relation_map.get(record_clean.get('@id'), [])
             for pred in all_predicates:

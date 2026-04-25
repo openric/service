@@ -176,8 +176,8 @@ class ShaclValidationService
         }
 
         // Check repository references
-        if (isset($entity['rico:heldBy'])) {
-            $repo = $entity['rico:heldBy'];
+        if (isset($entity['rico:hasOrHadHolder'])) {
+            $repo = $entity['rico:hasOrHadHolder'];
             if (isset($repo['@id']) && !$this->entityExistsInDatabase($repo['@id'])) {
                 $warnings[] = "Referenced repository does not exist: {$repo['@id']}";
             }

@@ -63,7 +63,7 @@
     
     # Recommended: held by repository
     sh:property [
-        sh:path rico:isOrWasHeldBy ;
+        sh:path rico:hasOrHadHolder ;
         sh:class rico:CorporateBody ;
         sh:severity sh:Warning ;
         sh:message "RecordSet should be held by a repository (CorporateBody)"
@@ -101,13 +101,13 @@
     sh:description "Validates Person entities" ;
     
     sh:property [
-        sh:path rico:hasAgentName ;
+        sh:path rico:hasOrHadAgentName ;
         sh:minCount 1 ;
         sh:message "Person must have at least one name"
     ] ;
     
     sh:property [
-        sh:path rico:hasAgentName ;
+        sh:path rico:hasOrHadAgentName ;
         sh:node :AgentNameShape ;
         sh:message "Agent name must be properly structured"
     ] .
@@ -119,13 +119,13 @@
     sh:description "Validates CorporateBody entities" ;
     
     sh:property [
-        sh:path rico:hasAgentName ;
+        sh:path rico:hasOrHadAgentName ;
         sh:minCount 1 ;
         sh:message "CorporateBody must have at least one name"
     ] ;
     
     sh:property [
-        sh:path rico:hasAgentName ;
+        sh:path rico:hasOrHadAgentName ;
         sh:node :AgentNameShape ;
         sh:message "Agent name must be properly structured"
     ] .
@@ -136,7 +136,7 @@
     sh:name "Family Validation" ;
     
     sh:property [
-        sh:path rico:hasAgentName ;
+        sh:path rico:hasOrHadAgentName ;
         sh:minCount 1 ;
         sh:message "Family must have at least one name"
     ] .
@@ -160,9 +160,21 @@
 # ============================================================================
 
 :ProductionShape a sh:NodeShape ;
-    sh:targetClass rico:Production ;
+    # Per spec v0.37.0 §6.5: rico:Production is not a class in RiC-O 1.1.
+    # Production-typed activities are rico:Activity instances carrying
+    # rico:hasActivityType <https://openric.org/vocab/activity-type/production>.
+    sh:target [
+        a sh:SPARQLTarget ;
+        sh:select """
+            PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+            SELECT ?this WHERE {
+                ?this a rico:Activity ;
+                      rico:hasActivityType <https://openric.org/vocab/activity-type/production> .
+            }
+        """ ;
+    ] ;
     sh:name "Production Activity Validation" ;
-    sh:description "Validates creation/production activities" ;
+    sh:description "Validates creation/production activities (rico:Activity + hasActivityType=production)" ;
     
     # Must link to a record
     sh:property [
@@ -181,14 +193,25 @@
     
     # Should have date
     sh:property [
-        sh:path rico:isOrWasAssociatedWithDate ;
+        sh:path rico:isAssociatedWithDate ;
         sh:severity sh:Warning ;
         sh:message "Production should have an associated date"
     ] .
 
 
 :AccumulationShape a sh:NodeShape ;
-    sh:targetClass rico:Accumulation ;
+    # Per spec v0.37.0 §6.5: rico:Accumulation is not a class in RiC-O 1.1.
+    # Accumulation-typed activities are rico:Activity + hasActivityType=accumulation.
+    sh:target [
+        a sh:SPARQLTarget ;
+        sh:select """
+            PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
+            SELECT ?this WHERE {
+                ?this a rico:Activity ;
+                      rico:hasActivityType <https://openric.org/vocab/activity-type/accumulation> .
+            }
+        """ ;
+    ] ;
     sh:name "Accumulation Activity Validation" ;
     
     sh:property [
@@ -215,7 +238,7 @@
 # ============================================================================
 
 :DateRangeShape a sh:NodeShape ;
-    sh:targetClass rico:DateRange ;
+    sh:targetClass openricx:DateRange ;
     sh:name "DateRange Validation" ;
     
     # Should have at least one date property
@@ -252,13 +275,13 @@
     sh:name "Place Validation" ;
     
     sh:property [
-        sh:path rico:hasPlaceName ;
+        sh:path rico:hasOrHadPlaceName ;
         sh:minCount 1 ;
         sh:message "Place must have at least one name"
     ] ;
     
     sh:property [
-        sh:path rico:hasPlaceName ;
+        sh:path rico:hasOrHadPlaceName ;
         sh:node :PlaceNameShape
     ] .
 
@@ -283,7 +306,7 @@
     
     # Should have MIME type for digital objects
     sh:property [
-        sh:path rico:hasMimeType ;
+        sh:path openricx:hasMimeType ;
         sh:maxCount 1 ;
         sh:pattern "^[a-z]+/[a-z0-9.+-]+$" ;
         sh:severity sh:Warning ;
@@ -292,13 +315,13 @@
     
     # Should be linked from a record
     sh:sparql [
-        sh:message "Instantiation should be linked from a Record via rico:hasInstantiation" ;
+        sh:message "Instantiation should be linked from a Record via rico:hasOrHadInstantiation" ;
         sh:severity sh:Warning ;
         sh:select """
             SELECT $this WHERE {
                 $this a rico:Instantiation .
                 FILTER NOT EXISTS {
-                    ?record rico:hasInstantiation $this .
+                    ?record rico:hasOrHadInstantiation $this .
                 }
             }
         """
@@ -314,14 +337,14 @@
     sh:name "Rule Validation" ;
     
     sh:property [
-        sh:path rico:ruleType ;
+        sh:path rico:hasOrHadRuleType ;
         sh:severity sh:Warning ;
         sh:message "Rule should have a rule type"
     ] ;
     
     sh:or (
-        [ sh:property [ sh:path rico:descriptiveNote ; sh:minCount 1 ] ]
-        [ sh:property [ sh:path rico:ruleType ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path openricx:descriptiveNote ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path rico:hasOrHadRuleType ; sh:minCount 1 ] ]
     ) .
 
 
@@ -330,7 +353,7 @@
 # ============================================================================
 
 :FunctionShape a sh:NodeShape ;
-    sh:targetClass rico:Function ;
+    sh:targetClass openricx:Function ;
     sh:name "Function Validation" ;
     
     sh:property [
@@ -422,7 +445,7 @@
     ] ;
     
     sh:property [
-        sh:path rico:isOrWasAssociatedWithDate ;
+        sh:path rico:isAssociatedWithDate ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
         sh:message "Valuation should have a date"
@@ -455,7 +478,7 @@
     ] ;
     
     sh:property [
-        sh:path rico:isOrWasAssociatedWithDate ;
+        sh:path rico:isAssociatedWithDate ;
         sh:minCount 1 ;
         sh:message "Loan must have dates"
     ] .
