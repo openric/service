@@ -183,22 +183,22 @@ INSERT IGNORE INTO `ric_relation_meta` (`relation_id`, `rico_predicate`, `invers
 SELECT
     r.id,
     CASE r.type_id
-        WHEN 147 THEN 'rico:hasInstantiation'
+        WHEN 147 THEN 'rico:hasOrHadInstantiation'
         WHEN 161 THEN 'rico:hasOrHadSubject'
-        WHEN 167 THEN 'rico:isAssociatedWith'
+        WHEN 167 THEN 'openricx:isAssociatedWith'
         WHEN 168 THEN 'rico:isOrWasRegulatedBy'
         WHEN 176 THEN 'rico:hasGeneticLinkToRecordResource'
-        WHEN 177 THEN 'rico:isAssociatedWith'
-        ELSE 'rico:isAssociatedWith'
+        WHEN 177 THEN 'openricx:isAssociatedWith'
+        ELSE 'openricx:isAssociatedWith'
     END,
     CASE r.type_id
-        WHEN 147 THEN 'rico:isInstantiationOf'
+        WHEN 147 THEN 'rico:isOrWasInstantiationOf'
         WHEN 161 THEN 'rico:isOrWasSubjectOf'
-        WHEN 167 THEN 'rico:isAssociatedWith'
+        WHEN 167 THEN 'openricx:isAssociatedWith'
         WHEN 168 THEN 'rico:regulatesOrRegulated'
         WHEN 176 THEN 'rico:hasGeneticLinkToRecordResource'
-        WHEN 177 THEN 'rico:isAssociatedWith'
-        ELSE 'rico:isAssociatedWith'
+        WHEN 177 THEN 'openricx:isAssociatedWith'
+        ELSE 'openricx:isAssociatedWith'
     END,
     NULL,
     NULL,

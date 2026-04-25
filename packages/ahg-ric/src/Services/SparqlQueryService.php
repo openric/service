@@ -67,7 +67,7 @@ SELECT DISTINCT ?entity ?type ?label ?description
 WHERE {
     ?entity a ?type .
     OPTIONAL { ?entity rico:name ?label }
-    OPTIONAL { ?entity rico:description ?description }
+    OPTIONAL { ?entity openricx:description ?description }
     OPTIONAL { ?entity skos:prefLabel ?label }
     
     FILTER(
@@ -197,7 +197,7 @@ SELECT ?entity ?name ?description
 WHERE {
     ?entity a <{$typeUri}> .
     OPTIONAL { ?entity rico:name ?name }
-    OPTIONAL { ?entity rico:description ?description }
+    OPTIONAL { ?entity openricx:description ?description }
 }
 LIMIT {$limit}
 OFFSET {$offset}
@@ -217,10 +217,10 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 SELECT ?dateRange ?startDate ?endDate ?dateType
 WHERE {
-    <{$uri}> rico:hasDateRangeSet ?dateRange .
-    OPTIONAL { ?dateRange rico:startDate ?startDate }
+    <{$uri}> openricx:hasDateRangeSet ?dateRange .
+    OPTIONAL { ?dateRange rico:hasBeginningDate ?startDate }
     OPTIONAL { ?dateRange rico:endDate ?endDate }
-    OPTIONAL { ?dateRange rico:dateType ?dateType }
+    OPTIONAL { ?dateRange rico:hasDateType ?dateType }
 }
 SPARQL;
 
@@ -238,14 +238,14 @@ PREFIX rico: <https://www.ica.org/standards/RiC/ontology#>
 SELECT ?parent ?child ?hierarchyType
 WHERE {
     {
-        <{$uri}> rico:isPartOf ?parent .
-        BIND(rico:isPartOf AS ?hierarchyType)
+        <{$uri}> rico:isOrWasPartOf ?parent .
+        BIND(rico:isOrWasPartOf AS ?hierarchyType)
     }
     UNION
     {
-        ?child rico:isPartOf <{$uri}> .
+        ?child rico:isOrWasPartOf <{$uri}> .
         BIND(?child AS ?child)
-        BIND(rico:hasRecordPart AS ?hierarchyType)
+        BIND(rico:includesOrIncluded AS ?hierarchyType)
     }
 }
 SPARQL;

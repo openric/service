@@ -250,7 +250,7 @@ SELECT DISTINCT ?entity ?title ?type ?identifier WHERE {{
     ?entity a ?type .
     FILTER(?type IN (rico:RecordSet, rico:Record, rico:Person, rico:CorporateBody))
     {{ ?entity rico:title ?title . BIND(?title AS ?text) }}
-    UNION {{ ?entity rico:hasAgentName/rico:textualValue ?title . BIND(?title AS ?text) }}
+    UNION {{ ?entity rico:hasOrHadAgentName/rico:textualValue ?title . BIND(?title AS ?text) }}
     FILTER({filters})
     OPTIONAL {{ ?entity rico:identifier ?identifier }}
 }} ORDER BY ?title LIMIT 100"""

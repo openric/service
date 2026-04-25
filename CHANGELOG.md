@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.9.0 — 2026-04-25
+
+### Phase G — service migration to spec v0.37.x (RiC-O 1.1 namespace remediation)
+
+**Major version bump.** This release brings the OpenRiC reference service into conformance with spec v0.37.0/v0.37.1 (the RiC-O 1.1 namespace remediation completed on the spec side on 2026-04-25). The change set is **breaking for downstream consumers** — emitted JSON-LD shapes now use canonical RiC-O 1.1 property names and the `openricx:` extension namespace; old field names (`rico:heldBy`, `rico:hasInstantiation`, `rico:hasSubject`, etc.) are no longer emitted.
+
+**What downstream consumers must update**
+
+- **Heratio**: any code reading `record["rico:heldBy"]`, `record["rico:hasInstantiation"]`, `agent["rico:hasAgentName"]` etc. needs to switch to the canonical names below. ✅ Heratio v0.125.2 shipped 2026-04-25 with the dual-read pattern (Phase G' c).
+- **Viewer (viewer.openric.org)**: edge-predicate dispatch must accept the new canonical property IRIs and the new activity-type pattern (every event is `rico:Activity` + `rico:hasActivityType <vocab IRI>`, no more `rico:Production` / `rico:Accumulation` classes). ✅ openric-viewer v0.3.0 shipped 2026-04-25 with the dual-read pattern (Phase G' a).
+- **Capture client**: form fields posting under old names will be silently dropped on v0.9.0 servers; update to canonical names. ✅ openric-capture v0.5.0 shipped 2026-04-25; capture is namespace-agnostic by design — only doc/framing changes were needed (Phase G' b).
+
+**Re-attempt context.** The first attempt at this release (commit `c4c2867`) was reverted (`ea4f417`) on the same day so that the consumer-first sub-phases G' a / b / c could ship and propagate before the producer flip. With viewer v0.3.0, capture v0.5.0, and Heratio v0.125.2 all on origin and tolerant of both pre-v0.37 and v0.37+ shapes, this v0.9.0 replays the original change set and adds the OpenRiC service's own consumer-side dual-read on `_ric-panel.blade.php` (the mini-graph Blade partial) so that the in-service explorer UI also reads the new shape correctly.
+
+**Major changes**
+
+- **Conformance declaration** (`packages/ahg-ric/routes/api.php` `$openricConformance`): `spec_version` bumped from `0.36.0` to `0.37.1`. Six profile claims unchanged (provenance-event still gated on data-backfill, sparql-access not claimed by default).
+- **JSON-LD `@context`** (`RicSerializationService::ricoContext()` new helper): every emitted record now binds `rico`, `openric`, **`openricx`**, `rdf`, `rdfs`, `xsd`, `skos`, `dcterms`, `owl`. 8 inline @context blocks across the serializer collapsed to use the helper.
+- **Activity remodel** — every event is `@type: rico:Activity` with `rico:hasActivityType <https://openric.org/vocab/activity-type/{kind}>` (per spec v0.37 §6.5). `eventTypeToRic` array (which mapped source `creation` → `Production`, etc.) replaced by `eventTypeToActivityType` returning vocab slugs; `activityTypeIri()` resolves to full IRIs. Production/Accumulation/CustodyEvent class assertions removed from emitted JSON-LD; SHACL `:ProductionShape` / `:AccumulationShape` in `tools/ric_shacl_shapes.ttl` rewritten as `sh:SPARQLTarget` filtering on `rico:Activity` + `hasActivityType`.
+- **Rule-regulation remodel** — emissions for AccessRestriction (`RicSerializationService::1240`) and SecurityClassification (line 786) now use the canonical `rico:Rule` + `rico:hasOrHadRuleType <https://openric.org/vocab/rule-type/{kind}>` pattern instead of the non-canonical `rico:AccessRestriction` / `rico:SecurityClassification` classes.
+- **OpenAPI tag descriptions** (`packages/ahg-ric/src/Support/OpenApiSpec.php`): Repositories tag clarified as ISDIAH API surface canonical to `rico:CorporateBody`; Functions tag clarified as ISDF API surface canonical to interim `openricx:Function`; Activities tag explains the hasActivityType pattern; Graph tag clarifies SPARQL is non-normative under the optional sparql-access Draft profile.
+- **OAI-PMH `rico_ld` envelope** (`OaiPmhController::renderRicoLd`): inner element renamed from `<rico:jsonld>` (non-canonical) to `<openricx:jsonld>`; `xmlns:openricx` now declared on the wrapping element.
+- **FindingAid / AuthorityRecord query** (`RicController::1441`): rewrote SPARQL to use the canonical RiC-O 1.1 documentary-form-types vocabulary IRI (`https://www.ica.org/standards/RiC/vocabularies/documentaryFormTypes#`) instead of the wrong `rico:` prefix expansion. These named individuals are NOT in the `rico:` ontology namespace.
+- **Mechanical RENAMEs across the service** (~25 terms, applied by Phase G script): `hasInstantiation→hasOrHadInstantiation`, `isInstantiationOf→isOrWasInstantiationOf`, `hasSubject→hasOrHadSubject`, `hasLanguage→hasOrHadLanguage`, `hasName→hasOrHadName`, `legalStatus→hasOrHadLegalStatus`, `dateType→hasDateType`, `extentType→hasExtentType`, `ruleType→hasOrHadRuleType`, `normalizedDate→normalizedDateValue`, `startDate→hasBeginningDate`, `dateOfEstablishment→hasBeginningDate`, `performs→performsOrPerformed`, `hasMandate→authorizingMandate`, `hasRecordPart→includesOrIncluded`, `isContainedIn→isOrWasIncludedIn`, `tookPlaceAt→isAssociatedWithPlace`, `precedes→precedesInTime`, `isOrWasAssociatedWithDate→isAssociatedWithDate`, `hasAgentName→hasOrHadAgentName`, `hasPlaceName→hasOrHadPlaceName`, `heldBy→hasOrHadHolder`, `isOrWasHeldBy→hasOrHadHolder`, `hasHolding→isOrWasHolderOf`, `isOrWasLocatedAt→hasOrHadLocation`, `hasPlace→isAssociatedWithPlace`, `hasProvenance/Of→hasOrganicProvenance/isOrganicProvenanceOf`, `isDescribedBy→isOrWasDescribedBy`, `hasAccessRestriction/hasAccessPolicy/hasSecurityClassification→isOrWasRegulatedBy`, `isOrWasControlledBy→hasOrHadController`, `managedBy→hasOrHadManager`, plus DROPs/cross-namespace moves to skos/dcterms/openricx.
+- **EXTENSION renames** to `openricx:` (~30 terms): all List envelope classes (RecordList, AgentList, etc.), DateRange/DateRangeSet, ContactPoint, description, descriptiveNote, hasMimeType, languageCode, streetAddress/city/country/postalCode/telephone/email, jurisdiction, alternativeForm/normalizedForm/otherName, technicalCharacteristics, productionTechnicalCharacteristics, hasAppraisalInformation, containsPersonalData, hasOrHadPolicy, hasInternalStructure, hasBroaderGeographicalContext / hasNarrowerGeographicalContext, etc.
+- **Consumer-side dual-read on `_ric-panel.blade.php`** (new in this re-attempt; not in original `c4c2867`). The mini-graph Blade partial's inline JS now uses the same `localName` / `getEffectiveType` / dual-read `getColor(node)` pattern shipped in openric-viewer v0.3.0 and Heratio v0.125.2. Activity-bucket colour entries expanded (Mechanism, Custody, Transfer, Publication, Reproduction); a v0.37+ `rico:Activity` node carrying `attributes.activityType` (slug) or `attributes.hasActivityType` (IRI) resolves to the same colour as a pre-v0.37 `rico:Production` etc., and back-compat string callers still work. Sanity tests covering pre-v0.37 + v0.37+ + null/unknown all pass.
+
+**Audit metric**: pre-Phase-G the service emitted 137 distinct `rico:*` tokens missing from canonical RiC-O 1.1; post-Phase-G that's 5 — all in `MUST NOT emit X` documentation prose (Production, Accumulation, agent, jsonld, SecurityClassification mentions in code comments explaining what was removed). Zero genuine emit-context violations remain.
+
+**Provenance & Event profile claim** still NOT made — backing data has 177 Production rows missing `resultsOrResultedIn` / `hasOrHadParticipant`. Data-backfill task unchanged.
+
+**SPARQL Access (Draft) profile** not claimed by default. Implementations wishing to advertise SPARQL MAY add `{'id': 'sparql-access', 'version': '0.1.0', 'conformance': 'partial', 'access': 'public-read', 'rate_limit': '60/minute/IP', 'max_query_time_seconds': 30, 'endpoint': '/api/ric/v1/sparql'}` to `$openricConformance['profiles']` in `routes/api.php` after mounting their SPARQL endpoint.
+
 ## v0.8.19 — 2026-04-24
 
 - User-holdings graph — Phase 3 (hub-collapse + perf budget). `RelationshipService::getGraphSummaryByUri` rewritten as a two-step SPARQL: first a cheap `GROUP BY ?p ?direction` COUNT to discover relation-bucket shape, then a selective details query via `VALUES ?p` for buckets below threshold. Buckets whose neighbour count exceeds the configured threshold collapse into a single synthetic `GroupCollapse` node (`{id: group:<hash>, type: 'GroupCollapse', count: N, center_uri, predicate, predicate_label, direction}`) plus one edge from the centre — so a Person with 200 Records renders as Person + 1 group node, not 201 individual nodes. Response shape gains structured `reasons: string[]` (subset of `['hub_collapsed', 'max_nodes']`), `threshold: int`, `max_nodes: int` — widget and explorer surface the flags distinctly instead of a single "capped" chip.
@@ -16,7 +49,7 @@
 
 - Widget (`_context-sidebar.blade.php`) renders hub buckets before the typed-entity list under a "Large buckets" header — each bucket shown as "<predicate> — <count>". Footer chips updated to match the explorer: separate `hubs collapsed` (info blue) and `capped at N` (warning yellow) badges with tooltips explaining each.
 
-- Smoke tests (`/openric`, record 901990 is the hub — 68 outgoing `rico:hasOrHadPlaceOfOrigin`):
+- Smoke tests (`/openric`, record 901990 is the hub — 68 outgoing `openricx:hasOrHadPlaceOfOrigin`):
   - default `threshold=25`: `nodes=2 edges=1 reasons=['hub_collapsed']`, one GroupCollapse with `count=68`.
   - `collapse_threshold=1000 max_nodes=200`: collapse suppressed, `nodes=69 groups=0` — confirms threshold actually controls behaviour.
   - `expand-group` `page=1 per_page=20`: returns 20 nodes + 20 edges, `has_more=true total=68`.
@@ -80,7 +113,7 @@
 
 ## v0.8.12 — 2026-04-21
 
-- `RicSerializationService::getContactFor()` now emits `@type: rico:ContactPoint` (was `rico:Contact`, which is not a valid RiC-O class). Aligns the reference implementation with `spec/mapping.md` §5.2.2 and the newly normative `spec/profiles/core-discovery.md` §3.4.1. Heratio's identical line carries the same bug — drift log records the divergence with direction `openric→heratio`.
+- `RicSerializationService::getContactFor()` now emits `@type: openricx:ContactPoint` (was `rico:Contact`, which is not a valid RiC-O class). Aligns the reference implementation with `spec/mapping.md` §5.2.2 and the newly normative `spec/profiles/core-discovery.md` §3.4.1. Heratio's identical line carries the same bug — drift log records the divergence with direction `openric→heratio`.
 
 ## v0.8.11 — 2026-04-21
 
