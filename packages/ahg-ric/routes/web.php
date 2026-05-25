@@ -117,6 +117,90 @@ Route::middleware('web')->group(function () {
     })->name('ric.capture.studio');
 });
 
+// Spec-canonical semantic URIs — openric-spec viewing-api §3.1.
+// Pattern: /id/{kind}/{id}  (13 kinds per the spec)
+// Content-negotiates Accept and 303-redirects to either the JSON-LD API
+// endpoint (machine clients) or a human-readable view (browsers).
+// `corporate-body` is dispatched against both the actor and repository tables
+// because RiC-O 1.1 Repository is an ISDIAH-shaped CorporateBody but lives in
+// a separate table in this implementation.
+Route::get('/id/{kind}/{id}', function (string $kind, string $id) {
+    // 13 spec kinds → internal API collection
+    $kindMap = [
+        'record'         => 'records',
+        'record-set'     => 'records',
+        'record-part'    => 'records',
+        'agent'          => 'agents',
+        'person'         => 'agents',
+        'corporate-body' => 'agents',
+        'family'         => 'agents',
+        'mechanism'      => 'agents',
+        'place'          => 'places',
+        'rule'           => 'rules',
+        'activity'       => 'activities',
+        'instantiation'  => 'instantiations',
+        'function'       => 'functions',
+    ];
+    $apiType = $kindMap[strtolower($kind)] ?? null;
+    if (!$apiType) {
+        abort(404);
+    }
+
+    // Slug-keyed collections accept a numeric id and resolve to the slug.
+    $slugTypes = ['records', 'agents', 'repositories'];
+    if (ctype_digit($id) && in_array($apiType, $slugTypes, true)) {
+        $resolvedSlug = \DB::table('slug')->where('object_id', (int) $id)->value('slug');
+        if ($resolvedSlug) {
+            $id = $resolvedSlug;
+        }
+    }
+
+    // corporate-body may resolve to a repository (ISDIAH split-off table)
+    // rather than the actor table. Check repository first; fall back to agents.
+    if (strtolower($kind) === 'corporate-body') {
+        $repoExists = \DB::table('repository')
+            ->join('slug', 'repository.id', '=', 'slug.object_id')
+            ->where('slug.slug', $id)
+            ->exists();
+        if ($repoExists) {
+            $apiType = 'repositories';
+        }
+    }
+
+    $accept  = (string) request()->header('Accept', '');
+    $wantsLd = request()->wantsJson()
+        || str_contains($accept, 'ld+json')
+        || str_contains($accept, 'application/json')
+        || str_contains($accept, 'rdf+xml')
+        || str_contains($accept, 'turtle');
+
+    $headers = ['Vary' => 'Accept'];
+
+    if ($wantsLd) {
+        $query  = request()->getQueryString();
+        $target = '/api/ric/v1/' . $apiType . '/' . $id . ($query ? '?' . $query : '');
+        return redirect($target, 303, $headers);
+    }
+
+    // Browser default — 303 to the human-readable view.
+    if ($apiType === 'records' || $apiType === 'agents') {
+        return redirect('/' . $id, 303, $headers);
+    }
+    if ($apiType === 'repositories') {
+        return redirect('/repository/' . $id, 303, $headers);
+    }
+    $singular = [
+        'functions'      => 'function',
+        'places'         => 'place',
+        'activities'     => 'activity',
+        'rules'          => 'rule',
+        'instantiations' => 'instantiation',
+    ][$apiType];
+    return redirect('/admin/ric/entities/' . $singular . '/' . $id, 303, $headers);
+})->where('kind', 'record|record-set|record-part|agent|person|corporate-body|family|mechanism|place|rule|activity|instantiation|function')
+  ->where('id', '[A-Za-z0-9_-]+')
+  ->name('openric.semantic-uri');
+
 // Linked-data IRI resolver. OpenRiC emits @id values shaped as
 // https://host/{instance}/{type}/{key} (see RicController::buildRecordUri).
 // Those IRIs are stable SPARQL subject identifiers but were not HTTP-routable.

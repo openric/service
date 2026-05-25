@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.1 — 2026-05-25
+
+### Spec-canonical semantic URIs + spec_version refresh
+
+- **New: `/id/{kind}/{id}` semantic URI resolver** (`packages/ahg-ric/routes/web.php`). Implements openric-spec viewing-api §3.1's recommended two-layer URI pattern: a stable linked-data identity URI separate from the API-endpoint URI. 13 kinds per the spec: `record`, `record-set`, `record-part`, `agent`, `person`, `corporate-body`, `family`, `mechanism`, `place`, `rule`, `activity`, `instantiation`, `function`. Content-negotiates Accept and 303-redirects to either the JSON-LD API endpoint (`/api/ric/v1/{collection}/{id}` for machine clients) or the public slug page (browsers). Sets `Vary: Accept` on every response. Numeric ids on slug-keyed collections (records / agents / repositories) are resolved through the `slug` table. `corporate-body` falls back to `/repositories/…` when the resolved entity lives in the ISDIAH repository table rather than the actor table.
+- **Spec version tracker bumped 0.37.1 → 0.38.0** in `$openricConformance` (`packages/ahg-ric/routes/api.php`). Spec v0.38.0 (Wave B) is additive on top of v0.37.1 — sparql-access SHACL + fixtures, related-implementations + outreach drafts, extension proposals — none of which require new service behaviour beyond declaring the new version string. Six normative profile claims unchanged; sparql-access remains Draft + opt-in.
+
 ## v0.9.0 — 2026-04-25
 
 ### Phase G — service migration to spec v0.37.x (RiC-O 1.1 namespace remediation)
