@@ -24,6 +24,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+
+      - name: Build frontend assets
+        run: |
+          npm run build
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v4
         with:
