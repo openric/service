@@ -39,7 +39,8 @@ jobs:
           npm run build
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v4
+        # Use a published stable tag for the setup-php action
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: mbstring, xml, curl
