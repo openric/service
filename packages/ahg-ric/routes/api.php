@@ -28,6 +28,7 @@ use AhgRic\Http\Controllers\LinkedDataApiController;
 use AhgRic\Http\Controllers\OaiPmhController;
 use AhgRic\Http\Controllers\KeyRequestController;
 use AhgRic\Http\Controllers\ImportController;
+use AhgRic\Http\Controllers\SparqlController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,8 +85,16 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     Route::get('/rules', [LinkedDataApiController::class, 'listRules']);
     Route::get('/rules/{id}', [LinkedDataApiController::class, 'showRule'])->where('id', '[0-9]+');
 
-    // SPARQL & Graph
-    Route::get('/sparql', [LinkedDataApiController::class, 'sparql']);
+    // SPARQL Access profile (openric-spec sparql-access v0.1.0).
+    // Both GET and POST per SPARQL 1.1 Protocol; rate-limited at the profile's
+    // documented 60/minute/IP. The SparqlController also rejects SPARQL Update
+    // operations (INSERT/DELETE/CLEAR/LOAD/DROP/CREATE/COPY/MOVE/ADD) with
+    // 403 + application/problem+json — sparql-access is read-only.
+    Route::match(['get', 'post'], '/sparql', [SparqlController::class, 'query'])
+        ->middleware('throttle:60,1');
+    Route::get('/sparql/info', [SparqlController::class, 'info'])
+        ->middleware('throttle:60,1');
+
     Route::get('/graph', [LinkedDataApiController::class, 'graph']);
 
     // Thumbnails — derivative of /uploads/. Generates + caches on first call.
@@ -208,20 +217,23 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // one thing and see another. Keep `profiles[]` in lockstep with
     // the endpoint surface the server actually serves.
     // ------------------------------------------------------------------
-    // Tracking openric-spec v0.38.0 (Wave B: SPARQL Access SHACL + fixtures,
-    // related-implementations + outreach drafts, extension proposals — additive,
-    // no service behaviour change beyond the version-string bump).
-    // The reference server claims 6 of the 7 normative profiles. Provenance &
+    // Tracking openric-spec v0.38.2 (probe coverage expansion to all 8
+    // entity-type detail endpoints; no normative spec changes from v0.38.0).
+    // The reference server claims 6 normative + 1 Draft profile. Provenance &
     // Event is deliberately NOT listed — the serializer emits the required
-    // shape (service v0.8.13+) but the backing data has ~177 Production rows
-    // missing resultsOrResultedIn / hasOrHadParticipant relations. A claim here
-    // would be dishonest until the data-backfill task lands.
-    // sparql-access (Draft) is also NOT listed by default — implementations
-    // wanting to advertise SPARQL MAY add it after mounting /api/ric/v1/sparql
-    // per spec/profiles/sparql-access.md.
+    // shape (service v0.8.13+) and v0.9.3 backfilled the safe 13 rows, but
+    // 170 of 228 Production activities still lack rico:hasOrHadParticipant
+    // (most are pre-1950 archival material where the creator is genuinely
+    // unknown). A claim here will land once openric-spec issue
+    // "provenance-event-creator-unknown" is resolved.
+    // sparql-access (Draft v0.1.0) IS now claimed as of service v0.10.0 —
+    // SparqlController exposes /sparql (GET+POST) and /sparql/info per
+    // spec/profiles/sparql-access.md, public-read with 60/minute/IP throttle
+    // and a 30-second backend timeout. SPARQL Update operations are rejected
+    // with 403 + application/problem+json.
     // See docs/drift-log.md and openric-spec audit/ric-o-1.1-audit.md.
     $openricConformance = [
-        'spec_version' => '0.38.0',
+        'spec_version' => '0.38.2',
         'profiles' => [
             ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
             ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],
@@ -229,6 +241,16 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
             ['id' => 'digital-object-linkage', 'version' => '0.6.0', 'conformance' => 'full'],
             ['id' => 'round-trip-editing',     'version' => '0.7.0', 'conformance' => 'full'],
             ['id' => 'export-only',            'version' => '0.9.0', 'conformance' => 'full'],
+            [
+                'id'                     => 'sparql-access',
+                'version'                => '0.1.0',
+                'conformance'            => 'full',
+                'status'                 => 'draft',
+                'access'                 => 'public-read',
+                'rate_limit'             => '60/minute/IP',
+                'max_query_time_seconds' => 30,
+                'endpoint'               => '/api/ric/v1/sparql',
+            ],
         ],
     ];
 

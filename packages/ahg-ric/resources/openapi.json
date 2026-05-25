@@ -187,22 +187,58 @@
     },
     "/sparql": {
       "get": {
-        "summary": "Execute SPARQL query",
-        "tags": ["SPARQL & Graph"],
+        "summary": "Execute SPARQL 1.1 query (GET)",
+        "description": "Read-only SPARQL Query passthrough to the backing triplestore. Implements the openric-spec `sparql-access` Draft profile v0.1.0. Update operations (INSERT/DELETE/CLEAR/LOAD/DROP/CREATE/COPY/MOVE/ADD) are rejected with 403 + application/problem+json. Rate-limited at 60/minute/IP. Backend query timeout 30s.",
+        "tags": ["SPARQL", "sparql-access"],
         "parameters": [
-          {
-            "name": "query",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
+          {"name": "query", "in": "query", "required": true, "schema": {"type": "string"}, "description": "SPARQL 1.1 query string (SELECT / ASK / CONSTRUCT / DESCRIBE)."}
         ],
         "responses": {
           "200": {
-            "description": "SPARQL results"
+            "description": "SPARQL 1.1 results. Content-Type is propagated from the backend per the request Accept header — application/sparql-results+json (default for SELECT/ASK), application/sparql-results+xml, text/csv, text/tab-separated-values, text/turtle (CONSTRUCT/DESCRIBE), application/ld+json (CONSTRUCT/DESCRIBE).",
+            "content": {
+              "application/sparql-results+json": {"schema": {"type": "object", "properties": {"head": {"type": "object"}, "results": {"type": "object"}}}}
+            }
+          },
+          "400": {"description": "Malformed query (backend parse error). application/problem+json."},
+          "403": {"description": "SPARQL Update operation rejected. application/problem+json with type=https://openric.org/errors/update-not-permitted."},
+          "429": {"description": "Rate limit exceeded (60/minute/IP)."},
+          "502": {"description": "SPARQL backend unavailable. application/problem+json."}
+        }
+      },
+      "post": {
+        "summary": "Execute SPARQL 1.1 query (POST)",
+        "description": "Same surface as GET. Accepts the query either as `?query=` form field (Content-Type: application/x-www-form-urlencoded) or as the raw request body (Content-Type: application/sparql-query).",
+        "tags": ["SPARQL", "sparql-access"],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {"schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+            "application/sparql-query": {"schema": {"type": "string"}}
           }
+        },
+        "responses": {
+          "200": {"description": "Same as GET /sparql."},
+          "400": {"description": "Malformed query."},
+          "403": {"description": "SPARQL Update rejected."},
+          "429": {"description": "Rate limit exceeded."},
+          "502": {"description": "Backend unavailable."}
+        }
+      }
+    },
+    "/sparql/info": {
+      "get": {
+        "summary": "SPARQL dataset description (void:Dataset)",
+        "description": "Returns a `void:Dataset` description of the queryable RDF graph: SPARQL endpoint URL, total triple count, vocabularies bound, license. Turtle by default; JSON-LD when `Accept: application/ld+json`. Triple count is cached for 5 minutes.",
+        "tags": ["SPARQL", "sparql-access"],
+        "responses": {
+          "200": {
+            "description": "void:Dataset description.",
+            "content": {
+              "text/turtle": {"schema": {"type": "string"}},
+              "application/ld+json": {"schema": {"type": "object"}}
+            }
+          },
+          "429": {"description": "Rate limit exceeded."}
         }
       }
     },

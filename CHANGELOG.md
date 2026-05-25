@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.10.0 — 2026-05-25 — codename "sparql-access"
+
+### SPARQL Access profile claimed (7th profile — first Draft)
+
+The service now claims the openric-spec `sparql-access` profile v0.1.0 (Draft) — the first time a Draft profile lights up in `$openricConformance`. Total profile count goes 6 → 7. spec_version tracker bumped 0.38.0 → 0.38.2 in lockstep.
+
+**New `SparqlController`** at `packages/ahg-ric/src/Http/Controllers/SparqlController.php`. Extracted from `LinkedDataApiController::sparql()` (which was a 60-line passthrough that wrapped Fuseki's response in a non-canonical envelope and swallowed backend errors as `HTTP 200`). The new controller is a faithful SPARQL 1.1 Protocol proxy:
+
+- **`GET|POST /api/ric/v1/sparql`** — query passthrough. Accepts the query as `?query=` parameter, form body, or raw `application/sparql-query` POST body. Passes the client's `Accept` header through to Fuseki and returns the backend response verbatim with its `Content-Type` (so canonical `application/sparql-results+json`, `application/sparql-results+xml`, `text/csv`, `text/turtle`, and `application/ld+json` all flow without mangling). Backend `4xx`/`5xx` responses are surfaced as `4xx`/`5xx` (no more silent 200-wrapping).
+- **`GET /api/ric/v1/sparql/info`** — `void:Dataset` description. Turtle by default; JSON-LD when `Accept: application/ld+json`. Triple count from a backend `SELECT (COUNT(*) AS ?n)` query, cached 5 minutes.
+- **SPARQL Update rejection** — `INSERT / DELETE / CLEAR / LOAD / DROP / CREATE / COPY / MOVE / ADD` operations are detected (after stripping comments and quoted literals so a SELECT containing the literal `"DELETE this row"` is not blocked) and rejected with `HTTP 403 + application/problem+json` (`type: https://openric.org/errors/update-not-permitted`). This is conservative: Fuseki's `/sparql` endpoint is already read-only and rejects Updates with 400, but the proxy-level rejection means clients get a clean RFC 7807 error rather than a Fuseki parser message.
+- **Rate limit** — `throttle:60,1` Laravel middleware → 60 requests per minute per IP, matching the profile declaration.
+- **Backend timeout** — 30 seconds; matches the profile declaration. Backend unreachable returns `502 + application/problem+json` (`type: https://openric.org/errors/sparql-backend-unavailable`).
+
+**Profile declaration** in `$openricConformance.profiles`:
+```json
+{
+  "id": "sparql-access",
+  "version": "0.1.0",
+  "conformance": "full",
+  "status": "draft",
+  "access": "public-read",
+  "rate_limit": "60/minute/IP",
+  "max_query_time_seconds": 30,
+  "endpoint": "/api/ric/v1/sparql"
+}
+```
+
+**Other code touched:**
+- `packages/ahg-ric/src/Support/ProblemDetails.php` — widened the private `build()` helper to public so future controllers can mint their own RFC 7807 error type URIs without bloating the helper class with one-off methods. Backward-compatible (all existing static helpers still call it).
+- `packages/ahg-ric/routes/api.php` — adds the new routes and imports the controller. Old `LinkedDataApiController::sparql` route is removed; the method itself is left in place but unrouted (dead code, removable in a future cleanup).
+- `packages/ahg-ric/resources/openapi.json` — adds full OpenAPI 3 entries for `GET|POST /sparql` and `GET /sparql/info` with all the realistic response codes (200, 400, 403, 429, 502) documented.
+
+**Conformance probe** (against openric-spec v0.38.3): **30/30 PASS** — up from 29/29 in v0.9.3 (one new probe for `/sparql/info`).
+
+**Outreach unblocker:** the Sparna invitation (draft at `openric-spec/docs/outreach/sparna-second-implementation.md`) can now pitch a live SPARQL endpoint as the second-implementation target on the `sparql-access` profile. Workbench notification B5 dropped to remind Johan to send.
+
 ## v0.9.3 — 2026-05-25
 
 ### Safe backfill of `rico:isOrWasPerformedBy` on `rico:Production` activities

@@ -80,7 +80,7 @@ final class ProblemDetails
         return self::build(self::INTERNAL_ERROR, 'Internal Server Error', 500, $detail, $extra);
     }
 
-    private static function build(string $type, string $title, int $status, string $detail, array $extra): JsonResponse
+    public static function build(string $type, string $title, int $status, string $detail, array $extra = []): JsonResponse
     {
         $body = array_merge([
             'type'     => $type,
