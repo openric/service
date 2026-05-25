@@ -43,6 +43,11 @@ The new vhost:
   `/login`, `/register`, `/logout`, `/ric-api`, `/static`) proxying to port 5055.
 - Serves the Laravel API at `/api/ric/v1/*` (longest-prefix match wins, so
   these never conflict).
+- Serves the spec-canonical semantic URI resolver at `/id/{kind}/{id}`
+  (openric-spec viewing-api §3.1). Content-negotiates `Accept` and 303s
+  to either the JSON-LD API endpoint or the human-readable view. The
+  `location ~ ^/id(/|$)` block must stay in the vhost — without it
+  nginx returns its own 404 before Laravel sees the request.
 - 301-redirects old `/sparql` and `/oai` → `/api/ric/v1/sparql` and
   `/api/ric/v1/oai` for back-compat.
 - Drops the dead `/app/*` + `@laravel` blocks that referenced a Laravel app
