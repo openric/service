@@ -29,6 +29,7 @@ use AhgCore\Constants\TermId;
 use AhgCore\Services\SettingHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Service for serializing AtoM entities to RiC-O JSON-LD format.
@@ -356,13 +357,81 @@ class RicSerializationService
 
         $ricFunc = [
             '@context' => $this->ricoContext(),
+            '@id' => $this->baseUri . '/function/' . $function->id,
+            '@type' => 'rico:Function',
+        ];
+
+        // ISDF: Name
+        if (!empty($function->authorized_form_of_name)) {
+            $ricFunc['rico:name'] = $function->authorized_form_of_name;
+        }
+
+        // ISDF: Description
+        if (!empty($function->description)) {
+            $ricFunc['openricx:description'] = $function->description;
+        }
+
+        // ISDF: Dates
+        if (!empty($function->dates)) {
+            $ricFunc['openricx:hasDateRangeSet'] = [
+                '@type' => 'rico:DateRange',
+                'rico:beginningDate' => $function->dates,
+            ];
+        }
+
+        // ISDF: Activities carried out under this function
+        $activities = $this->getActivitiesForFunction($functionId);
+        if (!empty($activities)) {
+            $ricFunc['rico:hasActivity'] = $activities;
+        }
+
+        // ISDF: Agents who perform this function
+        $agents = $this->getAgentsForFunction($functionId);
+        if (!empty($agents)) {
+            $ricFunc['rico:isPerformedBy'] = $agents;
+        }
+
+        return $ricFunc;
+    }
+
+    /**
+     * Serialize a Repository (Corporate Body acting as archival holder) to
+     * RIC-O JSON-LD with ISDIAH compliance.
+     *
+     * Repositories live in the actor table with a sibling row in repository
+     * (ISDIAH-specific fields). The @type is rico:CorporateBody per RiC-O 1.1
+     * (rico:Repository does not exist; the institution-as-archival-holder is
+     * a CorporateBody that has holdings).
+     */
+    public function serializeRepository(int $repositoryId, array $options = []): array
+    {
+        $culture = app()->getLocale() ?: 'en';
+        $repo = DB::table('actor as a')
+            ->leftJoin('actor_i18n as i18n', function ($j) use ($culture) {
+                $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
+            })
+            ->leftJoin('repository_i18n as repo_i18n', function ($j) use ($culture) {
+                $j->on('a.id', '=', 'repo_i18n.id')->where('repo_i18n.culture', '=', $culture);
+            })
+            ->leftJoin('slug', 'a.id', '=', 'slug.object_id')
+            ->where('a.id', $repositoryId)
+            ->select('a.*', 'i18n.*', 'repo_i18n.*', 'slug.slug')
+            ->first();
+
+        if (!$repo) {
+            return ['error' => 'Repository not found'];
+        }
+
+        $ricRepo = [
+            '@context' => $this->ricoContext(),
             '@id' => $this->baseUri . '/repository/' . ($repo->slug ?: $repo->id),
             '@type' => 'rico:CorporateBody',
         ];
 
-        // ISDIAH: Authorized Form
+        // ISDIAH: Authorized Form of Name
         if (!empty($repo->authorized_form_of_name)) {
             $ricRepo['rico:name'] = $repo->authorized_form_of_name;
+            $ricRepo['openricx:normalizedForm'] = $repo->authorized_form_of_name;
         }
 
         // ISDIAH: Contact Information
@@ -371,12 +440,12 @@ class RicSerializationService
             $ricRepo['openricx:contact'] = $contact;
         }
 
-        // ISDIAH: Access
+        // ISDIAH: Conditions of Access
         if (!empty($repo->access_conditions)) {
             $ricRepo['rico:conditionsOfAccess'] = $repo->access_conditions;
         }
 
-        // ISDIAH: Holdings
+        // ISDIAH: Holdings (fonds + collections the repository holds)
         $holdings = $this->getHoldingsForRepository($repositoryId);
         if (!empty($holdings)) {
             $ricRepo['rico:isOrWasHolderOf'] = $holdings;
@@ -808,128 +877,483 @@ class RicSerializationService
     }
 
     /**
-     * Export entire RecordSet (Fonds/Collection) as JSON-LD
+     * Export entire RecordSet (Fonds/Collection) as a JSON-LD @graph
+     * containing the root entity plus all descendants.
      */
     public function exportRecordSet(int $fondsId, array $options = []): array
     {
         $fonds = $this->serializeRecord($fondsId, $options);
-        
-        // Include all descendants
+        if (isset($fonds['error'])) {
+            return $fonds;
+        }
+
         $descendants = $this->getAllDescendants($fondsId);
-        
-        $graph = [
+
+        return [
             '@context' => $this->ricoContext(),
-            '@id' => $this->baseUri . '/thing/' . $thingId,
-            '@type' => self::RICO_NS . 'Thing',
-            'rico:type' => $thing->type_id ?? 'box',
+            '@graph'   => array_merge([$fonds], $descendants),
         ];
+    }
 
-        if (!empty($thing->name)) {
-            $record['rico:name'] = $thing->name;
-        }
-        if (!empty($thing->identifier)) {
-            $record['rico:identifier'] = $thing->identifier;
-        }
-        if (!empty($thing->description)) {
-            $record['openricx:description'] = $thing->description;
-        }
-        if (!empty($thing->barcode)) {
-            $record['rico:identifier'] = [
-                ['@type' => 'rico:Identifier', 'openricx:identifierType' => 'barcode', 'rico:textualValue' => $thing->barcode],
-            ];
-        }
+    // =========================================================================
+    // Private helpers — DB queries that build the nested JSON-LD nodes
+    // referenced by the public serialize* methods above.
+    // =========================================================================
 
-        // Physical dimensions
-        $dimensions = array_filter([
-            'width' => $thing->width ?? null,
-            'height' => $thing->height ?? null,
-            'depth' => $thing->depth ?? null,
-        ]);
-        if (!empty($dimensions)) {
-            $record['openricx:physicalCharacteristics'] = $dimensions;
-        }
-
-        // Capacity
-        if ($thing->total_capacity) {
-            $record['openricx:extent'] = [
-                'openricx:totalCapacity' => (int) $thing->total_capacity,
-                'openricx:usedCapacity' => (int) ($thing->used_capacity ?? 0),
-                'openricx:unit' => $thing->capacity_unit ?? 'items',
-            ];
-        }
-
-        // Current location (from ric_thing_location)
-        $currentLocation = DB::table('ric_thing_location as rtl')
-            ->join('ric_place_i18n as rpi', function ($j) use ($culture) {
-                $j->on('rtl.ric_place_id', '=', 'rpi.id')->where('rpi.culture', '=', $culture);
+    /**
+     * Get dates for a record (event rows attached to the information object).
+     * Returns a rico:DateRangeSet node, or null when there are no events.
+     */
+    private function getDatesForRecord(int $ioId): ?array
+    {
+        $dates = DB::table('event')
+            ->leftJoin('event_i18n', function ($j) {
+                $j->on('event.id', '=', 'event_i18n.id')
+                   ->where('event_i18n.culture', '=', 'en');
             })
-            ->where('rtl.ric_thing_id', $thingId)
-            ->where('rtl.is_current', 1)
-            ->select('rtl.ric_place_id', 'rpi.name as place_name', 'rtl.start_date')
-            ->first();
-
-        if ($currentLocation) {
-            $record['rico:hasOrHadLocation'] = [
-                '@id' => $this->baseUri . '/place/' . $currentLocation->ric_place_id,
-                '@type' => self::RICO_NS . 'Place',
-                'openricx:placeName' => $currentLocation->place_name,
-            ];
-        } elseif ($thing->building || $thing->room) {
-            // Fallback to physical_object_extended location
-            $locationParts = array_filter([
-                $thing->building, $thing->floor ? 'Floor ' . $thing->floor : null,
-                $thing->room ? 'Room ' . $thing->room : null,
-                $thing->aisle ? 'Aisle ' . $thing->aisle : null,
-                $thing->bay ? 'Bay ' . $thing->bay : null,
-                $thing->rack ? 'Rack ' . $thing->rack : null,
-                $thing->shelf ? 'Shelf ' . $thing->shelf : null,
-            ]);
-            if (!empty($locationParts)) {
-                $record['rico:hasOrHadLocation'] = [
-                    '@type' => self::RICO_NS . 'Place',
-                    'openricx:placeName' => implode(' > ', $locationParts),
-                ];
-            }
-        }
-
-        // Contained instantiations
-        $instantiations = DB::table('ric_thing_instantiation as rti2')
-            ->join('ric_instantiation as ri', 'rti2.ric_instantiation_id', '=', 'ri.id')
-            ->leftJoin('ric_instantiation_i18n as rii', function ($j) use ($culture) {
-                $j->on('ri.id', '=', 'rii.id')->where('rii.culture', '=', $culture);
-            })
-            ->where('rti2.ric_thing_id', $thingId)
-            ->select('ri.id', 'ri.record_id', 'rii.title', 'rti2.sequence_number')
-            ->orderBy('rti2.sequence_number')
+            ->where('event.object_id', $ioId)
+            ->select('event.id', 'event.type_id', 'event.start_date', 'event.end_date', 'event_i18n.date as date_display')
             ->get();
 
-        if ($instantiations->isNotEmpty()) {
-            $record['rico:containsOrContained'] = $instantiations->map(fn($inst) => [
-                '@id' => $this->baseUri . '/instantiation/' . $inst->id,
-                '@type' => self::RICO_NS . 'Instantiation',
-                'rico:title' => $inst->title,
-                'rico:isOrWasInstantiationOf' => $inst->record_id ? $this->baseUri . '/informationobject/' . $inst->record_id : null,
+        if ($dates->isEmpty()) {
+            return null;
+        }
+
+        $dateRanges = [];
+        foreach ($dates as $date) {
+            $dateRanges[] = [
+                '@type' => 'rico:DateRange',
+                'rico:beginningDate' => $date->start_date ?? null,
+                'rico:endDate' => $date->end_date ?? null,
+                'rico:expressedDate' => $date->date_display ?? null,
+                'openric:localType' => $date->type_id ?? 'existence',
+            ];
+        }
+
+        return [
+            '@type' => 'rico:DateRangeSet',
+            'rico:hasDateRange' => $dateRanges,
+        ];
+    }
+
+    /**
+     * Get languages for a record from object_term_relation (taxonomy 7 = language).
+     */
+    private function getLanguagesForRecord(int $ioId): array
+    {
+        return DB::table('object_term_relation')
+            ->join('term_i18n', function ($j) {
+                $j->on('object_term_relation.term_id', '=', 'term_i18n.id')
+                   ->where('term_i18n.culture', '=', 'en');
+            })
+            ->join('term', 'object_term_relation.term_id', '=', 'term.id')
+            ->where('object_term_relation.object_id', $ioId)
+            ->where('term.taxonomy_id', 7)
+            ->pluck('term_i18n.name')
+            ->map(fn($lang) => [
+                '@type' => 'rico:Language',
+                'rico:languageCode' => $lang,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get the repository (holder) for a record. Returns the raw row with slug
+     * and authorized form of name — caller composes the JSON-LD node.
+     */
+    private function getRepositoryForRecord(int $ioId): ?object
+    {
+        return DB::table('repository as r')
+            ->leftJoin('actor_i18n as i18n', function ($j) {
+                $j->on('r.id', '=', 'i18n.id')->where('i18n.culture', '=', 'en');
+            })
+            ->leftJoin('slug', 'r.id', '=', 'slug.object_id')
+            ->join('information_object', 'information_object.repository_id', '=', 'r.id')
+            ->where('information_object.id', $ioId)
+            ->select('r.*', 'i18n.authorized_form_of_name', 'slug.slug')
+            ->first();
+    }
+
+    /**
+     * Get subjects for a record from object_term_relation (taxonomy 35 = subject).
+     */
+    private function getSubjectsForRecord(int $ioId): array
+    {
+        return DB::table('object_term_relation as otr')
+            ->join('term as t', 'otr.term_id', '=', 't.id')
+            ->join('term_i18n as ti', 't.id', '=', 'ti.id')
+            ->where('otr.object_id', $ioId)
+            ->where('t.taxonomy_id', 35)
+            ->where('ti.culture', 'en')
+            ->pluck('ti.name')
+            ->map(fn($name) => [
+                '@type' => 'skos:Concept',
+                'skos:prefLabel' => $name,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get creator agents for a record. Reads event rows with
+     * type_id = EVENT_TYPE_CREATION joined to the actor table.
+     */
+    private function getCreatorsForRecord(int $ioId): array
+    {
+        return DB::table('event')
+            ->join('actor as a', 'event.actor_id', '=', 'a.id')
+            ->join('actor_i18n as i18n', function ($j) {
+                $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', 'en');
+            })
+            ->where('event.object_id', $ioId)
+            ->where('event.type_id', TermId::EVENT_TYPE_CREATION)
+            ->whereNotNull('event.actor_id')
+            ->select('a.id', 'i18n.authorized_form_of_name', 'a.entity_type_id')
+            ->distinct()
+            ->get()
+            ->map(fn($actor) => [
+                '@id' => $this->baseUri . '/actor/' . $actor->id,
+                '@type' => 'rico:' . ($this->actorTypeToRic[strtolower($actor->entity_type_id ?? '')] ?? 'Agent'),
+                'rico:name' => $actor->authorized_form_of_name,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get instantiations (digital objects) for a record.
+     */
+    private function getInstantiationsForRecord(int $ioId): array
+    {
+        return DB::table('digital_object as do')
+            ->where('do.object_id', $ioId)
+            ->get()
+            ->map(fn($do) => [
+                '@type' => 'rico:Instantiation',
+                'rico:identifier' => $do->name,
+                'openricx:hasMimeType' => $do->mime_type ?? null,
+                'rico:hasExtent' => [
+                    '@type' => 'rico:Extent',
+                    'rico:quantity' => isset($do->byte_size) ? (float) $do->byte_size : null,
+                    'rico:hasExtentType' => 'bytes',
+                ],
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get immediate child records under a parent information_object.
+     */
+    private function getChildRecords(int $parentId): array
+    {
+        return DB::table('information_object as io')
+            ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
+            ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
+            ->where('io.parent_id', $parentId)
+            ->select('io.id', 'slug.slug', 'i18n.title', 'io.identifier')
+            ->get()
+            ->map(fn($child) => [
+                '@id' => $this->baseUri . '/informationobject/' . ($child->slug ?? $child->id),
+                '@type' => 'rico:RecordPart',
+                'rico:identifier' => $child->identifier,
+                'rico:title' => $child->title,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Recursively walk the description tree under $parentId and return a flat
+     * list of fully-serialized child records. Capped at depth 10 to guard
+     * against cyclic parent_id loops in legacy AtoM data.
+     */
+    private function getAllDescendants(int $parentId, int $depth = 0): array
+    {
+        if ($depth > 10) {
+            return [];
+        }
+
+        $children = $this->getChildRecords($parentId);
+        $allDescendants = [];
+
+        foreach ($children as $child) {
+            $childId = $this->extractIdFromUri($child['@id']);
+            $allDescendants[] = $this->serializeRecord($childId, ['include_children' => false]);
+            $allDescendants = array_merge($allDescendants, $this->getAllDescendants($childId, $depth + 1));
+        }
+
+        return $allDescendants;
+    }
+
+    /**
+     * Get places associated with an actor. AtoM stores actor-places as a
+     * free-text field on actor_i18n; we emit a single node from it.
+     */
+    private function getPlacesForActor(int $actorId): array
+    {
+        $placesText = DB::table('actor_i18n')
+            ->where('id', $actorId)
+            ->where('culture', 'en')
+            ->value('places');
+
+        if (empty($placesText)) {
+            return [];
+        }
+
+        return [
+            [
+                '@type' => 'rico:Place',
+                'rico:name' => strip_tags($placesText),
+            ],
+        ];
+    }
+
+    /**
+     * Get mandates for an actor (free-text field on actor_i18n, plus optional
+     * structured rows in the mandate table).
+     */
+    private function getMandatesForActor(int $actorId): array
+    {
+        $mandateText = DB::table('actor_i18n')
+            ->where('id', $actorId)
+            ->where('culture', 'en')
+            ->value('mandates');
+
+        if (empty($mandateText)) {
+            $structured = DB::table('mandate')
+                ->where('actor_id', $actorId)
+                ->get();
+            if ($structured->isEmpty()) {
+                return [];
+            }
+            return $structured->map(fn($m) => [
+                '@type' => 'rico:Mandate',
+                'openricx:description' => $m->description ?? null,
             ])->toArray();
         }
 
-        // Parent container
-        if ($thing->parent_id) {
-            $record['rico:isOrWasIncludedIn'] = [
-                '@id' => $this->baseUri . '/thing/' . $thing->parent_id,
-                '@type' => self::RICO_NS . 'Thing',
+        return [
+            [
+                '@type' => 'rico:Mandate',
+                'openricx:description' => strip_tags($mandateText),
+            ],
+        ];
+    }
+
+    /**
+     * Get the functions an actor performs (via relation table, type_id 40).
+     */
+    private function getFunctionsForActor(int $actorId): array
+    {
+        return DB::table('relation as r')
+            ->join('function_object as f', 'r.object_id', '=', 'f.id')
+            ->join('function_object_i18n as fi', 'f.id', '=', 'fi.id')
+            ->where('r.subject_id', $actorId)
+            ->where('r.type_id', 40)
+            ->select('f.id', 'fi.authorized_form_of_name')
+            ->get()
+            ->map(fn($func) => [
+                '@id' => $this->baseUri . '/function/' . $func->id,
+                '@type' => 'rico:Function',
+                'rico:name' => $func->authorized_form_of_name,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get structured rico:Occupation nodes for an actor.
+     * Schema::hasTable guard lets the serializer survive a half-installed
+     * instance where ric_occupation model code is deployed but the
+     * migration hasn't run yet.
+     */
+    private function getOccupationsForActor(int $actorId): array
+    {
+        if (!Schema::hasTable('ric_occupation')) {
+            return [];
+        }
+
+        $rows = DB::table('ric_occupation')
+            ->where('actor_id', $actorId)
+            ->orderByDesc('is_current')
+            ->orderByDesc('start_date')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $node = [
+                '@id' => $this->baseUri . '/occupation/' . $row->id,
+                '@type' => 'rico:Occupation',
+                'rdfs:label' => $row->title,
             ];
+            if (!empty($row->start_date)) {
+                $node['rico:beginningDate'] = $row->start_date;
+            }
+            if (!empty($row->end_date)) {
+                $node['rico:endDate'] = $row->end_date;
+            }
+            if (!empty($row->description)) {
+                $node['openricx:descriptiveNote'] = $row->description;
+            }
+            if (!empty($row->is_current)) {
+                $node['openricx:isCurrent'] = true;
+            }
+            $out[] = $node;
         }
 
-        // Environment
-        if ($thing->climate_controlled) {
-            $record['openricx:environmentalConditions'] = ['climateControlled' => true];
-        }
-        if ($thing->condition_note) {
-            $record['openricx:conditionNote'] = $thing->condition_note;
+        return $out;
+    }
+
+    /**
+     * Get contact info for an agent or repository.
+     * RiC-O 1.1 uses rico:ContactPoint (not rico:Contact — pre-1.1).
+     */
+    private function getContactInfo(int $actorId): ?array
+    {
+        $contact = DB::table('contact_information')
+            ->where('actor_id', $actorId)
+            ->first();
+
+        if (!$contact) {
+            return null;
         }
 
-        $record['openricx:status'] = $thing->status ?? 'active';
+        return [
+            '@type' => 'rico:ContactPoint',
+            'openricx:streetAddress' => $contact->street_address ?? null,
+            'openricx:postalCode' => $contact->postal_code ?? null,
+            'openricx:city' => $contact->city ?? null,
+            'openricx:country' => $contact->country ?? null,
+            'openricx:telephone' => $contact->telephone ?? null,
+            'openricx:email' => $contact->email ?? null,
+        ];
+    }
 
-        return $record;
+    /**
+     * Get activities (events) carried out under a function.
+     *
+     * Why: OpenRiC's ric_activity table has no function_id column — the
+     * function ↔ activity link lives in the relation table (like every other
+     * RiC association). Until that mapping is wired here, returning [] is
+     * correct: serializeFunction emits no rico:hasActivity rather than 500ing.
+     */
+    private function getActivitiesForFunction(int $functionId): array
+    {
+        if (!Schema::hasColumn('ric_activity', 'function_id')) {
+            return [];
+        }
+        return DB::table('ric_activity')
+            ->where('function_id', $functionId)
+            ->get()
+            ->map(fn($act) => [
+                '@type' => 'rico:Activity',
+                'openricx:description' => $act->description ?? null,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get agents that perform a function (via relation table, type_id 40).
+     */
+    private function getAgentsForFunction(int $functionId): array
+    {
+        return DB::table('relation as r')
+            ->join('actor as a', 'r.object_id', '=', 'a.id')
+            ->join('actor_i18n as i18n', 'a.id', '=', 'i18n.id')
+            ->where('r.subject_id', $functionId)
+            ->where('r.type_id', 40)
+            ->select('a.id', 'i18n.authorized_form_of_name')
+            ->get()
+            ->map(fn($agent) => [
+                '@id' => $this->baseUri . '/actor/' . $agent->id,
+                '@type' => 'rico:Agent',
+                'rico:name' => $agent->authorized_form_of_name,
+            ])
+            ->toArray();
+    }
+
+    /**
+     * Get top-level holdings (fonds / collections) for a repository.
+     * Capped at 100 to keep the repository JSON-LD payload bounded.
+     */
+    private function getHoldingsForRepository(int $repositoryId): array
+    {
+        $holdings = DB::table('information_object as io')
+            ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
+            ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
+            ->leftJoin('term as level', 'io.level_of_description_id', '=', 'level.id')
+            ->leftJoin('term_i18n as level_i18n', 'level.id', '=', 'level_i18n.id')
+            ->where('io.repository_id', $repositoryId)
+            ->whereIn('level_i18n.name', ['fonds', 'collection'])
+            ->select('io.id', 'slug.slug', 'i18n.title', 'level_i18n.name as level')
+            ->limit(100)
+            ->get();
+
+        return $holdings->map(fn($h) => [
+            '@id' => $this->baseUri . '/informationobject/' . ($h->slug ?? $h->id),
+            '@type' => 'rico:RecordSet',
+            'rico:title' => $h->title,
+        ])->toArray();
+    }
+
+    /**
+     * Get ICIP access restrictions for an information object.
+     * Returns [] for other entity types (no access-restriction table).
+     * Schema::hasTable guard for instances without the ICIP migrations.
+     */
+    private function getAccessRestrictions(string $entityType, int $entityId): array
+    {
+        if ($entityType !== 'information_object') {
+            return [];
+        }
+        if (!Schema::hasTable('icip_access_restriction')) {
+            return [];
+        }
+
+        $rows = DB::table('icip_access_restriction')
+            ->where('information_object_id', $entityId)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $entry = [
+                '@type' => 'rico:Rule',
+                'rico:hasOrHadRuleType' => ['@id' => 'https://openric.org/vocab/rule-type/access-restriction'],
+                'openricx:restrictionType' => $r->restriction_type,
+            ];
+            if (!empty($r->custom_restriction_text)) {
+                $entry['openricx:customText'] = $r->custom_restriction_text;
+            }
+            if (!empty($r->start_date)) {
+                $entry['openricx:startDate'] = $r->start_date;
+            }
+            if (!empty($r->end_date)) {
+                $entry['openricx:endDate'] = $r->end_date;
+            }
+            $entry['openricx:appliesToDescendants'] = (bool) ($r->applies_to_descendants ?? false);
+            $out[] = $entry;
+        }
+        return $out;
+    }
+
+    /**
+     * Check whether an entity has personal data attached (personal_data_log
+     * keyed by object.id, regardless of CTI entity type).
+     */
+    private function checkPersonalData(string $entityType, int $entityId): bool
+    {
+        if (!Schema::hasTable('personal_data_log')) {
+            return false;
+        }
+        return DB::table('personal_data_log')
+            ->where('object_id', $entityId)
+            ->exists();
+    }
+
+    /**
+     * Extract the trailing numeric/slug segment from a baseUri-prefixed URI.
+     * Used by getAllDescendants to recurse off @id values produced by
+     * getChildRecords.
+     */
+    private function extractIdFromUri(string $uri): int
+    {
+        $parts = explode('/', $uri);
+        return (int) end($parts);
     }
 }

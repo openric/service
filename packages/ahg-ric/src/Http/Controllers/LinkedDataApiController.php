@@ -71,7 +71,9 @@ class LinkedDataApiController extends Controller
                 'a.entity_type_id',
                 'i18n.authorized_form_of_name as name',
                 'at_i18n.name as type',
-            ]);
+            ])
+            ->whereNotNull('slug.slug')
+            ->where('slug.slug', '!=', '');
 
         if ($type) {
             $query->where('at_i18n.name', $type);
