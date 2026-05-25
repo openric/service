@@ -1,0 +1,54 @@
+name: SPARQL smoke tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      fuseki:
+        image: apache/jena-fuseki:4.9.0
+        ports:
+          - 3030:3030
+        options: >-
+          --health-cmd "wget -qO- http://localhost:3030/ || exit 1"
+          --health-interval 5s
+          --health-timeout 2s
+          --health-retries 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v4
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl
+
+      - name: Wait for Fuseki
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:3030/ >/dev/null; then
+              echo "Fuseki ready"; break
+            fi
+            echo "Waiting for Fuseki... ($i)"; sleep 1
+          done
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+
+      - name: PHP syntax check (smoke test file)
+        run: |
+          php -l packages/ahg-ric/tests/Feature/SparqlSmokeTest.php || true
+
+      - name: Run PHPUnit smoke group
+        env:
+          FUSEKI_URL: http://localhost:3030/openric
+        run: |
+          vendor/bin/phpunit --group smoke --colors=never --log-junit junit-smoke.xml
