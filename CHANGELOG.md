@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.3 — 2026-05-25
+
+### Safe backfill of `rico:isOrWasPerformedBy` on `rico:Production` activities
+
+**New Artisan command** `php artisan openric:backfill-production-participants [--dry-run]`. Backfills `performed_by` (predicate `rico:isOrWasPerformedBy`) on Production activities that have an archivally-grounded performer signal *already in the database*, via either of two safe paths:
+
+- **(A) Creator-event path** — activity has `results_from` link to a record, AND that record has an `event` row with `type_id = EVENT_TYPE_CREATION (111)` and a non-null `actor_id`. Caught 8 activities.
+- **(B) Inverse-encoded path** — an actor row points AT the activity via `relation.object_id = activity.id` with `dropdown_code IN ('has_creator','has_accumulator')`. Caught 5 activities (and resolved 5 of the 9 previously-suspected "orphan" activities that turned out to have an inverse encoding).
+
+**Coverage shifted from 45 → 58 of 228 Production activities (19.7% → 25.4%).** Each new row is tagged `ric_relation_meta.certainty='derived'` and carries an `evidence` field pointing back to the 2026-05-25 audit memo, so any future archivist or auditor can identify and reverse the backfill if needed. Idempotent; transactional; dry-run mode lists every row that would be inserted without writing.
+
+**What this release explicitly does NOT do:**
+
+- **Does not backfill from `openric_audit_log.user_id`.** That field names the archivist who created/edited the database row in 2026, not the historical performer in (e.g.) 1850. Backfilling from it would invent false provenance. The audit memo documents why this signal is unsafe.
+- **Does not claim the `provenance-event` profile.** Even after this backfill, only 25.4% of Production activities have a participant; the bottleneck is archival truth, not code. 137 of the 170 unfilled activities are pre-1950 material where the creator is genuinely unknown to the archive. The profile-prose refinement needed to make `provenance-event` claimable for typical archival holdings is drafted at `openric-spec/docs/issues/provenance-event-creator-unknown.md` (paste-ready issue body for `github.com/openric/spec/issues`).
+
+**Operational note:** This is a one-shot command. It is idempotent — re-running on a freshly-shipped instance is a no-op. The expected use is: ship v0.9.3, run once at deploy time, and never run again unless new evidence surfaces (e.g. an EGAD upstream-clarification that admits additional safe signals).
+
+See `docs/sessions/2026-05-25-v0.9.3-production-participant-backfill.md` for the full session narrative.
+
 ## v0.9.2 — 2026-05-25
 
 ### Detail-endpoint regression remediation (bug-fix release)
