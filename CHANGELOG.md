@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0 — 2026-06-18 — codename "record-part"
+
+### Record Part / Record Set write support + detail-serializer fix
+
+Adds first-class write endpoints for the two `information_object`-backed RiC entity types that previously had no create path:
+
+- **`POST /api/ric/v1/record-parts`** — create a Record Part (`rico:RecordPart`, RiC-E05). Requires `title` + `parent_id` (the Record it is part of); the parent/part link is the `information_object` hierarchy. Resolves the existing "Part" level term (taxonomy 34) via `RicEntityService::resolveLevelTermId()`. Per-part provenance is added afterwards with `POST /relations` (e.g. `has_creator`) against the returned id — which is what lets a multi-track carrier hold mixed provenance per track.
+- **`POST /api/ric/v1/record-sets`** — create a Record Set (`rico:RecordSet`, RiC-E03) at an aggregation level (default `collection`; override with `level`).
+- `PATCH/PUT/DELETE /record-parts/{id}` and `/record-sets/{id}` delegate to the existing record update/delete. Both types are read/served under `/records/{slug}` as before. Documented in `OpenApiSpec`; covered by `ApiDocumentationTest`.
+
+**Bug fix (`RicSerializationService::serializeRecord`)** — the level→RiC-type lookup joined `term_i18n` with no culture filter, so it picked an arbitrary culture's level name (e.g. "Dio") and silently fell back to `rico:Record` for *all* detail records. Now culture-filtered to `en` and lowercased, so `item → Record`, `collection → RecordSet`, `part → RecordPart` resolve correctly. Conformance probe: 30 pass / 0 fail.
+
+Motivated by a Records-in-Contexts forum question (modelling a magnetic tape as a Record with each track a Record Part) and the openric.org modelling wizard built on top of these endpoints.
+
 ## v0.10.0 — 2026-05-25 — codename "sparql-access"
 
 ### SPARQL Access profile claimed (7th profile — first Draft)

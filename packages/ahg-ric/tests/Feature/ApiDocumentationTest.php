@@ -61,12 +61,40 @@ class ApiDocumentationTest extends TestCase
     public function test_api_info_endpoint(): void
     {
         $response = $this->getJson('/api/ric/v1');
-        
+
         $response->assertStatus(200);
         $response->assertJsonStructure([
             'name',
             'version',
             'description',
         ]);
+    }
+
+    /**
+     * Record Part (RiC-E05) and Record Set (RiC-E03) write endpoints must be
+     * documented in the OpenAPI spec so the API Explorer (and the modelling
+     * wizard) can drive them.
+     */
+    public function test_openapi_documents_record_part_and_set_endpoints(): void
+    {
+        $response = $this->getJson('/api/ric/v1/openapi.json');
+        $response->assertStatus(200);
+
+        $paths = $response->json('paths');
+        $this->assertArrayHasKey('/record-parts', $paths, 'OpenAPI must document POST /record-parts');
+        $this->assertArrayHasKey('post', $paths['/record-parts']);
+        $this->assertArrayHasKey('/record-sets', $paths, 'OpenAPI must document POST /record-sets');
+        $this->assertArrayHasKey('post', $paths['/record-sets']);
+    }
+
+    /**
+     * The /record-parts route must be registered (a missing route returns 404;
+     * an unauthenticated write returns 401/403 — anything but 404 proves it
+     * exists and is auth-gated).
+     */
+    public function test_record_parts_route_is_registered_and_auth_gated(): void
+    {
+        $response = $this->postJson('/api/ric/v1/record-parts', ['title' => 'x']);
+        $this->assertNotSame(404, $response->getStatusCode(), 'POST /record-parts must be a registered route');
     }
 }

@@ -1123,6 +1123,71 @@ class RicEntityService
         });
     }
 
+    /**
+     * Resolve a level_of_description term id by name (case-insensitive).
+     *
+     * Record / Record Set / Record Part are all information_object rows; the
+     * RiC-O type is derived from the level name (see
+     * RicSerializationService::$levelToRic — "item" → Record, "part" →
+     * RecordPart, aggregation levels → RecordSet). AtoM's LEVEL_OF_DESCRIPTION
+     * taxonomy id is 34. Returns null if no such level term exists.
+     */
+    public function resolveLevelTermId(string $name): ?int
+    {
+        $id = DB::table('term as t')
+            ->join('term_i18n as ti', 'ti.id', '=', 't.id')
+            ->where('t.taxonomy_id', 34)
+            ->whereRaw('LOWER(ti.name) = ?', [strtolower($name)])
+            ->value('t.id');
+
+        return $id ? (int) $id : null;
+    }
+
+    /**
+     * Create a Record Part (rico:RecordPart) — an information_object at the
+     * "part" level that belongs to a parent Record. Per RiC-CM RiC-E05 a
+     * Record Part is a component with independent information content; its
+     * own provenance (creators, places, dates, subjects) is attached via
+     * relations on the part itself, which is exactly what lets a multi-track
+     * carrier carry mixed provenance per track.
+     *
+     * The parent/part link is the information_object hierarchy (parent_id),
+     * which the serializer renders as the RiC part/whole relation.
+     */
+    public function createRecordPart(array $data): int
+    {
+        if (empty($data['parent_id'])) {
+            throw new \InvalidArgumentException('A Record Part requires a "parent_id" — the Record it is part of.');
+        }
+        $levelId = $this->resolveLevelTermId('part');
+        if (!$levelId) {
+            throw new \RuntimeException('No "Part" level term exists in the level-of-description taxonomy (id 34).');
+        }
+        $data['level_of_description_id'] = $levelId;
+
+        return $this->createRecord($data);
+    }
+
+    /**
+     * Create a Record Set (rico:RecordSet) — an information_object at an
+     * aggregation level. Defaults to "collection"; override with
+     * $data['level'] (e.g. "fonds", "series") or an explicit
+     * level_of_description_id.
+     */
+    public function createRecordSet(array $data): int
+    {
+        if (empty($data['level_of_description_id'])) {
+            $level = $data['level'] ?? 'collection';
+            $levelId = $this->resolveLevelTermId($level);
+            if (!$levelId) {
+                throw new \RuntimeException("No \"{$level}\" level term exists in the level-of-description taxonomy (id 34).");
+            }
+            $data['level_of_description_id'] = $levelId;
+        }
+
+        return $this->createRecord($data);
+    }
+
     public function updateRecord(int $id, array $data): void
     {
         DB::transaction(function () use ($id, $data) {

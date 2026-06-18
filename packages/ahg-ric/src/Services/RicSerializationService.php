@@ -152,7 +152,14 @@ class RicSerializationService
             ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
             ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
             ->leftJoin('term as level', 'io.level_of_description_id', '=', 'level.id')
-            ->leftJoin('term_i18n as level_i18n', 'level.id', '=', 'level_i18n.id')
+            // Filter the level name to English: term_i18n carries ~30 culture
+            // rows per term, and without this filter the join picked an
+            // arbitrary culture (e.g. "Dio"), so the level→RiC-type mapping
+            // silently fell back to Record. The $levelToRic keys are English.
+            ->leftJoin('term_i18n as level_i18n', function ($j) {
+                $j->on('level.id', '=', 'level_i18n.id')
+                    ->where('level_i18n.culture', '=', 'en');
+            })
             ->where('io.id', $ioId)
             ->select([
                 'io.*',
@@ -166,7 +173,11 @@ class RicSerializationService
             return ['error' => 'Information Object not found'];
         }
 
-        $ricType = $this->levelToRic[$io->level_name] ?? 'Record';
+        // Level names are stored capitalised ("Fonds", "Item", "Part") and may
+        // vary by culture; the $levelToRic keys are lowercase. Lowercase the
+        // lookup so e.g. "Part" → RecordPart deterministically (matches the
+        // hierarchy serializer below, which already lowercases).
+        $ricType = $this->levelToRic[strtolower((string) $io->level_name)] ?? 'Record';
 
         $record = [
             '@context' => $this->ricoContext(),

@@ -1971,6 +1971,72 @@ class LinkedDataApiController extends Controller
     }
 
     /**
+     * POST /api/ric/v1/record-parts
+     * Create a Record Part (rico:RecordPart) — a component of a parent Record
+     * (RiC-CM RiC-E05). Required: title, parent_id. The part is linked to its
+     * parent Record as a RiC part/whole relation; per-part provenance is added
+     * afterwards with POST /relations (e.g. has_creator) against the returned id.
+     */
+    public function createRecordPart(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:1024',
+            'parent_id' => 'required|integer',
+            'identifier' => 'nullable|string|max:1024',
+            'repository_id' => 'nullable|integer',
+        ]) + $request->except(['title', 'parent_id', 'identifier', 'repository_id']);
+
+        try {
+            $id = $this->entities->createRecordPart($data);
+            $slug = DB::table('slug')->where('object_id', $id)->value('slug');
+            \AhgRic\Support\AuditLog::record($request, 'create', 'record-part', $id, $data);
+            return response()->json([
+                'id' => $id,
+                'slug' => $slug,
+                'type' => 'record-part',
+                'href' => "/api/ric/v1/records/" . ($slug ?: $id),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return ProblemDetails::validationFailed($e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('[RiC API] createRecordPart failed', ['error' => $e->getMessage()]);
+            return ProblemDetails::validationFailed($e->getMessage());
+        }
+    }
+
+    /**
+     * POST /api/ric/v1/record-sets
+     * Create a Record Set (rico:RecordSet) — an aggregation of records
+     * (RiC-CM RiC-E03). Required: title. Optional: level (default "collection"),
+     * parent_id. Served (like Records) under /api/ric/v1/records/{slug}.
+     */
+    public function createRecordSet(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:1024',
+            'level' => 'nullable|string|max:64',
+            'identifier' => 'nullable|string|max:1024',
+            'parent_id' => 'nullable|integer',
+            'repository_id' => 'nullable|integer',
+        ]) + $request->except(['title', 'level', 'identifier', 'parent_id', 'repository_id']);
+
+        try {
+            $id = $this->entities->createRecordSet($data);
+            $slug = DB::table('slug')->where('object_id', $id)->value('slug');
+            \AhgRic\Support\AuditLog::record($request, 'create', 'record-set', $id, $data);
+            return response()->json([
+                'id' => $id,
+                'slug' => $slug,
+                'type' => 'record-set',
+                'href' => "/api/ric/v1/records/" . ($slug ?: $id),
+            ], 201);
+        } catch (\Throwable $e) {
+            Log::error('[RiC API] createRecordSet failed', ['error' => $e->getMessage()]);
+            return ProblemDetails::validationFailed($e->getMessage());
+        }
+    }
+
+    /**
      * POST /api/ric/v1/repositories
      * Create a Repository (ISDIAH). Required: name.
      */

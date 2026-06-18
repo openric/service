@@ -231,6 +231,36 @@ class OpenApiSpec
                     ['200' => self::successResp(), '404' => self::errorResp(),
                      '409' => ['description' => 'Has descendants — delete/re-parent them first.']], null, true),
             ],
+
+            // -------- Record Parts (rico:RecordPart, RiC-E05) --------
+            // A component of a parent Record. Requires parent_id; per-part
+            // provenance is attached with POST /relations against the new id.
+            '/record-parts' => [
+                'post' => self::op('Records', 'Create a Record Part (requires parent_id)', [],
+                    ['201' => ['description' => 'Created',
+                        'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/CreateResponse']]]]],
+                    'RecordCreate', true),
+            ],
+            '/record-parts/{id}' => [
+                'patch'  => self::op('Records', 'Update record part', [$idPath],
+                    ['200' => self::successResp(), '404' => self::errorResp()], 'RecordUpdate', true),
+                'delete' => self::op('Records', 'Delete record part', [$idPath],
+                    ['200' => self::successResp(), '404' => self::errorResp()], null, true),
+            ],
+
+            // -------- Record Sets (rico:RecordSet, RiC-E03) --------
+            '/record-sets' => [
+                'post' => self::op('Records', 'Create a Record Set (optional level, default "collection")', [],
+                    ['201' => ['description' => 'Created',
+                        'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/CreateResponse']]]]],
+                    'RecordCreate', true),
+            ],
+            '/record-sets/{id}' => [
+                'patch'  => self::op('Records', 'Update record set', [$idPath],
+                    ['200' => self::successResp(), '404' => self::errorResp()], 'RecordUpdate', true),
+                'delete' => self::op('Records', 'Delete record set', [$idPath],
+                    ['200' => self::successResp(), '404' => self::errorResp()], null, true),
+            ],
         ];
 
         // Places / Rules / Activities / Instantiations — similar-shaped CRUD

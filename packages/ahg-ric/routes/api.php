@@ -178,6 +178,18 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         Route::match(['patch', 'put'], '/records/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
         Route::delete('/records/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
 
+        // Record Parts (rico:RecordPart, RiC-E05) and Record Sets (rico:RecordSet,
+        // RiC-E03) — also information_object rows. A Record Part requires a
+        // parent_id (the Record it is part of). Reads are served under
+        // /records/{slug}; per-part provenance is added via POST /relations.
+        Route::post('/record-parts', [LinkedDataApiController::class, 'createRecordPart']);
+        Route::match(['patch', 'put'], '/record-parts/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
+        Route::delete('/record-parts/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
+
+        Route::post('/record-sets', [LinkedDataApiController::class, 'createRecordSet']);
+        Route::match(['patch', 'put'], '/record-sets/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
+        Route::delete('/record-sets/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
+
         // Repositories (ISDIAH — rico:CorporateBody with repository extension)
         Route::post('/repositories', [LinkedDataApiController::class, 'createRepository']);
         Route::match(['patch', 'put'], '/repositories/{id}', [LinkedDataApiController::class, 'updateRepository'])->where('id', '[0-9]+');
