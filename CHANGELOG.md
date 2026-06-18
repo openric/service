@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.12.0 — 2026-06-18 — codename "open-write"
+
+### Temporary open-write window (env-gated, POST-only)
+
+Adds an opt-in bypass in `ApiAuthenticate` so the public modelling wizard (and any other open tool) can **create** entities without an API key:
+
+- When **`OPENRIC_OPEN_WRITE=true`**, unauthenticated **POST** requests pass with `read`/`write` scope (no key required).
+- Deliberately **POST-only** — `PUT`/`PATCH`/`DELETE` still require a key, so existing records cannot be edited or destroyed anonymously.
+- Rate limiting (`throttle:60,1`) and request logging (`ahg_api_log`) still apply to every call.
+- **Reversible with no code change:** set `OPENRIC_OPEN_WRITE=false` (and `php artisan config:clear`) to re-lock writes.
+
+The flag is **off by default** in code; it is enabled per-server via `.env` (not committed). Verified: anonymous `POST /records` / `/record-parts` create successfully; `PATCH`/`DELETE` return `401`.
+
+> ⚠️ Operator note: while open, anyone can create records in the backing database. Intended as a temporary "free for all to use" window for the openric.org wizard; close it (env → false) once access is scoped.
+
 ## v0.11.0 — 2026-06-18 — codename "record-part"
 
 ### Record Part / Record Set write support + detail-serializer fix

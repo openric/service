@@ -14,6 +14,25 @@ class ApiAuthenticate
      */
     public function handle(Request $request, Closure $next, string ...$requiredScopes)
     {
+        // TEMPORARY open-write window ("free for all to use"). When
+        // OPENRIC_OPEN_WRITE=true, unauthenticated CREATE (POST) requests pass
+        // through with read+write scope, so public tools (e.g. the openric.org
+        // modelling wizard) can create entities without an API key. Deliberately
+        // scoped to POST only — PUT/PATCH/DELETE still require a key, so nobody
+        // can edit or destroy existing data anonymously. Rate limiting and
+        // request logging still apply. Set the env to false (and config:clear)
+        // to "close it up" again — no code change needed.
+        if (
+            !$request->user()
+            && $request->isMethod('post')
+            && filter_var(env('OPENRIC_OPEN_WRITE', false), FILTER_VALIDATE_BOOLEAN)
+        ) {
+            $request->attributes->set('api_key_id', null);
+            $request->attributes->set('api_user_id', null);
+            $request->attributes->set('api_scopes', ['read', 'write', 'batch', 'publish:write']);
+            return $this->checkScopes($request, $next, $requiredScopes);
+        }
+
         // Try session auth first (logged-in admin = full scopes)
         if ($request->user()) {
             $request->attributes->set('api_key_id', null);
