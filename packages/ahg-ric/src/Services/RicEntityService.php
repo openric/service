@@ -904,6 +904,15 @@ class RicEntityService
             );
         }
 
+        // Hide open-write (sandbox) entities from autocomplete (all RiC entity
+        // ids share one global object-id space, so a single id set suffices).
+        if (\AhgRic\Support\OpenWriteFilter::enabled()) {
+            $hidden = array_flip(DB::table('openric_open_write')->pluck('entity_id')->all());
+            if ($hidden) {
+                $results = $results->reject(function ($r) use ($hidden) { return isset($hidden[$r->id]); });
+            }
+        }
+
         return $results->take($limit);
     }
 

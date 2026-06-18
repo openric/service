@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.14.0 — 2026-06-18 — codename "sandbox-isolation"
+
+### Open-write entities isolated from the public catalogue
+
+Entities created through the `OPENRIC_OPEN_WRITE` window (e.g. by the public modelling wizard) no longer pollute the live archive. New `AhgRic\Support\OpenWriteFilter` excludes anything in the `openric_open_write` inventory from the **public read surfaces**, while keeping it fetchable by id (so the wizard can still show what it created):
+
+- **Hidden from:** `GET /records`, `/agents`, `/places`, `/rules`, `/activities`, `/instantiations`, `/functions`, `/repositories`, `/relations`; cross-entity `/autocomplete`; and **OAI-PMH** `ListRecords`/`ListIdentifiers`.
+- **Still visible:** detail/by-id reads (`GET /records/{slug}` etc.) — unfiltered, so the wizard and direct links work.
+- All RiC entities share one global `object` id space, so a single id-exclusion subquery is unambiguous across every entity type.
+- Gated by **`OPENRIC_HIDE_OPEN_WRITE`** (default **true**); set false to make open-write entities public. No-ops if the inventory table is absent.
+
+Verified live: a created record is absent from `/records` and `/autocomplete` yet returns 200 by slug; conformance probe still **30 pass / 0 fail**. Combined with v0.13.0's caps + `openric:purge-open-write`, the open-write window is now bounded, invisible to the catalogue, and fully reversible.
+
 ## v0.13.0 — 2026-06-18 — codename "open-write-hardening"
 
 ### Hardened the open-write window

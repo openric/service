@@ -177,7 +177,7 @@ XML;
             $until = $request->input('until');
         }
 
-        $q = DB::table('information_object as io')
+        $q = \AhgRic\Support\OpenWriteFilter::hide(DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
             })

@@ -56,7 +56,7 @@ class LinkedDataApiController extends Controller
 
         // Culture filter — accept ?culture=fr|nl|de|etc.; fall back to app locale.
         $culture = $this->resolveCulture($request);
-        $query = \DB::table('actor as a')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('actor as a'), 'a.id')
             ->leftJoin('actor_i18n as i18n', function ($j) use ($culture) {
                 $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -139,7 +139,7 @@ class LinkedDataApiController extends Controller
 
         // Filter every _i18n join by culture — without this, one IO row with
         // three translations appears three times (a regression seen in v0.2.x).
-        $query = \DB::table('information_object as io')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) use ($culture) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -271,7 +271,7 @@ class LinkedDataApiController extends Controller
         $page = $request->get('page', 1);
         $limit = min($request->get('limit', 50), 200);
 
-        $functions = \DB::table('function_object as f')
+        $functions = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('function_object as f'), 'f.id')
             ->leftJoin('function_object_i18n as fi', 'f.id', '=', 'fi.id')
             ->select(['f.id', 'fi.authorized_form_of_name as name', 'fi.description'])
             ->offset(($page - 1) * $limit)
@@ -317,7 +317,7 @@ class LinkedDataApiController extends Controller
         $page = $request->get('page', 1);
         $limit = min($request->get('limit', 50), 200);
 
-        $repos = \DB::table('repository as r')
+        $repos = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('repository as r'), 'r.id')
             ->leftJoin('actor_i18n as i18n', 'r.id', '=', 'i18n.id')
             ->leftJoin('slug', 'r.id', '=', 'slug.object_id')
             ->select(['r.id', 'slug.slug', 'i18n.authorized_form_of_name as name'])
@@ -372,7 +372,7 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \DB::table('ric_place as p')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_place as p'), 'p.id')
             ->leftJoin('ric_place_i18n as i18n', function ($j) use ($culture) {
                 $j->on('p.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -437,7 +437,7 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \DB::table('ric_rule as r')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_rule as r'), 'r.id')
             ->leftJoin('ric_rule_i18n as i18n', function ($j) use ($culture) {
                 $j->on('r.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -513,7 +513,7 @@ class LinkedDataApiController extends Controller
             'collection' => 'Accumulation',
         ];
 
-        $query = \DB::table('ric_activity as a')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_activity as a'), 'a.id')
             ->leftJoin('ric_activity_i18n as i18n', function ($j) use ($culture) {
                 $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -579,7 +579,7 @@ class LinkedDataApiController extends Controller
         $mime = $request->get('mime');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \DB::table('ric_instantiation as ri')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_instantiation as ri'), 'ri.id')
             ->leftJoin('ric_instantiation_i18n as i18n', function ($j) use ($culture) {
                 $j->on('ri.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -954,7 +954,7 @@ class LinkedDataApiController extends Controller
         }
 
         // Records linked via relation table (with ric_relation_meta predicates where available).
-        $rels = \DB::table('relation as r')
+        $rels = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('relation as r'), 'r.id')
             ->leftJoin('ric_relation_meta as rm', 'r.id', '=', 'rm.relation_id')
             ->leftJoin('information_object_i18n as ioi_o', function ($j) use ($culture) {
                 $j->on('r.object_id', '=', 'ioi_o.id')->where('ioi_o.culture', '=', $culture);
@@ -1309,7 +1309,7 @@ class LinkedDataApiController extends Controller
 
         // Attach the parent information_object, if any.
         if ($event->object_id) {
-            $io = DB::table('information_object as io')
+            $io = \AhgRic\Support\OpenWriteFilter::hide(DB::table('information_object as io'), 'io.id')
                 ->leftJoin('information_object_i18n as i18n', function ($j) {
                     $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
                 })
@@ -1332,7 +1332,7 @@ class LinkedDataApiController extends Controller
 
         // Attach the parent actor, if any.
         if ($event->actor_id) {
-            $actor = DB::table('actor as a')
+            $actor = \AhgRic\Support\OpenWriteFilter::hide(DB::table('actor as a'), 'a.id')
                 ->leftJoin('actor_i18n as ai', function ($j) {
                     $j->on('a.id', '=', 'ai.id')->where('ai.culture', 'en');
                 })
