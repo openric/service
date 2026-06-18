@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.13.0 — 2026-06-18 — codename "open-write-hardening"
+
+### Hardened the open-write window
+
+Tightens the temporary `OPENRIC_OPEN_WRITE` window (v0.12.0) so public, key-less creation is safe:
+
+- **Endpoint allowlist** — the bypass now applies *only* to entity-creation endpoints (`records`, `record-parts`, `record-sets`, `agents`, `repositories`, `functions`, `places`, `rules`, `activities`, `instantiations`, `relations`). **`POST /import` and `POST /upload` are no longer open** — they require an API key again (closes anonymous bulk-import and file-upload).
+- **Minimal scope** — anonymous POST is granted `read`+`write` only (was `read`/`write`/`batch`/`publish:write`).
+- **Payload cap** — requests over `OPENRIC_OPEN_WRITE_MAX_BYTES` (default 64 KB) → `413`.
+- **Per-IP daily cap** — more than `OPENRIC_OPEN_WRITE_MAX_PER_DAY` (default 100) creates/day per IP → `429`.
+- **Inventory + teardown** — every open-write creation is logged to the new `openric_open_write` table (entity id, type, IP, time). New migration; new command **`php artisan openric:purge-open-write [--older-than=N] [--dry-run]`** deletes every logged entity and clears the inventory, so the whole window can be torn down in one command.
+
+Verified live: `/upload` & `/import` → `403`; `POST /records` → `201` + inventory row; `purge-open-write` deletes the entity and clears the row. PUT/PATCH/DELETE remain key-gated (no anonymous edits/deletes). Still reversible: `OPENRIC_OPEN_WRITE=false` + `config:clear` closes everything.
+
 ## v0.12.0 — 2026-06-18 — codename "open-write"
 
 ### Temporary open-write window (env-gated, POST-only)

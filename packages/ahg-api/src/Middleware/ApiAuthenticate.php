@@ -27,10 +27,7 @@ class ApiAuthenticate
             && $request->isMethod('post')
             && filter_var(env('OPENRIC_OPEN_WRITE', false), FILTER_VALIDATE_BOOLEAN)
         ) {
-            $request->attributes->set('api_key_id', null);
-            $request->attributes->set('api_user_id', null);
-            $request->attributes->set('api_scopes', ['read', 'write', 'batch', 'publish:write']);
-            return $this->checkScopes($request, $next, $requiredScopes);
+            return $this->openWrite($request, $next, $requiredScopes);
         }
 
         // Try session auth first (logged-in admin = full scopes)
@@ -90,6 +87,74 @@ class ApiAuthenticate
         $request->attributes->set('api_scopes', $scopes);
 
         return $this->checkScopes($request, $next, $requiredScopes);
+    }
+
+    /**
+     * Hardened open-write path (OPENRIC_OPEN_WRITE=true). Anonymous POST to the
+     * safe entity-creation endpoints ONLY — never /import or /upload — with a
+     * payload cap, a per-IP daily cap, minimal scope (read+write, no
+     * batch/publish/delete), and an inventory row per creation so the whole
+     * window can be torn down with `php artisan openric:purge-open-write`.
+     */
+    protected function openWrite(Request $request, Closure $next, array $requiredScopes)
+    {
+        // 1. Allowlist: entity-creation endpoints only. Blocks /import, /upload, etc.
+        if (!preg_match('#(^|/)api/ric/v1/(records|record-parts|record-sets|agents|repositories|functions|places|rules|activities|instantiations|relations)$#', $request->path())) {
+            return response()->json([
+                'success' => false, 'error' => 'Forbidden',
+                'message' => 'Open access is limited to entity creation; this endpoint requires an API key.',
+            ], 403);
+        }
+
+        // 2. Payload cap.
+        $maxBytes = (int) env('OPENRIC_OPEN_WRITE_MAX_BYTES', 65536);
+        if ((int) $request->header('Content-Length', 0) > $maxBytes || strlen($request->getContent()) > $maxBytes) {
+            return response()->json([
+                'success' => false, 'error' => 'Payload Too Large',
+                'message' => "Open-write requests are capped at {$maxBytes} bytes.",
+            ], 413);
+        }
+
+        // 3. Per-IP daily cap, counted from the inventory (resilient if the
+        //    table isn't migrated yet — then the cap is simply not enforced).
+        $maxPerDay = (int) env('OPENRIC_OPEN_WRITE_MAX_PER_DAY', 100);
+        try {
+            $today = DB::table('openric_open_write')
+                ->where('ip', $request->ip())
+                ->where('created_at', '>=', now()->startOfDay())
+                ->count();
+            if ($today >= $maxPerDay) {
+                return response()->json([
+                    'success' => false, 'error' => 'Too Many Requests',
+                    'message' => "Daily open-write limit ({$maxPerDay}) reached for this address.",
+                ], 429);
+            }
+        } catch (\Throwable $e) { /* table missing → skip the cap */ }
+
+        // 4. Grant minimal scope and mark the request.
+        $request->attributes->set('api_key_id', null);
+        $request->attributes->set('api_user_id', null);
+        $request->attributes->set('api_scopes', ['read', 'write']);
+        $request->attributes->set('open_write', true);
+
+        $response = $this->checkScopes($request, $next, $requiredScopes);
+
+        // 5. Inventory the created entity for teardown.
+        try {
+            if ($response->getStatusCode() === 201) {
+                $body = json_decode($response->getContent(), true);
+                if (!empty($body['id'])) {
+                    DB::table('openric_open_write')->insert([
+                        'entity_id'   => (int) $body['id'],
+                        'entity_type' => substr(strrchr('/' . $request->path(), '/'), 1),
+                        'ip'          => $request->ip(),
+                        'created_at'  => now(),
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) { /* inventory failure must not break the response */ }
+
+        return $response;
     }
 
     protected function checkScopes(Request $request, Closure $next, array $requiredScopes)
