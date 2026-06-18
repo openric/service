@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.15.1 — 2026-06-18
+
+### AI suggest: gateway contract + robustness
+
+- The gateway's LLM is the **OpenAI-compatible Ollama passthrough** (`/ai/v1/ollama/v1/chat/completions`), so `WizardSuggestController` now sends `{model, messages:[…]}` (system + user) instead of `{model, prompt}`, with a `/no_think` system hint.
+- Strip `<think>…</think>` reasoning blocks before parsing JSON (qwen3).
+- **Sanitize** the model's most common harmless mistake — dangling `step.next` / `choice.next` are dropped (the engine falls through) rather than rejecting the whole suggestion. Hard RiC-code/path/relation errors still fail validation.
+- **Verified live** against the gateway (`qwen3:8b`): a glass-plate-negatives description produced a valid 6-step model (Record Set → Record Parts → Agent → Place → Activity → relations). Enabled via `OPENRIC_AI_*` in `.env` (server-only).
+
 ## v0.15.0 — 2026-06-18 — codename "ai-suggest"
 
 ### AI-assisted modelling suggestions (gateway-proxied, inert until configured)

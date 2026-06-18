@@ -67,10 +67,12 @@ class WizardSuggestController extends Controller
                 ->timeout((int) env('OPENRIC_AI_TIMEOUT', 45))
                 ->acceptJson()
                 ->post($url, [
-                    'model'       => $model,
-                    'prompt'      => $this->buildPrompt($desc),
+                    'model'    => $model,
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'You are an archival modelling assistant. Output ONLY strict JSON — no markdown, no commentary. /no_think'],
+                        ['role' => 'user', 'content' => $this->buildPrompt($desc)],
+                    ],
                     'temperature' => 0.2,
-                    'max_tokens'  => 1600,
                     'stream'      => false,
                 ]);
         } catch (\Throwable $e) {
@@ -88,6 +90,7 @@ class WizardSuggestController extends Controller
             return response()->json(['error' => 'unparseable', 'message' => 'The model did not return a usable model. Try rephrasing your description.'], 422);
         }
 
+        $scenario = $this->sanitize($scenario);
         $problems = $this->validateScenario($scenario);
         if ($problems) {
             return response()->json([
@@ -171,6 +174,8 @@ PROMPT;
     /** Extract the first balanced JSON object from the model text and decode it. */
     private function parseScenario(string $text): ?array
     {
+        // Strip reasoning blocks some models emit (e.g. qwen3 <think>…</think>).
+        $text = preg_replace('/<think>.*?<\/think>/s', '', $text) ?? $text;
         $start = strpos($text, '{');
         $end   = strrpos($text, '}');
         if ($start === false || $end === false || $end <= $start) return null;
@@ -179,24 +184,39 @@ PROMPT;
         return (is_array($data) && !empty($data['steps'])) ? $data : null;
     }
 
+    /**
+     * Repair the model's most common harmless mistakes: drop step.next /
+     * choice.next that point at a non-existent step (the wizard engine then
+     * falls through to the next step in order / the outcome). Hard RiC-code
+     * errors are NOT repaired — they fail validation instead.
+     */
+    private function sanitize(array $s): array
+    {
+        $ids = [];
+        foreach ($s['steps'] as $st) if (!empty($st['id'])) $ids[$st['id']] = true;
+        foreach ($s['steps'] as &$st) {
+            if (!empty($st['next']) && empty($ids[$st['next']])) unset($st['next']);
+            foreach ($st['choices'] ?? [] as &$c) {
+                if (!empty($c['next']) && empty($ids[$c['next']])) unset($c['next']);
+            }
+            unset($c);
+        }
+        unset($st);
+        return $s;
+    }
+
     /** Validate a suggested scenario against RiC-CM 1.0 + the relation vocabulary. */
     private function validateScenario(array $s): array
     {
         $errs = [];
         if (empty($s['steps']) || !is_array($s['steps'])) return ['no steps'];
         $allowedPaths = ['/records', '/record-parts', '/record-sets', '/agents', '/places', '/rules', '/activities', '/instantiations', '/relations'];
-        $ids = [];
-        foreach ($s['steps'] as $st) {
-            if (!empty($st['id'])) $ids[$st['id']] = true;
-        }
         foreach ($s['steps'] as $st) {
             $at = 'step ' . ($st['id'] ?? '?');
             if (empty($st['prompt'])) $errs[] = "$at: no prompt";
-            if (!empty($st['next']) && empty($ids[$st['next']])) $errs[] = "$at: next → unknown {$st['next']}";
             $hasCorrect = false;
             foreach ($st['choices'] ?? [] as $c) {
                 if (!empty($c['correct'])) $hasCorrect = true;
-                if (!empty($c['next']) && empty($ids[$c['next']])) $errs[] = "$at: choice.next → unknown {$c['next']}";
                 if (!empty($c['entity']) && !in_array($c['entity'], self::ENTITIES, true)) $errs[] = "$at: bad entity {$c['entity']}";
             }
             if (!$hasCorrect) $errs[] = "$at: no correct choice";
