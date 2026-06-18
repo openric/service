@@ -29,6 +29,7 @@ use AhgRic\Http\Controllers\OaiPmhController;
 use AhgRic\Http\Controllers\KeyRequestController;
 use AhgRic\Http\Controllers\ImportController;
 use AhgRic\Http\Controllers\SparqlController;
+use AhgRic\Http\Controllers\WizardSuggestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -115,6 +116,13 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     
     // Validation
     Route::post('/validate', [LinkedDataApiController::class, 'validate']);
+
+    // AI-assisted modelling suggestion for the openric.org wizard. Public but
+    // tightly throttled; proxies the AHG gateway (inert until OPENRIC_AI_* set),
+    // validates the model's output against RiC-CM 1.0 before returning, and
+    // creates nothing. See WizardSuggestController.
+    Route::post('/wizard/suggest', [WizardSuggestController::class, 'suggest'])
+        ->middleware('throttle:10,1');
     
     // Vocabulary
     Route::get('/vocabulary', [LinkedDataApiController::class, 'vocabulary']);

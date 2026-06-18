@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.15.0 — 2026-06-18 — codename "ai-suggest"
+
+### AI-assisted modelling suggestions (gateway-proxied, inert until configured)
+
+New `POST /api/ric/v1/wizard/suggest` powers the openric.org wizard's "describe your material" mode (`WizardSuggestController`):
+
+- Takes a plain-language description; returns a **wizard scenario** (same schema as the static scenarios) proposing a RiC-CM 1.0 model.
+- The LLM call is **proxied through the AHG gateway** (`Authorization: Bearer`, `{model, prompt}`) — never a node directly, per the standing AI-gateway rule.
+- The model's output is **validated against RiC-CM 1.0 entity codes + the server's relation vocabulary + allowed endpoints** before it is returned — an invalid suggestion is rejected (422), never shown. Creates nothing.
+- **Inert until configured:** returns **503** unless `OPENRIC_AI_URL`, `OPENRIC_AI_KEY`, `OPENRIC_AI_MODEL` are set (optional `OPENRIC_AI_TIMEOUT`). Public but rate-limited (`throttle:10,1`) + input-capped (1500 chars).
+
+To enable: set the three env vars to a gateway inference URL, a `gateway`-scoped key, and a model id, then `php artisan config:clear`. Verified inert (503) on the live server today.
+
 ## v0.14.0 — 2026-06-18 — codename "sandbox-isolation"
 
 ### Open-write entities isolated from the public catalogue
