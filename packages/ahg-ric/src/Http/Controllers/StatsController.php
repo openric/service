@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
 
 class StatsController extends Controller
 {
-    public function stats(Request $request): JsonResponse
+    public function stats(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $token    = (string) env('OPENRIC_STATS_TOKEN', '');
         $provided = (string) $request->bearerToken();
@@ -35,6 +35,11 @@ class StatsController extends Controller
 
         $days  = max(1, min(365, (int) $request->query('days', 30)));
         $since = now()->subDays($days)->toDateString();
+
+        // CSV export for the "Download" buttons on the /stats dashboard.
+        if (strtolower((string) $request->query('format')) === 'csv') {
+            return $this->csv($request, $since, $days);
+        }
 
         $totals = DB::table('openric_usage')
             ->where('day', '>=', $since)
@@ -77,5 +82,35 @@ class StatsController extends Controller
             ->get()
             ->map(fn ($r) => ['label' => $r->label, 'count' => (int) $r->count])
             ->all();
+    }
+
+    /**
+     * Stream a CSV download. ?export=usage (default) dumps the full usage rollup
+     * for the window; ?export=questions dumps the submitted questions.
+     */
+    private function csv(Request $request, string $since, int $days): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $which = strtolower((string) $request->query('export', 'usage')) === 'questions' ? 'questions' : 'usage';
+        $name  = "openric-{$which}-last{$days}d.csv";
+
+        if ($which === 'questions') {
+            $rows = DB::table('openric_question')->where('created_at', '>=', $since . ' 00:00:00')->orderBy('id')->get();
+            $header = ['id', 'created_at', 'contact_email', 'page', 'emailed', 'body'];
+            $mapper = fn ($r) => [$r->id, $r->created_at, $r->contact_email, $r->page, $r->emailed, $r->body];
+        } else {
+            $rows = DB::table('openric_usage')->where('day', '>=', $since)
+                ->orderBy('day')->orderBy('event_type')->orderByDesc('count')->get();
+            $header = ['day', 'event_type', 'label', 'count'];
+            $mapper = fn ($r) => [$r->day, $r->event_type, $r->label, $r->count];
+        }
+
+        return response()->streamDownload(function () use ($rows, $header, $mapper) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $header);
+            foreach ($rows as $r) {
+                fputcsv($out, $mapper($r));
+            }
+            fclose($out);
+        }, $name, ['Content-Type' => 'text/csv; charset=utf-8']);
     }
 }

@@ -80,8 +80,10 @@ class UsageTrackingTest extends TestCase
 
     public function test_stats_requires_the_admin_token(): void
     {
+        // Override every channel env() may read so a real .env token can't leak in.
         putenv('OPENRIC_STATS_TOKEN=secrettoken123');
         $_ENV['OPENRIC_STATS_TOKEN'] = 'secrettoken123';
+        $_SERVER['OPENRIC_STATS_TOKEN'] = 'secrettoken123';
 
         $this->getJson('/api/ric/v1/stats')->assertStatus(401);
         $this->getJson('/api/ric/v1/stats', ['Authorization' => 'Bearer wrong'])->assertStatus(401);
@@ -96,7 +98,26 @@ class UsageTrackingTest extends TestCase
             ->assertJsonPath('totals.search', 1);
 
         putenv('OPENRIC_STATS_TOKEN');
-        unset($_ENV['OPENRIC_STATS_TOKEN']);
+        unset($_ENV['OPENRIC_STATS_TOKEN'], $_SERVER['OPENRIC_STATS_TOKEN']);
+    }
+
+    public function test_stats_csv_export_streams_rows(): void
+    {
+        putenv('OPENRIC_STATS_TOKEN=secrettoken123');
+        $_ENV['OPENRIC_STATS_TOKEN'] = 'secrettoken123';
+        $_SERVER['OPENRIC_STATS_TOKEN'] = 'secrettoken123';
+
+        UsageRecorder::bump('page_view', '/help/sparql/');
+
+        $res = $this->get('/api/ric/v1/stats?days=30&format=csv&export=usage', ['Authorization' => 'Bearer secrettoken123']);
+        $res->assertStatus(200);
+        $this->assertStringContainsString('text/csv', $res->headers->get('content-type'));
+        $body = $res->streamedContent();
+        $this->assertStringContainsString('day,event_type,label,count', $body);
+        $this->assertStringContainsString('/help/sparql/', $body);
+
+        putenv('OPENRIC_STATS_TOKEN');
+        unset($_ENV['OPENRIC_STATS_TOKEN'], $_SERVER['OPENRIC_STATS_TOKEN']);
     }
 
     public function test_recorder_bumps_server_side_events(): void

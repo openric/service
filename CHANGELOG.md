@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.16.1 — 2026-06-21
+
+### Stats CSV export
+
+- `GET /api/ric/v1/stats?format=csv&export=usage|questions` (still `Bearer OPENRIC_STATS_TOKEN`) streams a CSV download — the full usage rollup or the submitted questions for the `?days=` window. Powers the one-click **Download** buttons on the openric.org `/stats` dashboard.
+- Hardened `UsageTrackingTest` so a real `.env` `OPENRIC_STATS_TOKEN` can't leak into the test env (override `$_SERVER` too); +1 CSV test. 9 tracker tests, full suite green.
+
 ## v0.16.0 — 2026-06-21 — codename "insight"
 
 ### Anonymous demand-signal tracker (no personal data harvested)
