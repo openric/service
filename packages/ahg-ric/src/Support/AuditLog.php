@@ -14,6 +14,7 @@ namespace AhgRic\Support;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use AhgRic\Support\UsageRecorder;
 
 class AuditLog
 {
@@ -34,6 +35,9 @@ class AuditLog
         } catch (\Throwable $e) {
             Log::warning('[openric] audit-log insert failed: ' . $e->getMessage());
         }
+
+        // Anonymous demand signal: count this write by entity type (no PII).
+        UsageRecorder::bump('api_action', $entityType);
     }
 
     /** Strip obviously-sensitive keys before persisting. */

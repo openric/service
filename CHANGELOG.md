@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.16.0 — 2026-06-21 — codename "insight"
+
+### Anonymous demand-signal tracker (no personal data harvested)
+
+A first-party, aggregate-only usage tracker so we can see what people view, search for, and try — and pre-empt enhancements. **Zero personal data**: storage is a daily rollup counter (`openric_usage(day, event_type, label, count)`), no IP / user-agent / cookie / session.
+
+- **`POST /api/ric/v1/track`** — public beacon, accepts only client events (`page_view`, `search`, `wizard_started`, `wizard_completed`); server-only events are rejected (422). `AhgRic\Support\UsageRecorder::bump()` is the single writer (portable upsert-increment, best-effort).
+- **`POST /api/ric/v1/ask`** — "Ask a question" contact form. Honeypot + `throttle:5,1`; stores in `openric_question` and emails `OPENRIC_ASK_TO` via the system mailer. The reply-to email is optional and volunteered.
+- **`GET /api/ric/v1/stats`** — admin-gated (`Bearer OPENRIC_STATS_TOKEN`) aggregate feed: top pages, top searches, wizard runs, AI-suggest models, API actions, question count, for `?days=`.
+- **Server-side hooks** (un-fakeable by the client): `WizardSuggestController` bumps `ai_suggest`; `AuditLog::record()` — the single mutation choke-point — bumps `api_action` by entity type.
+- All routes live under the already-CORS-allowlisted `/api/ric/v1` group (no nginx change). 8 new Feature tests; full suite 55 passing. Drives the openric.org `/stats` dashboard + `/ask` form (site v0.43.5).
+
 ## v0.15.1 — 2026-06-18
 
 ### AI suggest: gateway contract + robustness

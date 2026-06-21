@@ -30,6 +30,9 @@ use AhgRic\Http\Controllers\KeyRequestController;
 use AhgRic\Http\Controllers\ImportController;
 use AhgRic\Http\Controllers\SparqlController;
 use AhgRic\Http\Controllers\WizardSuggestController;
+use AhgRic\Http\Controllers\UsageController;
+use AhgRic\Http\Controllers\AskController;
+use AhgRic\Http\Controllers\StatsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -123,7 +126,19 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // creates nothing. See WizardSuggestController.
     Route::post('/wizard/suggest', [WizardSuggestController::class, 'suggest'])
         ->middleware('throttle:10,1');
-    
+
+    // ------------------------------------------------------------
+    // Anonymous demand-signal tracker (no personal data harvested).
+    // ------------------------------------------------------------
+    // Public beacon: bumps a daily rollup counter. See UsageController.
+    Route::post('/track', [UsageController::class, 'track']);
+
+    // Public "Ask a question" contact form: emails + stores. Honeypot + tight throttle.
+    Route::post('/ask', [AskController::class, 'ask'])->middleware('throttle:5,1');
+
+    // Admin-gated aggregate feed for the /stats dashboard (Bearer OPENRIC_STATS_TOKEN).
+    Route::get('/stats', [StatsController::class, 'stats']);
+
     // Vocabulary
     Route::get('/vocabulary', [LinkedDataApiController::class, 'vocabulary']);
     Route::get('/vocabulary/{taxonomy}', [LinkedDataApiController::class, 'vocabularyByTaxonomy']);

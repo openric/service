@@ -102,6 +102,10 @@ class WizardSuggestController extends Controller
 
         $scenario['generated'] = true;
         $scenario['server_default'] = url('/api/ric/v1');
+
+        // Anonymous demand signal: a successful AI suggestion was produced.
+        \AhgRic\Support\UsageRecorder::bump('ai_suggest', $model);
+
         return response()->json($scenario);
     }
 
