@@ -65,6 +65,7 @@ class StatsController extends Controller
             'ai_suggest_models' => $this->top('ai_suggest', $since, 10),
             'api_actions'       => $this->top('api_action', $since, 20),
             'questions_count'   => $questions,
+            'daily'             => $this->daily($since),
             'generated_at'      => now()->toIso8601String(),
         ]);
     }
@@ -82,6 +83,35 @@ class StatsController extends Controller
             ->get()
             ->map(fn ($r) => ['label' => $r->label, 'count' => (int) $r->count])
             ->all();
+    }
+
+    /** A zero-filled per-day series (one row per day in the window, all event counts). */
+    private function daily(string $since): array
+    {
+        $rows = DB::table('openric_usage')
+            ->where('day', '>=', $since)
+            ->selectRaw('day, event_type, SUM(count) AS c')
+            ->groupBy('day', 'event_type')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $r) {
+            $map[substr((string) $r->day, 0, 10)][$r->event_type] = (int) $r->c;
+        }
+
+        $out    = [];
+        $cursor = \Illuminate\Support\Carbon::parse($since);
+        $today  = \Illuminate\Support\Carbon::parse(now()->toDateString());
+        while ($cursor->lte($today)) {
+            $d   = $cursor->toDateString();
+            $row = ['day' => $d];
+            foreach (UsageRecorder::EVENTS as $ev) {
+                $row[$ev] = (int) ($map[$d][$ev] ?? 0);
+            }
+            $out[] = $row;
+            $cursor->addDay();
+        }
+        return $out;
     }
 
     /**

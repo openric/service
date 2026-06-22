@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.2 — 2026-06-22
+
+### Stats per-day series
+
+- `GET /api/ric/v1/stats` now includes a zero-filled **`daily`** array (one row per day in the `?days=` window, all event counts) powering the per-day page-views chart on the openric.org `/stats` dashboard. +1 test assertion; 9 tracker tests green.
+
 ## v0.16.1 — 2026-06-21
 
 ### Stats CSV export

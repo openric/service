@@ -93,7 +93,7 @@ class UsageTrackingTest extends TestCase
 
         $this->getJson('/api/ric/v1/stats?days=30', ['Authorization' => 'Bearer secrettoken123'])
             ->assertStatus(200)
-            ->assertJsonStructure(['totals', 'top_pages', 'top_searches', 'questions_count'])
+            ->assertJsonStructure(['totals', 'top_pages', 'top_searches', 'questions_count', 'daily' => [['day', 'page_view', 'search']]])
             ->assertJsonPath('totals.page_view', 1)
             ->assertJsonPath('totals.search', 1);
 
