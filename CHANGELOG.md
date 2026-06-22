@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.3 — 2026-06-22
+
+### CI fix: SPARQL smoke test discovery (PHPUnit 12)
+
+- The "SPARQL smoke tests" workflow ran `phpunit --group smoke` and failed with **"No tests executed!"** (exit 1) on every push since the PHPUnit 12 upgrade. Cause: `SparqlSmokeTest` declared its group via the legacy `@group smoke` **doc-comment**, which PHPUnit 11+ no longer reads. Fixed by adding the `#[Group('smoke')]` **attribute**. No runtime/app change.
+
 ## v0.16.2 — 2026-06-22
 
 ### Stats per-day series
