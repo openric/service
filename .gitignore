@@ -14,3 +14,8 @@ auth.json
 npm-debug.log
 yarn-error.log
 /bootstrap/cache/*.php
+
+# Claude Code local tooling
+/.claude/
+/.mcp.json
+/.work/

@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-D-oRFB4T.css",
+    "file": "assets/app-BEBBn503.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/js/explorer.js": {
-    "file": "assets/explorer-BdIx0wNK.js",
+    "file": "assets/explorer-bpevAJMA.js",
     "name": "explorer",
     "src": "resources/js/explorer.js",
     "isEntry": true
