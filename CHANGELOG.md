@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.4 — 2026-06-22
+
+### CI fix (part 2): register the ahg-ric Feature test path
+
+- The committed `phpunit.xml` was missing `<directory>packages/ahg-ric/tests/Feature</directory>` (left uncommitted since an early failed patch), so CI never scanned the folder containing `SparqlSmokeTest` — `--group smoke` still found nothing even after the attribute fix. Committed the path. This also makes the tracker `UsageTrackingTest` suite run in CI. (Pairs with v0.16.3's `#[Group]` attribute.)
+
 ## v0.16.3 — 2026-06-22
 
 ### CI fix: SPARQL smoke test discovery (PHPUnit 12)

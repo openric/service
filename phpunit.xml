@@ -12,6 +12,7 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
             <directory>packages/ahg-ric-model/tests/Feature</directory>
+            <directory>packages/ahg-ric/tests/Feature</directory>
         </testsuite>
     </testsuites>
     <source>
