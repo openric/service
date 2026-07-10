@@ -740,15 +740,34 @@ class RicSerializationService
         // Relation: Activity (subject) -> Agent (object) via dropdown_code='performed_by'.
         // Backing data uses rico:isOrWasPerformedBy (RiC-O subproperty of hasOrHadParticipant);
         // the serializer emits the broader profile-level predicate the spec mandates.
+        //
+        // When the relation carries a role (ric_relation_meta.role_term_id — the
+        // capacity in which the agent participated, e.g. "bride"), we ALSO emit a
+        // reified rico:EventRelation node qualified with openricx:relationHasAgentRole
+        // -> rico:RoleType. This is the RiC-O EventRelation pattern (Clavaud, ICA/EGAD,
+        // Records_in_Contexts_users list 2026-06); openricx:relationHasAgentRole is the
+        // generic OpenRiC extension property pending its RiC-O 1.2 equivalent
+        // (see tools/openric_ext.ttl). The flat shortcut and the reified node coexist,
+        // mirroring RiC-O's shortcut + full-relation duality.
         $participants = DB::table('relation as rel')
             ->join('ric_relation_meta as rm', 'rel.id', '=', 'rm.relation_id')
             ->join('actor as ac', 'rel.object_id', '=', 'ac.id')
             ->leftJoin('actor_i18n as ac_i18n', function ($j) use ($culture) {
                 $j->on('ac.id', '=', 'ac_i18n.id')->where('ac_i18n.culture', '=', $culture);
             })
+            ->leftJoin('term_i18n as role_i18n', function ($j) use ($culture) {
+                $j->on('rm.role_term_id', '=', 'role_i18n.id')->where('role_i18n.culture', '=', $culture);
+            })
             ->where('rel.subject_id', $activityId)
             ->where('rm.dropdown_code', 'performed_by')
-            ->select(['ac.id', 'ac.entity_type_id', 'ac_i18n.authorized_form_of_name as name'])
+            ->select([
+                'rel.id as relation_id',
+                'ac.id',
+                'ac.entity_type_id',
+                'ac_i18n.authorized_form_of_name as name',
+                'rm.role_term_id',
+                'role_i18n.name as role_label',
+            ])
             ->get();
 
         if ($participants->isNotEmpty()) {
@@ -757,6 +776,25 @@ class RicSerializationService
                 '@type'     => 'rico:' . ($this->actorTypeToRic[strtolower($a->entity_type_id ?? '')] ?? 'Agent'),
                 'rico:name' => $a->name,
             ])->values()->toArray();
+
+            // Reified EventRelation(s) — only for participants whose role is recorded.
+            $roled = $participants->filter(fn($a) => $a->role_term_id !== null && $a->role_label !== null);
+            if ($roled->isNotEmpty()) {
+                $ricAct['rico:thingIsSourceOfRelation'] = $roled->map(fn($a) => [
+                    '@id'   => $this->baseUri . '/relation/event/' . $a->relation_id,
+                    '@type' => 'rico:EventRelation',
+                    'rico:relationHasTarget' => [
+                        '@id'       => $this->baseUri . '/actor/' . $a->id,
+                        '@type'     => 'rico:' . ($this->actorTypeToRic[strtolower($a->entity_type_id ?? '')] ?? 'Agent'),
+                        'rico:name' => $a->name,
+                    ],
+                    'openricx:relationHasAgentRole' => [
+                        '@id'       => $this->baseUri . '/roletype/' . $a->role_term_id,
+                        '@type'     => 'rico:RoleType',
+                        'rico:name' => $a->role_label,
+                    ],
+                ])->values()->toArray();
+            }
         }
 
         return $ricAct;
@@ -815,6 +853,23 @@ class RicSerializationService
 
         if (!empty($inst->carrier_type)) {
             $ricInst['rico:hasCarrierType'] = $inst->carrier_type;
+        }
+
+        // openricx:hasCarrier — the individual physical carrier object (e.g. the
+        // magnetic tape itself), distinct from its carrier TYPE. RiC-O 1.1 has no
+        // Carrier entity; openricx:Carrier (subclass of rico:Thing) fills the gap
+        // pending RiC-O 2.0's Carrier class (Clavaud, ICA/EGAD, list 2026-07). One
+        // carrier may bear several instantiations, so it is a shared, identified node.
+        if (!empty($inst->carrier_identifier)) {
+            $carrier = [
+                '@id'             => $this->baseUri . '/carrier/' . rawurlencode($inst->carrier_identifier),
+                '@type'           => 'openricx:Carrier',
+                'rico:identifier' => $inst->carrier_identifier,
+            ];
+            if (!empty($inst->carrier_type)) {
+                $carrier['rico:hasCarrierType'] = $inst->carrier_type;
+            }
+            $ricInst['openricx:hasCarrier'] = $carrier;
         }
 
         if ($inst->extent_value !== null) {

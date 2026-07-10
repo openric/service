@@ -1,0 +1,78 @@
+# SHACL shapes for the OpenRiC extension ontology
+# ================================================
+# Copyright (C) 2026 Johan Pieterse / Plain Sailing Information Systems
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Companion to openric_ext.ttl. Validates the agent-role-in-relation pattern.
+#
+# Usage:
+#   pyshacl -s openric_ext_shapes.ttl -d data.jsonld -f human
+
+@prefix sh:       <http://www.w3.org/ns/shacl#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix rico:     <https://www.ica.org/standards/RiC/ontology#> .
+@prefix openricx: <https://openric.org/ns/ext/v1#> .
+@prefix :         <https://openric.org/ns/ext/v1/shapes#> .
+
+# A RoleType reached through openricx:relationHasAgentRole must carry a name,
+# otherwise the role is opaque to a reader.
+:AgentRoleValueShape a sh:NodeShape ;
+    sh:name "Agent-role RoleType" ;
+    sh:description "A RoleType used as the value of openricx:relationHasAgentRole must have a name." ;
+    sh:property [
+        sh:path rico:name ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:message "A RoleType used as an agent role must have a non-empty rico:name (e.g. \"bride\")."
+    ] .
+
+# Any relation carrying an agent role: at most one role, and it must point at a
+# rico:RoleType that satisfies the value shape above.
+:RelationAgentRoleShape a sh:NodeShape ;
+    sh:targetSubjectsOf openricx:relationHasAgentRole ;
+    sh:name "Relation with agent role" ;
+    sh:description "Validates the openricx:relationHasAgentRole qualification on a reified relation." ;
+    sh:property [
+        sh:path openricx:relationHasAgentRole ;
+        sh:maxCount 1 ;
+        sh:class rico:RoleType ;
+        sh:node :AgentRoleValueShape ;
+        sh:message "openricx:relationHasAgentRole must reference exactly one named rico:RoleType."
+    ] .
+
+# An EventRelation that names a role should also name whom it targets, so the
+# role is anchored to an agent (Warning — not every store materialises both).
+:EventRelationRoleShape a sh:NodeShape ;
+    sh:targetClass rico:EventRelation ;
+    sh:name "EventRelation role anchoring" ;
+    sh:property [
+        sh:path rico:relationHasTarget ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "An EventRelation carrying an agent role should also state rico:relationHasTarget (the agent playing the role)."
+    ] .
+
+# A Carrier is the individual physical object, so it should carry an identifier.
+:CarrierShape a sh:NodeShape ;
+    sh:targetClass openricx:Carrier ;
+    sh:name "Carrier identity" ;
+    sh:description "Validates the individual physical Carrier object." ;
+    sh:property [
+        sh:path rico:identifier ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:severity sh:Warning ;
+        sh:message "A Carrier should have a non-empty rico:identifier so the physical object can be cited (e.g. a shelf or accession number)."
+    ] .
+
+# hasCarrier must point at an openricx:Carrier.
+:HasCarrierShape a sh:NodeShape ;
+    sh:targetSubjectsOf openricx:hasCarrier ;
+    sh:name "Instantiation carrier link" ;
+    sh:property [
+        sh:path openricx:hasCarrier ;
+        sh:class openricx:Carrier ;
+        sh:message "openricx:hasCarrier must reference an openricx:Carrier."
+    ] .

@@ -1,0 +1,172 @@
+# OpenRiC extension ontology — agent-role-in-relation + kinship of care
+# =====================================================================
+# Copyright (C) 2026 Johan Pieterse / Plain Sailing Information Systems
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Namespace:  https://openric.org/ns/ext/v1#   (prefix: openricx)
+#
+# Why this file exists
+# --------------------
+# Two gaps in RiC-O 1.1 that recur in real archival description:
+#
+#   1. The role an Agent plays *in a given Relation* (e.g. the "bride" in a
+#      wedding Event, the "witness" in a court hearing). RiC-O 1.1 ships only
+#      rico:creationWithRole, which is scoped to rico:CreationRelation. On the
+#      Records_in_Contexts_users list (2026-06), Florence Clavaud (chair,
+#      ICA/EGAD) confirmed a *generic* property of this kind is intended for
+#      RiC-O 1.2 and advised extending RiC-O in the meantime. This file is
+#      that extension.
+#
+#   2. Adoption, fostering, and legal guardianship between two Persons.
+#      RiC-O 1.1 has rico:hasChild / rico:hasSibling / rico:hasOrHadSpouse
+#      under rico:hasFamilyAssociationWith, but nothing for care relationships.
+#
+# When RiC-O 1.2 lands its own property, bind it here with owl:equivalentProperty
+# and callers keep working unchanged.
+
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:      <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms:  <http://purl.org/dc/terms/> .
+@prefix rico:     <https://www.ica.org/standards/RiC/ontology#> .
+@prefix openricx: <https://openric.org/ns/ext/v1#> .
+
+<https://openric.org/ns/ext/v1>
+    a owl:Ontology ;
+    rdfs:label "OpenRiC extension ontology (agent-role-in-relation + kinship of care)"@en ;
+    owl:imports <https://www.ica.org/standards/RiC/ontology> ;
+    dcterms:creator "Johan Pieterse / Plain Sailing Information Systems" ;
+    dcterms:modified "2026-07-09"^^xsd:date ;
+    owl:versionInfo "v1 (2026-07-09)" ;
+    rdfs:comment "Extends RiC-O 1.1 with a generic 'role an agent plays in a relation' property and care-kinship properties. Intended to align with RiC-O 1.2 when it ships its own generic agent-role property."@en .
+
+# ---------------------------------------------------------------------------
+# 1. Role an agent plays in a relation
+# ---------------------------------------------------------------------------
+# Generic over ANY rico:Relation that involves an Agent — EventRelation,
+# PerformanceRelation, CreationRelation, etc. rico:creationWithRole is declared
+# below as a specialisation, so existing RiC-O 1.1 data infers cleanly.
+
+openricx:relationHasAgentRole
+    a owl:ObjectProperty ;
+    rdfs:label "relation has agent role"@en ;
+    rdfs:comment "Relates a rico:Relation that involves one or more agents to a rico:RoleType denoting the capacity in which the agent(s) participated (e.g. bride, witness, donor, editor). Generalises rico:creationWithRole to any agent-involving relation. Expected to be superseded by an equivalent RiC-O 1.2 property."@en ;
+    rdfs:domain rico:Relation ;
+    rdfs:range  rico:RoleType ;
+    rdfs:seeAlso rico:creationWithRole ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+# creationWithRole (RiC-O 1.1: CreationRelation -> RoleType) is a special case
+# of the generic property. Asserting this lets a reasoner surface legacy
+# creation-role data through the generic path without any data migration.
+rico:creationWithRole
+    rdfs:subPropertyOf openricx:relationHasAgentRole .
+
+# ---------------------------------------------------------------------------
+# 2. Kinship of care — adoption, fostering, guardianship
+# ---------------------------------------------------------------------------
+# Adopted child: a legal child, so a genuine specialisation of rico:hasChild.
+openricx:hasAdoptedChild
+    a owl:ObjectProperty ;
+    rdfs:label "has adopted child"@en ;
+    rdfs:comment "The subject agent adopted the object person as their child (legal adoption)."@en ;
+    rdfs:subPropertyOf rico:hasChild ;
+    owl:inverseOf openricx:isOrWasAdoptedChildOf ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:isOrWasAdoptedChildOf
+    a owl:ObjectProperty ;
+    rdfs:label "is or was adopted child of"@en ;
+    rdfs:comment "The subject person is or was the adopted child of the object agent."@en ;
+    rdfs:subPropertyOf rico:hasFamilyAssociationWith ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+# Foster child: NOT a legal child, so under hasFamilyAssociationWith, not hasChild.
+openricx:hasFosterChild
+    a owl:ObjectProperty ;
+    rdfs:label "has foster child"@en ;
+    rdfs:comment "The subject agent fostered the object person (care without legal adoption)."@en ;
+    rdfs:subPropertyOf rico:hasFamilyAssociationWith ;
+    owl:inverseOf openricx:isOrWasFosterChildOf ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:isOrWasFosterChildOf
+    a owl:ObjectProperty ;
+    rdfs:label "is or was foster child of"@en ;
+    rdfs:comment "The subject person is or was fostered by the object agent."@en ;
+    rdfs:subPropertyOf rico:hasFamilyAssociationWith ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+# Legal guardianship (directional; the parent property is symmetric but a
+# sub-property need not be, so guardian/ward direction is preserved).
+openricx:isOrWasGuardianOf
+    a owl:ObjectProperty ;
+    rdfs:label "is or was guardian of"@en ;
+    rdfs:comment "The subject agent is or was the legal guardian of the object person. Where the guardianship rests on a legal instrument, also relate the persons through a rico:Mandate."@en ;
+    rdfs:subPropertyOf rico:hasFamilyAssociationWith ;
+    owl:inverseOf openricx:isOrWasUnderGuardianshipOf ;
+    rdfs:seeAlso rico:Mandate ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:isOrWasUnderGuardianshipOf
+    a owl:ObjectProperty ;
+    rdfs:label "is or was under the guardianship of"@en ;
+    rdfs:comment "The subject person is or was under the legal guardianship of the object agent."@en ;
+    rdfs:subPropertyOf rico:hasFamilyAssociationWith ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+# NOTE on care-home / institutional care:
+#   A period in a care-home setting is best modelled NOT with a new kinship
+#   property but with the role pattern in section 1: an Event/Activity (the
+#   residency or the episode of care) whose participants are the resident and
+#   the carer, each qualified with openricx:relationHasAgentRole pointing at a
+#   rico:RoleType ("resident", "carer"). Dates then live on the Event and/or on
+#   the EventRelation, which is exactly where they belong.
+
+# ---------------------------------------------------------------------------
+# 3. Carrier — the physical medium as an object
+# ---------------------------------------------------------------------------
+# RiC-O 1.1 has no Carrier entity: only rico:hasCarrierType (the KIND of medium)
+# and extent relations on rico:Instantiation. That is enough to describe an
+# inscription, but not the physical object itself — e.g. "this magnetic tape",
+# with its own identifier, condition, and custody history. On the
+# Records_in_Contexts_users list (2026-07), Florence Clavaud (chair, ICA/EGAD)
+# confirmed a Carrier class is planned for RiC-O 2.0 and advised, in the
+# meantime, extending RiC-O with a Carrier as a subclass of Thing. This is that
+# extension; bind it to the RiC-O 2.0 class with owl:equivalentClass when it ships.
+#
+# Distinction preserved:
+#   rico:hasCarrierType  -> CarrierType   (the kind: "1/4-inch open-reel tape")
+#   openricx:hasCarrier  -> openricx:Carrier  (the individual physical object)
+
+openricx:Carrier
+    a owl:Class ;
+    rdfs:label "Carrier"@en ;
+    rdfs:comment "A physical medium that bears one or more instantiations — e.g. a specific magnetic tape, disc, or volume. Distinct from rico:CarrierType (the kind of medium): a Carrier is the individual object, with its own identifier and history. Pending the RiC-O 2.0 Carrier class."@en ;
+    rdfs:subClassOf rico:Thing ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:hasCarrier
+    a owl:ObjectProperty ;
+    rdfs:label "has carrier"@en ;
+    rdfs:comment "Relates a rico:Instantiation to the individual physical Carrier on which it is inscribed. Because one carrier (e.g. a tape) may bear several instantiations (several tracks), this is many-to-one from Instantiation to Carrier."@en ;
+    rdfs:domain rico:Instantiation ;
+    rdfs:range  openricx:Carrier ;
+    owl:inverseOf openricx:isCarrierOf ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:isCarrierOf
+    a owl:ObjectProperty ;
+    rdfs:label "is carrier of"@en ;
+    rdfs:comment "The subject physical Carrier bears the object rico:Instantiation."@en ;
+    rdfs:domain openricx:Carrier ;
+    rdfs:range  rico:Instantiation ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+# NOTE on the magnetic-tape case (Clavaud, list 2026-07):
+#   content of a track = rico:Record; its inscription on the tape =
+#   rico:Instantiation; a later copy or digitisation = another Instantiation of
+#   the SAME Record. The tape itself is the openricx:Carrier that several such
+#   inscriptions share. Modelling the Carrier as an object lets custody / condition
+#   / migration Events attach to the physical tape rather than to any one track.
