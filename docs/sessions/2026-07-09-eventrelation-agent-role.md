@@ -23,7 +23,15 @@
 - `vendor/ahg/ric` is a gitignored copy — already synced this session; a proper deploy re-copies from `packages/ahg-ric`.
 - Not yet committed (project rule: stage only). Re-run `openric-spec/conformance/probe.sh` after release per the re-probe rule.
 
+## Addendum (2026-07-10) — list validation & release
+
+- **Released:** v0.17.0 pushed to `origin` (`git@github.com:openric/service.git`), tag `v0.17.0`, CHANGELOG entry added.
+- **Sylvain Loiseau thread:** independently raised the same gap for `rico:PerformanceRelation` (no way to characterise the performance), proposing a per-class `roleIsContextOfPerformanceRelation`. Our reply (`docs/rico-performance-role-reply.md`, posted by Johan) argues for the single generic property instead — which `openricx:relationHasAgentRole` already is.
+- **Florence Clavaud confirmed (2026-07-10):** **RiC-O 1.2 (release Sept/Oct 2026) WILL add** a generic object property connecting any Relation-involving-an-Agent to the role played — validating our design exactly. EGAD will open a GitHub issue to track it.
+- **Action when that issue opens:** bind `openricx:relationHasAgentRole` to the 1.2 property via `owl:equivalentProperty`; follow/contribute real-world implementation feedback.
+- Diagram of the pattern committed: `docs/EventRelation_Person_09072026.drawio.png` (Clavaud's Jane-Doe-wedding EventRelation example).
+
 ## Follow-ups
 - Mirror `openric_ext.ttl` into the openric-spec repo for publication at `https://openric.org/ns/ext/v1`.
 - Wizard/editor UI to set a participant's RoleType.
-- Watch RiC-O 1.2 for the official generic agent-role property; add the `owl:equivalentProperty` binding when named.
+- Watch RiC-O 1.2 (Sept/Oct 2026) for the official generic agent-role property; add the `owl:equivalentProperty` binding when named. Watch for EGAD's GitHub issue.
