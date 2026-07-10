@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.17.0 — 2026-07-09
+
+### RiC-O extension: agent-role-in-relation, kinship of care, Carrier
+
+Fills three RiC-O 1.1 gaps raised on the Records_in_Contexts_users list with Florence Clavaud (ICA/EGAD), in the `openricx` extension namespace (`https://openric.org/ns/ext/v1#`).
+
+- **`openricx:relationHasAgentRole`** — generic `rico:Relation → rico:RoleType` (the role an agent plays in a relation, e.g. "bride" at a wedding Event); `rico:creationWithRole` declared as a sub-property for legacy inference. Designed to bind to RiC-O 1.2's forthcoming generic property via `owl:equivalentProperty`.
+- **Kinship of care** — `hasAdoptedChild` (⊑ `rico:hasChild`), `hasFosterChild`, `isOrWasGuardianOf` / `isOrWasUnderGuardianshipOf` (⊑ `rico:hasFamilyAssociationWith`), plus inverses.
+- **`openricx:Carrier`** (⊑ `rico:Thing`) + `openricx:hasCarrier` (`rico:Instantiation → Carrier`, many-to-one) — the individual physical medium (e.g. a magnetic tape), distinct from `rico:CarrierType`. Pending RiC-O 2.0's Carrier class.
+- **Serializer** — `serializeActivity` emits a reified `rico:EventRelation` (role) alongside the `hasOrHadParticipant` shortcut; `serializeInstantiation` emits `openricx:hasCarrier`.
+- **Storage** — idempotent installers add `role_term_id` to `ric_relation_meta` and `carrier_identifier` to `ric_instantiation`.
+- Ontology + SHACL under `packages/ahg-ric/tools/` (validated, 67 + 45 triples); mailing-list replies under `docs/`.
+
 ## v0.16.4 — 2026-06-22
 
 ### CI fix (part 2): register the ahg-ric Feature test path

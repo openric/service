@@ -86,5 +86,5 @@ linked is the right home base for doing this cleanly.
 
 Groete / Regards,
 
-Johan Pieterse
+Johan Pieterse (PhD)
 http://heratio.theahg.co.za/  ·  https://ric.theahg.co.za/
