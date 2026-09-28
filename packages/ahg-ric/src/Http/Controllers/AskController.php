@@ -14,6 +14,10 @@
  * OPTIONAL and volunteered by the asker. A honeypot field ("website") plus tight
  * throttling keep the bots out. Never throws on a mail failure — the question is
  * still stored.
+ *
+ * Optionally also queues a WhatsApp notification to the maintainer via the
+ * estate spool (OPENRIC_WHATSAPP). Both channels are best-effort and neither
+ * can fail the request: the stored row is the durable record.
  */
 
 namespace AhgRic\Http\Controllers;
@@ -24,6 +28,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use AhgRic\Services\WhatsAppNotifier;
 
 class AskController extends Controller
 {
@@ -56,6 +61,11 @@ class AskController extends Controller
         if ($emailed) {
             DB::table('openric_question')->where('id', $id)->update(['emailed' => true]);
         }
+
+        // Best-effort second channel. Deliberately not conditional on $emailed:
+        // the two are independent, and a mail outage is exactly when a WhatsApp
+        // notification earns its keep.
+        WhatsAppNotifier::askReceived($id, $body, $email, $page);
 
         return response()->json(['ok' => true], 200);
     }

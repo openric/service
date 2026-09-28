@@ -195,4 +195,30 @@ return [
     */
     'sync_script' => env('RIC_SYNC_SCRIPT'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | WhatsApp notification (Ask form)
+    |--------------------------------------------------------------------------
+    |
+    | OpenRiC never holds a WhatsApp credential. It writes a JSON payload into
+    | the estate spool and ahg-whatsapp-watcher, running as root with the Meta
+    | token, sends it. Off unless OPENRIC_WHATSAPP=true and a recipient is set.
+    |
+    | The template must be an APPROVED Meta template using POSITIONAL ({{1}})
+    | variables - the watcher sends parameters without a parameter_name, so a
+    | named-variable template passes approval and then fails every send.
+    |
+    | Note the watcher treats an unknown template name as MARKETING for up to
+    | 15 minutes after approval (it fails closed), so the first send after a
+    | new template goes live may be refused for a reason unrelated to config.
+    |
+    */
+    'whatsapp' => [
+        'enabled'  => env('OPENRIC_WHATSAPP', false),
+        'to'       => env('OPENRIC_WHATSAPP_TO'),
+        'spool'    => env('WHATSAPP_SPOOL', '/var/spool/ahg-whatsapp'),
+        'template' => env('OPENRIC_WHATSAPP_TEMPLATE', 'openric_ask_received'),
+        'language' => env('OPENRIC_WHATSAPP_LANGUAGE', 'en'),
+    ],
+
 ];

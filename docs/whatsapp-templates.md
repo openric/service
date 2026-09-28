@@ -67,14 +67,30 @@ The full text is stored against openric_question in the reference service.
 ### Body
 
 ```
-OpenRiC demand signals for {{1}}.
+OpenRiC daily system report for {{1}}.
 
 Signals recorded: {{2}}
 Most frequent search: {{3}}
 Questions received: {{4}}
 
-Open the stats dashboard for the full breakdown.
+This is an automated report for the openric.org service account.
 ```
+
+### Why it is worded like this
+
+The first draft ended "Open the stats dashboard for the full breakdown" and
+opened "OpenRiC demand signals for". Both were changed before submission.
+
+Meta classifies a template on its **wording**, not on who receives it - it has
+no way to know this goes to the account owner. A daily analytics digest ending
+in a call to action reads as a business newsletter, which is the MARKETING
+pattern. A MARKETING classification would be fatal here: the watcher gates
+MARKETING sends on a consent grant this number does not have and, by the
+23 September decision, should not get; and the workbench template picker now
+withholds MARKETING templates outright.
+
+So the call to action is gone and the framing is a scheduled system report for
+a service account, which is what it actually is.
 
 ### Parameters
 
@@ -125,6 +141,48 @@ comfortable headroom.
 **Do not reuse `ahg_staff_alert`.** It exists with three parameters and looks
 generic, but its body calls the subject a Fault and promises the detail is in
 CallHub. An Ask submission is neither.
+
+## An unknown template counts as MARKETING
+
+The watcher's `categoryOf()` caches name-to-category from Meta for 15 minutes
+and **fails closed**, returning `MARKETING` for any name it does not know - the
+reasoning being that the cost of guessing wrong the other way is an unconsented
+marketing message.
+
+So for up to 15 minutes after approval, or indefinitely if that Graph fetch
+fails, a brand-new UTILITY template is treated as MARKETING by the sender. The
+first sends may be refused for a reason that has nothing to do with this code,
+and the refusal will look like a consent problem rather than a cold cache.
+
+After approval, either wait out the 15 minutes or restart the watcher, and
+treat the first send as a test rather than as traffic.
+
+Do not assume consent enforcement is off. `WA_CONSENT_ENFORCE` defaults off,
+but the env file is root-only so its current value is not readable from here.
+
+## The spool payload for a template send
+
+```json
+{
+  "to": "27...",
+  "template": "openric_ask_received",
+  "language": "en",
+  "components": [
+    { "type": "body",
+      "parameters": [
+        { "type": "text", "text": "<{{1}}>" },
+        { "type": "text", "text": "<{{2}}>" },
+        { "type": "text", "text": "<{{3}}>" },
+        { "type": "text", "text": "<{{4}}>" }
+      ] }
+  ],
+  "purpose": "transactional"
+}
+```
+
+Set `purpose` explicitly - the watcher reads it. Workbench uses
+`transactional` for every template send and `service` for free text. Write the
+file dot-prefixed, then `rename()` it into place; the watcher skips dot-files.
 
 ## Errors worth surfacing by code
 
