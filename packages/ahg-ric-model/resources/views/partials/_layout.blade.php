@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    {{-- Shared OpenRiC shell: header, canonical RiC entity colours and design
+         tokens, served from openric.org so the four surfaces read as one
+         product without being one deployment. Progressive enhancement - if it
+         fails to load this page keeps working, it just loses the chrome. --}}
+    <link rel="stylesheet" href="https://openric.org/assets/shell/v1.css">
+    <script defer src="https://openric.org/assets/shell/v1.js"
+            data-product="Model Reference" data-footer="false"></script>
+
     <style>
         [x-cloak] { display: none !important; }
         body { padding-top: 3.5rem; }
