@@ -203,5 +203,5 @@ Bundled ontology data from ICA-EGAD retains its original **CC BY 4.0** licence, 
 
 ## Maintainer
 
-**The Archive and Heritage Group (Pty) Ltd**
+**The Archive and Heritage Digital Commons Group (Pty) Ltd**
 Johan Pieterse — [`johan@theahg.co.za`](mailto:johan@theahg.co.za)
