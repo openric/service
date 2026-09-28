@@ -98,6 +98,7 @@ class AhgRicServiceProvider extends ServiceProvider
                 \AhgRic\Console\Commands\ClearGraphCache::class,
                 \AhgRic\Console\Commands\BackfillProductionParticipants::class,
                 \AhgRic\Console\Commands\PurgeOpenWrite::class,
+                \AhgRic\Console\Commands\DailyDigest::class,
             ]);
         }
 

@@ -213,6 +213,24 @@ return [
     | new template goes live may be refused for a reason unrelated to config.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Workbench notification bell
+    |--------------------------------------------------------------------------
+    |
+    | Drop a JSON file into the inbox and the workbench watcher surfaces it in
+    | the user's bell within 15 seconds. No credential, no approval, no consent
+    | register - the preferred channel for anything not needed on a phone.
+    |
+    | WORKBENCH_NOTIFICATIONS_INBOX overrides the path, per the estate-wide
+    | convention.
+    |
+    */
+    'workbench' => [
+        'inbox'       => env('WORKBENCH_NOTIFICATIONS_INBOX', '/var/spool/workbench/notifications'),
+        'notify_user' => env('OPENRIC_NOTIFY_USER', 'johan'),
+    ],
+
     'whatsapp' => [
         'enabled'  => env('OPENRIC_WHATSAPP', false),
         'to'       => env('OPENRIC_WHATSAPP_TO'),
