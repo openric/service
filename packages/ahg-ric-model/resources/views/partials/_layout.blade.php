@@ -20,6 +20,10 @@
         [x-cloak] { display: none !important; }
         body { padding-top: 3.5rem; }
         code.ric-id { font-family: var(--bs-font-monospace); font-size: 0.9em; color: #6f42c1; }
+        /* Task-first entry cards. The RiC code stays visible but secondary -
+           plain language first, formal vocabulary still there. */
+        .task-entry { border: 1px solid transparent; color: inherit; transition: background 0.12s, border-color 0.12s; }
+        .task-entry:hover { background: #f8f9fa; border-color: #dee2e6; }
         .ric-tag { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 0.2rem; font-size: 0.78rem;
                    background: #f1f3f5; color: #495057; }
         .ric-tag-inherited { background: #e7f5ff; color: #1c7ed6; }

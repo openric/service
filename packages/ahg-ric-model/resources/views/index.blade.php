@@ -5,6 +5,12 @@
 
     <p class="text-muted mb-4">Browse the Records in Contexts Conceptual Model — 19 entities, 42 attributes, and their relations — sourced live from RiC-O v1.1 via SPARQL.</p>
 
+    {{-- Task-first entry, above the class counts. A first-time archivist should
+         be able to say what they hold before being asked to pick a class. --}}
+    @include('ahg-ric-model::partials._task-entry', ['version' => $version])
+
+    <h2 class="h5 mb-3">Browse the model</h2>
+
     <div class="row g-3 mb-4">
         @php $cards = [
             ['label' => 'Entities',            'count' => $counts['entities'],            'route' => 'entities.index'],
