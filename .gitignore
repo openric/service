@@ -19,3 +19,10 @@ yarn-error.log
 /.claude/
 /.mcp.json
 /.work/
+
+# Local scratch: planning documents, drafts and anything else not part of the
+# codebase. Assumed to be ignored already; it was not.
+/stuff/
+
+# Tree-sitter code graph, rebuilt on demand by graphify.
+/graphify-out/
