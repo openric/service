@@ -1,0 +1,29 @@
+# OpenRiC - Laravel scheduler
+#
+# Install:
+#   sudo cp deploy/cron/openric-schedule /etc/cron.d/openric-schedule
+#   sudo chown root:root /etc/cron.d/openric-schedule
+#   sudo chmod 0644 /etc/cron.d/openric-schedule
+#
+# Without this, nothing in routes/console.php ever runs. That was the state
+# until 2026-09-28: every other Laravel app on this host (heratio, registry,
+# callhub, sasa) had a schedule:run entry and OpenRiC did not, so the daily
+# digest would have been scheduled and silently never fired.
+#
+# Runs as www-data, not root. Running artisan as root creates root-owned files
+# under storage/ that the php-fpm worker then cannot write.
+#
+# flock keeps a slow run from stacking on the next minute's invocation.
+# Laravel's own withoutOverlapping() guards individual commands; this guards
+# the scheduler process itself.
+#
+# Cron-driven artisan is NOT subject to the php-fpm ProtectSystem=full
+# restriction, because it is forked from cron rather than from the
+# php8.3-fpm.service unit - which is why writing /var/spool/workbench/
+# notifications works from here.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=""
+
+* * * * * www-data flock -n /run/lock/openric-schedule.lock -c '/usr/bin/php8.3 /usr/share/nginx/OpenRiC/artisan schedule:run >> /var/log/openric-schedule.log 2>&1'

@@ -61,6 +61,39 @@ curl -sI https://ric.theahg.co.za/api/ric/v1/health
 # content-type: application/json
 ```
 
+## Scheduler — NOT provisioned until you install the cron file
+
+Unlike the vhost and the systemd drop-in, this one was missing. Every other
+Laravel app on this host (heratio, registry, callhub, sasa) has a `schedule:run`
+entry in `/etc/cron.d/`; OpenRiC did not, so anything in `routes/console.php`
+was scheduled and then silently never ran. Found 2026-09-28 when the daily
+digest was added.
+
+```bash
+sudo cp /usr/share/nginx/OpenRiC/deploy/cron/openric-schedule /etc/cron.d/openric-schedule
+sudo chown root:root /etc/cron.d/openric-schedule
+sudo chmod 0644 /etc/cron.d/openric-schedule
+```
+
+Verify what is registered, and when it next fires:
+
+```bash
+php artisan schedule:list
+```
+
+Note the times shown are UTC. `openric:daily-digest` is declared as 06:30
+`Africa/Johannesburg` and appears as `30 4 * * *`.
+
+Two things that are easy to get wrong here:
+
+- **Run as `www-data`, never root.** Running `artisan` as root creates
+  root-owned files under `storage/` that the php-fpm worker then cannot write.
+- Cron-driven `artisan` is **not** subject to the php-fpm `ProtectSystem=full`
+  restriction, because it is forked from cron rather than from the
+  `php8.3-fpm.service` unit. That is why the digest can write
+  `/var/spool/workbench/notifications` from here, and it is also why a daily
+  log written by cron can succeed while a web request still fails.
+
 ## Mint the service API key (for Heratio → this service auth)
 
 After the vhost is live, run on the server:
