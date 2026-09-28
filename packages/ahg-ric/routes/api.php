@@ -267,8 +267,24 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // and a 30-second backend timeout. SPARQL Update operations are rejected
     // with 403 + application/problem+json.
     // See docs/drift-log.md and openric-spec audit/ric-o-1.1-audit.md.
+    // `spec_version` states the spec revision this server has been VERIFIED
+    // against, not the newest one published. openric-spec is at v0.43.10 and
+    // moves independently; v0.43.0 added four draft profiles (governance,
+    // portability, inferred-provenance, graph-grounding) that this server does
+    // not implement and therefore does not claim.
+    //
+    // Deliberately not auto-bumped. This is a machine-readable conformance
+    // assertion about a testable contract - raising the number without
+    // re-verifying against the newer spec would be a claim nobody had checked,
+    // which is precisely the failure this project exists to avoid. It moves
+    // when someone confirms what changed normatively between the two.
+    //
+    // `latest_spec_version` and `spec_delta` are advisory, so a client can see
+    // the gap rather than infer it from silence.
     $openricConformance = [
-        'spec_version' => '0.38.2',
+        'spec_version'        => '0.38.2',
+        'latest_spec_version' => '0.43.10',
+        'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [
             ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
             ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],
