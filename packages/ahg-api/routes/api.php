@@ -37,6 +37,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('api/v1')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+    // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
 
     // Information Objects — READ
     Route::get('informationobjects/search', [InformationObjectApiController::class, 'search']);
@@ -106,6 +108,8 @@ Route::prefix('api/v1')->middleware(['throttle:60,1', 'api.cors'])->group(functi
 */
 
 Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit', 'api.log'])->group(function () {
+    // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
 
     // Root — endpoint listing
     Route::get('/', [ApiRootController::class, 'index'])->withoutMiddleware('api.auth:read');
@@ -217,6 +221,8 @@ Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit
 */
 
 Route::prefix('api')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+    // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
     // Legacy routes for backward compatibility with tests
     Route::get('actor', [ActorApiController::class, 'index'])->name('api.actor.index');
     Route::get('actor/search', [ActorApiController::class, 'search'])->name('api.actor.search');

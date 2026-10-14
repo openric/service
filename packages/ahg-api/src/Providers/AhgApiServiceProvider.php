@@ -14,6 +14,13 @@ class AhgApiServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__ . '/../../config/ahg-api.php', 'ahg-api');
+
+        // ApiCors owns CORS for every api/* route group (reads open, writes
+        // allow-listed). Take api/* out of Laravel's global HandleCors, whose
+        // default config allows every origin and method and would otherwise
+        // answer preflights itself and re-add a wildcard to every response.
+        config(['cors.paths' => array_values(array_diff((array) config('cors.paths', []), ['api/*']))]);
         $this->app->singleton(ApiKeyService::class);
         $this->app->singleton(WebhookService::class);
     }

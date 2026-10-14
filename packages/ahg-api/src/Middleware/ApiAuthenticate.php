@@ -14,18 +14,13 @@ class ApiAuthenticate
      */
     public function handle(Request $request, Closure $next, string ...$requiredScopes)
     {
-        // TEMPORARY open-write window ("free for all to use"). When
-        // OPENRIC_OPEN_WRITE=true, unauthenticated CREATE (POST) requests pass
-        // through with read+write scope, so public tools (e.g. the openric.org
-        // modelling wizard) can create entities without an API key. Deliberately
-        // scoped to POST only — PUT/PATCH/DELETE still require a key, so nobody
-        // can edit or destroy existing data anonymously. Rate limiting and
-        // request logging still apply. Set the env to false (and config:clear)
-        // to "close it up" again — no code change needed.
+        // Anonymous open-write window, POST creates only (see config/ahg-api.php).
+        // Closed on 14 October 2026 because it wrote into a production database;
+        // it must only ever be enabled against an isolated demo database.
         if (
             !$request->user()
             && $request->isMethod('post')
-            && filter_var(env('OPENRIC_OPEN_WRITE', false), FILTER_VALIDATE_BOOLEAN)
+            && config('ahg-api.open_write.enabled', false)
         ) {
             return $this->openWrite($request, $next, $requiredScopes);
         }
@@ -107,7 +102,7 @@ class ApiAuthenticate
         }
 
         // 2. Payload cap.
-        $maxBytes = (int) env('OPENRIC_OPEN_WRITE_MAX_BYTES', 65536);
+        $maxBytes = (int) config('ahg-api.open_write.max_bytes', 65536);
         if ((int) $request->header('Content-Length', 0) > $maxBytes || strlen($request->getContent()) > $maxBytes) {
             return response()->json([
                 'success' => false, 'error' => 'Payload Too Large',
@@ -117,7 +112,7 @@ class ApiAuthenticate
 
         // 3. Per-IP daily cap, counted from the inventory (resilient if the
         //    table isn't migrated yet — then the cap is simply not enforced).
-        $maxPerDay = (int) env('OPENRIC_OPEN_WRITE_MAX_PER_DAY', 100);
+        $maxPerDay = (int) config('ahg-api.open_write.max_per_day', 100);
         try {
             $today = DB::table('openric_open_write')
                 ->where('ip', $request->ip())
@@ -159,6 +154,14 @@ class ApiAuthenticate
 
     protected function checkScopes(Request $request, Closure $next, array $requiredScopes)
     {
+        // Every DELETE needs the delete scope, whatever scope its route group
+        // names. Route groups declared `api.auth:write` around their deletes,
+        // so a write-only key could delete; enforcing it here covers every
+        // destructive route, including ones added later.
+        if ($request->isMethod('delete') && !in_array('delete', $requiredScopes, true)) {
+            $requiredScopes[] = 'delete';
+        }
+
         if (empty($requiredScopes)) {
             return $next($request);
         }

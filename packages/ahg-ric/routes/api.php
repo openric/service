@@ -55,6 +55,8 @@ use AhgRic\Http\Controllers\StatsController;
 */
 
 Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+    // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
     
     // Agents (ISAAR-CPF)
     Route::get('/agents', [LinkedDataApiController::class, 'listAgents']);
@@ -281,9 +283,26 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     //
     // `latest_spec_version` and `spec_delta` are advisory, so a client can see
     // the gap rather than infer it from silence.
+    // latest_spec_version is read from the published spec manifest, cached for
+    // a day; the literal is only the fallback when openric.org is unreachable.
+    // spec_version above stays hand-set, for the reason given there.
+    $latestSpecVersion = function (): string {
+        return \Illuminate\Support\Facades\Cache::remember('openric.latest_spec_version', 86400, function () {
+            try {
+                $v = \Illuminate\Support\Facades\Http::timeout(3)->get('https://openric.org/version.json')->json('version');
+                if (is_string($v) && preg_match('/^\d+\.\d+\.\d+$/', $v)) {
+                    return $v;
+                }
+            } catch (\Throwable $e) {
+                // fall through to the last known value
+            }
+            return '0.43.14';
+        });
+    };
+
     $openricConformance = [
         'spec_version'        => '0.38.2',
-        'latest_spec_version' => '0.43.10',
+        'latest_spec_version' => null, // filled per request below
         'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [
             ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
@@ -308,10 +327,13 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // API Info endpoint — service description. Format per openric-spec
     // core-discovery.md §3.1 (`openric_conformance` required; at least
     // one profile must be declared).
-    Route::get('/', function () use ($openricConformance) {
+    Route::get('/', function () use ($openricConformance, $latestSpecVersion) {
+        $openricConformance['latest_spec_version'] = $latestSpecVersion();
+        // The service's own release, from version.json - not the API path version.
+        $release = json_decode((string) @file_get_contents(base_path('version.json')), true);
         return response()->json([
             'name' => 'RIC-O Linked Data API',
-            'version' => '1.0',
+            'version' => $release['version'] ?? 'unknown',
             'description' => 'Linked Data publication endpoints for RIC-O compliant serialization',
             'docs' => url('/api/ric/v1/docs'),
             'openapi' => url('/api/ric/v1/openapi.json'),

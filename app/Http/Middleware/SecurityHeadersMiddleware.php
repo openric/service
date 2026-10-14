@@ -22,7 +22,8 @@ class SecurityHeadersMiddleware
 
         // Apply security headers
         $response->headers->set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-        $response->headers->set('X-Frame-Options', 'DENY');
+        // X-Frame-Options is set once, by nginx (SAMEORIGIN); setting it here
+        // too sent two conflicting values.
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'no-referrer-when-downgrade');
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=()');

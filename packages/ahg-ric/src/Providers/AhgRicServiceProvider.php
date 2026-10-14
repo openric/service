@@ -93,6 +93,7 @@ class AhgRicServiceProvider extends ServiceProvider
             $this->commands([
                 \AhgRic\Console\Commands\VerifySplit::class,
                 \AhgRic\Console\Commands\IssueKey::class,
+                \AhgRic\Console\Commands\RevokeKey::class,
                 \AhgRic\Console\Commands\RebuildNestedSet::class,
                 \AhgRic\Console\Commands\SeedDemo::class,
                 \AhgRic\Console\Commands\ClearGraphCache::class,
