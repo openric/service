@@ -154,14 +154,11 @@ class ApiAuthenticate
 
     protected function checkScopes(Request $request, Closure $next, array $requiredScopes)
     {
-        // Every DELETE needs the delete scope, whatever scope its route group
-        // names. Route groups declared `api.auth:write` around their deletes,
-        // so a write-only key could delete; enforcing it here covers every
-        // destructive route, including ones added later.
-        if ($request->isMethod('delete') && !in_array('delete', $requiredScopes, true)) {
-            $requiredScopes[] = 'delete';
-        }
-
+        // Destructive routes name `api.auth:delete` themselves. A blanket
+        // "every DELETE needs delete" rule here (v0.17.1) broke legitimate
+        // deletes under other scopes, e.g. a user revoking their own key
+        // (DELETE /api/v2/keys/{id}, read scope); ApiSecurityTest checks that
+        // every RiC and legacy delete route carries api.auth:delete instead.
         if (empty($requiredScopes)) {
             return $next($request);
         }

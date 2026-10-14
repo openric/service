@@ -56,7 +56,12 @@ class ApiSecurityTest extends TestCase
             Route::get('thing', fn () => response()->json(['ok' => true]));
             Route::middleware('api.auth:write')->group(function () {
                 Route::post('thing', fn () => response()->json(['ok' => true], 201));
-                Route::delete('thing', fn () => response()->json(['ok' => true]));
+                // Mirrors the real RiC routes: write group, delete route gated on its own.
+                Route::delete('thing', fn () => response()->json(['ok' => true]))->middleware('api.auth:delete');
+            });
+            // Like DELETE /api/v2/keys/{id}: a delete that only needs read scope.
+            Route::middleware('api.auth:read')->group(function () {
+                Route::delete('own-key', fn () => response()->json(['ok' => true]));
             });
         });
     }
@@ -83,6 +88,35 @@ class ApiSecurityTest extends TestCase
         $this->postJson('/api/ric/v1/_t/thing', [], ['X-API-Key' => $k])->assertStatus(201);
         $this->deleteJson('/api/ric/v1/_t/thing', [], ['X-API-Key' => $k])
             ->assertStatus(403)->assertJsonFragment(['message' => "Scope 'delete' required."]);
+    }
+
+    public function test_every_destructive_api_route_requires_the_delete_scope(): void
+    {
+        foreach (app('router')->getRoutes() as $route) {
+            $uri = $route->uri();
+            $isRic = str_starts_with($uri, 'api/ric/v1/') && !str_starts_with($uri, 'api/ric/v1/_t');
+            $isLegacy = (bool) preg_match('#^api/(actor|term|records)(/|$)#', $uri);
+            if (!$isRic && !$isLegacy) {
+                continue;
+            }
+            $mw = $route->gatherMiddleware();
+            if (in_array('DELETE', $route->methods(), true)) {
+                $this->assertContains('api.auth:delete', $mw, "DELETE {$uri} must require the delete scope");
+            }
+            if ($isLegacy && array_intersect(['POST', 'PUT', 'PATCH'], $route->methods())) {
+                $this->assertContains('api.auth:write', $mw, "{$uri} must require the write scope");
+            }
+        }
+    }
+
+    public function test_users_can_still_revoke_their_own_key_with_read_scope(): void
+    {
+        // v0.17.1 required delete on every DELETE, which blocked this. It must not.
+        $route = app('router')->getRoutes()->match(\Illuminate\Http\Request::create('/api/v2/keys/5', 'DELETE'));
+        $this->assertNotContains('api.auth:delete', $route->gatherMiddleware());
+
+        $k = $this->key(['read']);
+        $this->deleteJson('/api/ric/v1/_t/own-key', [], ['X-API-Key' => $k])->assertStatus(200);
     }
 
     public function test_delete_scope_can_delete(): void

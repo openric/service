@@ -191,17 +191,17 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
 
         Route::post('/relations', [LinkedDataApiController::class, 'createRelation']);
         Route::match(['patch', 'put'], '/relations/{id}', [LinkedDataApiController::class, 'updateRelation'])->where('id', '[0-9]+');
-        Route::delete('/relations/{id}', [LinkedDataApiController::class, 'deleteRelation'])->where('id', '[0-9]+');
+        Route::delete('/relations/{id}', [LinkedDataApiController::class, 'deleteRelation'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Agents (rico:Agent / rico:Person / rico:CorporateBody / rico:Family)
         Route::post('/agents', [LinkedDataApiController::class, 'createAgent']);
         Route::match(['patch', 'put'], '/agents/{id}', [LinkedDataApiController::class, 'updateAgent'])->where('id', '[0-9]+');
-        Route::delete('/agents/{id}', [LinkedDataApiController::class, 'deleteAgent'])->where('id', '[0-9]+');
+        Route::delete('/agents/{id}', [LinkedDataApiController::class, 'deleteAgent'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Records (rico:Record / rico:RecordSet — information_object)
         Route::post('/records', [LinkedDataApiController::class, 'createRecord']);
         Route::match(['patch', 'put'], '/records/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
-        Route::delete('/records/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
+        Route::delete('/records/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Record Parts (rico:RecordPart, RiC-E05) and Record Sets (rico:RecordSet,
         // RiC-E03) — also information_object rows. A Record Part requires a
@@ -209,31 +209,31 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         // /records/{slug}; per-part provenance is added via POST /relations.
         Route::post('/record-parts', [LinkedDataApiController::class, 'createRecordPart']);
         Route::match(['patch', 'put'], '/record-parts/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
-        Route::delete('/record-parts/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
+        Route::delete('/record-parts/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         Route::post('/record-sets', [LinkedDataApiController::class, 'createRecordSet']);
         Route::match(['patch', 'put'], '/record-sets/{id}', [LinkedDataApiController::class, 'updateRecord'])->where('id', '[0-9]+');
-        Route::delete('/record-sets/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+');
+        Route::delete('/record-sets/{id}', [LinkedDataApiController::class, 'deleteRecord'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Repositories (ISDIAH — rico:CorporateBody with repository extension)
         Route::post('/repositories', [LinkedDataApiController::class, 'createRepository']);
         Route::match(['patch', 'put'], '/repositories/{id}', [LinkedDataApiController::class, 'updateRepository'])->where('id', '[0-9]+');
-        Route::delete('/repositories/{id}', [LinkedDataApiController::class, 'deleteRepository'])->where('id', '[0-9]+');
+        Route::delete('/repositories/{id}', [LinkedDataApiController::class, 'deleteRepository'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Functions (ISDF — openricx:Function)
         Route::post('/functions', [LinkedDataApiController::class, 'createFunction']);
         Route::match(['patch', 'put'], '/functions/{id}', [LinkedDataApiController::class, 'updateFunction'])->where('id', '[0-9]+');
-        Route::delete('/functions/{id}', [LinkedDataApiController::class, 'deleteFunctionEntity'])->where('id', '[0-9]+');
+        Route::delete('/functions/{id}', [LinkedDataApiController::class, 'deleteFunctionEntity'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         // Generic delete-by-id (looks up class_name and dispatches) — useful
         // for UIs that hold only an id, not a type.
-        Route::delete('/entities/{id}', [LinkedDataApiController::class, 'deleteEntityById'])->where('id', '[0-9]+');
+        Route::delete('/entities/{id}', [LinkedDataApiController::class, 'deleteEntityById'])->where('id', '[0-9]+')->middleware('api.auth:delete');
 
         Route::post('/{type}', [LinkedDataApiController::class, 'createEntity'])->where('type', 'places|rules|activities|instantiations');
         Route::match(['patch', 'put'], '/{type}/{id}', [LinkedDataApiController::class, 'updateEntity'])
             ->where('type', 'places|rules|activities|instantiations')->where('id', '[0-9]+');
         Route::delete('/{type}/{id}', [LinkedDataApiController::class, 'deleteEntity'])
-            ->where('type', 'places|rules|activities|instantiations')->where('id', '[0-9]+');
+            ->where('type', 'places|rules|activities|instantiations')->where('id', '[0-9]+')->middleware('api.auth:delete');
     });
     
     // Health check
