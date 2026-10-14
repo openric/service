@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.2 — 2026-10-14
+
+- Security: delete scope enforced per route instead of in middleware, so users can revoke their own keys again; legacy write routes now require a key
 ## v0.17.1 — 2026-10-14
 
 - Security: DELETE needs the delete scope; cross-origin writes limited to allow-listed origins; key revoke command; open-write flag read from config; service reports its real version
