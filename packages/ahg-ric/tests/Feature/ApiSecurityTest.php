@@ -171,4 +171,12 @@ class ApiSecurityTest extends TestCase
         $preflight(self::ALLOWED, 'DELETE')->assertHeader('Access-Control-Allow-Origin', self::ALLOWED);
         $preflight(self::FOREIGN, 'GET')->assertHeader('Access-Control-Allow-Origin', '*');
     }
+
+    public function test_a_place_with_no_name_is_refused_before_anything_is_written(): void
+    {
+        // round-trip-editing §6.9; this returned 201 and made a nameless place.
+        $k = $this->key(['read', 'write']);
+        $this->postJson('/api/ric/v1/places', [], ['X-API-Key' => $k])->assertStatus(422);
+        $this->postJson('/api/ric/v1/places', ['name' => '  '], ['X-API-Key' => $k])->assertStatus(422);
+    }
 }

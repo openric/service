@@ -1739,6 +1739,16 @@ class LinkedDataApiController extends Controller
     }
 
     /**
+     * Singular entity type for envelopes and the audit log. rtrim($type, 's')
+     * gave "activitie", which entityRevisions never matched.
+     */
+    private function singularType(string $type): string
+    {
+        return ['places' => 'place', 'rules' => 'rule', 'activities' => 'activity',
+                'instantiations' => 'instantiation'][$type] ?? rtrim($type, 's');
+    }
+
+    /**
      * POST /api/ric/v1/{type}
      * Create a Place, Rule, Activity, or Instantiation.
      */
@@ -1746,6 +1756,11 @@ class LinkedDataApiController extends Controller
     {
         $this->assertEntityTypeAllowed($type);
         $data = $request->all();
+        // round-trip-editing §6.9: a Place with no name is a validation failure.
+        if ($type === 'places' && trim((string) ($data['name'] ?? '')) === '') {
+            return ProblemDetails::validationFailed('A place needs a name.');
+        }
+        $singular = $this->singularType($type);
         try {
             $id = match ($type) {
                 'places' => $this->entities->createPlace($data),
@@ -1754,12 +1769,13 @@ class LinkedDataApiController extends Controller
                 'instantiations' => $this->entities->createInstantiation($data),
             };
             $slug = DB::table('slug')->where('object_id', $id)->value('slug');
-            \AhgRic\Support\AuditLog::record($request, 'create', rtrim($type, 's'), $id, $data);
+            \AhgRic\Support\AuditLog::record($request, 'create', $singular, $id, $data);
             return response()->json([
                 'id' => $id,
                 'slug' => $slug,
-                'type' => rtrim($type, 's'),
-                'href' => "/api/ric/v1/{$type}/" . ($slug ?: $id),
+                'type' => $singular,
+                // These four show routes take the numeric id only, so the href must too.
+                'href' => "/api/ric/v1/{$type}/{$id}",
             ], 201);
         } catch (\Throwable $e) {
             Log::error('[RiC API] createEntity failed', ['type' => $type, 'error' => $e->getMessage()]);
@@ -1782,7 +1798,7 @@ class LinkedDataApiController extends Controller
                 'activities' => $this->entities->updateActivity($id, $data),
                 'instantiations' => $this->entities->updateInstantiation($id, $data),
             };
-            \AhgRic\Support\AuditLog::record($request, 'update', rtrim($type, 's'), $id, $data);
+            \AhgRic\Support\AuditLog::record($request, 'update', $this->singularType($type), $id, $data);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateEntity failed', ['type' => $type, 'id' => $id, 'error' => $e->getMessage()]);
@@ -1826,7 +1842,7 @@ class LinkedDataApiController extends Controller
                 'activities' => $this->entities->deleteActivity($id),
                 'instantiations' => $this->entities->deleteInstantiation($id),
             };
-            \AhgRic\Support\AuditLog::record(request(), 'delete', rtrim($type, 's'), $id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', $this->singularType($type), $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] deleteEntity failed', ['type' => $type, 'id' => $id, 'error' => $e->getMessage()]);
