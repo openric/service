@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.1 — 2026-10-14
+
+- Security: DELETE needs the delete scope; cross-origin writes limited to allow-listed origins; key revoke command; open-write flag read from config; service reports its real version
 ## v0.17.0 — 2026-07-09
 
 ### RiC-O extension: agent-role-in-relation, kinship of care, Carrier
