@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.3 — 2026-10-15
+
+- Round-trip editing: a place with no name is refused with 422, create envelopes link to a show route that resolves, and activities are recorded with the right type in the audit log
 ## v0.17.2 — 2026-10-14
 
 - Security: delete scope enforced per route instead of in middleware, so users can revoke their own keys again; legacy write routes now require a key
