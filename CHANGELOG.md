@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.13 — 2026-10-15
+
+- Graph nodes carry CURIE types such as rico:RecordSet, as the Viewing API requires; refusals on the OpenRiC API (missing, invalid or expired key, missing scope) are RFC 7807 problem documents, while the legacy V1 and V2 APIs keep their shape; X-Content-Type-Options and Referrer-Policy are sent once; /health reports the release version; the relation example in the OpenAPI description is a relation type code
 ## v0.17.12 — 2026-10-15
 
 - The service description reports that the service verifies against specification 0.46.0: the probe has not changed since 0.45.0, which the service passed 78 of 78, and 0.46.0 only adds the record terms the service has sent since v0.17.11
