@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.4 — 2026-10-15
+
+- Activity list stubs are rico:Activity with rico:hasActivityType, as on the detail endpoint; place, rule, activity and instantiation lists bind the openricx: prefix their type uses
 ## v0.17.3 — 2026-10-15
 
 - Round-trip editing: a place with no name is refused with 422, create envelopes link to a show route that resolves, and activities are recorded with the right type in the audit log
