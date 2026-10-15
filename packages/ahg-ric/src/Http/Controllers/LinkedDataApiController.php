@@ -400,6 +400,7 @@ class LinkedDataApiController extends Controller
             '@context' => [
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
+                'openricx' => 'https://openric.org/ns/ext/v1#',
             ],
             '@type' => 'openricx:PlaceList',
             'openric:total' => $total,
@@ -469,6 +470,7 @@ class LinkedDataApiController extends Controller
             '@context' => [
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
+                'openricx' => 'https://openric.org/ns/ext/v1#',
             ],
             '@type' => 'openricx:RuleList',
             'openric:total' => $total,
@@ -507,12 +509,6 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $eventTypeToRic = [
-            'creation' => 'Production', 'production' => 'Production',
-            'contribution' => 'Production', 'accumulation' => 'Accumulation',
-            'collection' => 'Accumulation',
-        ];
-
         $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_activity as a'), 'a.id')
             ->leftJoin('ric_activity_i18n as i18n', function ($j) use ($culture) {
                 $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
@@ -530,17 +526,21 @@ class LinkedDataApiController extends Controller
             ->limit($limit)
             ->get();
 
-        $rows = array_map(fn($a) => [
+        // RiC-O 1.1 has no Activity subclasses, so every stub is rico:Activity and
+        // the kind goes in rico:hasActivityType, as on GET /activities/{id}.
+        $rows = array_map(fn($a) => array_filter([
             '@id' => url('/activity/' . $a->id),
-            '@type' => 'rico:' . ($eventTypeToRic[strtolower($a->type_id ?? '')] ?? 'Activity'),
+            '@type' => 'rico:Activity',
+            'rico:hasActivityType' => ($iri = $this->serializer->activityTypeIri($a->type_id)) ? ['@id' => $iri] : null,
             'rico:name' => $a->name,
             'openric:localType' => $a->type_id,
-        ], $items->toArray());
+        ], fn ($v) => $v !== null), $items->toArray());
 
         return response()->json([
             '@context' => [
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
+                'openricx' => 'https://openric.org/ns/ext/v1#',
             ],
             '@type' => 'openricx:ActivityList',
             'openric:total' => $total,
@@ -614,6 +614,7 @@ class LinkedDataApiController extends Controller
             '@context' => [
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
+                'openricx' => 'https://openric.org/ns/ext/v1#',
             ],
             '@type' => 'openricx:InstantiationList',
             'openric:total' => $total,

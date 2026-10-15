@@ -129,7 +129,7 @@ class RicSerializationService
     ];
 
     /** Resolve a source event_type string to a full activity-type IRI. Returns null if unknown. */
-    private function activityTypeIri(?string $sourceEventType): ?string
+    public function activityTypeIri(?string $sourceEventType): ?string
     {
         if (!$sourceEventType) return null;
         $slug = $this->eventTypeToActivityType[strtolower($sourceEventType)] ?? null;
