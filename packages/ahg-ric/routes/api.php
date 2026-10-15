@@ -301,11 +301,11 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     };
 
     $openricConformance = [
-        'spec_version'        => '0.38.2',
+        'spec_version'        => '0.44.0',
         'latest_spec_version' => null, // filled per request below
         'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [
-            ['id' => 'core-discovery',         'version' => '0.3.0', 'conformance' => 'full'],
+            ['id' => 'core-discovery',         'version' => '0.4.0', 'conformance' => 'full'],
             ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],
             ['id' => 'graph-traversal',        'version' => '0.5.0', 'conformance' => 'full'],
             ['id' => 'digital-object-linkage', 'version' => '0.6.0', 'conformance' => 'full'],
