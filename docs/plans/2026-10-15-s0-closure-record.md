@@ -78,7 +78,13 @@ The plan requires the S0 changes to be reviewed by a second person. None is avai
 | 3 | openric.org Browse and API explorer: session-only keys and pinned Swagger UI, released ahead of the held stack as a security-only change | Met 15 October: openric/spec #28 merged (`b165793`) after CI passed; verified live |
 | 4 | capture.openric.org: session-only key (openric/capture #1) merged | Met 15 October: merged and verified live |
 
-Also before the S-GATE, though not a condition of S0: move the release rollback archives from the session scratch directory into the incident folder; set a retention period for the evidence; confirm the Fuseki graph and OAI-PMH no longer carry the 37.
+## Before the S-GATE (not conditions of S0)
+
+| Item | Status |
+|---|---|
+| Fuseki graph and OAI-PMH no longer carry the 37 | Done 15 October: a SPARQL query over the public graph (7,192 triples, 2,197 entities) for all 37 ids as subject or object found none; a full OAI-PMH harvest (420 identifiers) found none. |
+| Release rollback archives moved into the incident folder | Done 15 October, run by Dr Johan Pieterse: the ten archives for v0.17.1 to v0.17.9 and `rollback-SHA256SUMS` copied to `rollbacks/` in the incident folder, the copy checked with `sha256sum -c`. Archives for later releases are added the same way. |
+| Retention period for the evidence | Proposed, awaiting Dr Johan Pieterse: keep this record, the evidence register, hashes and rollback archives for five years, until 15 October 2031, then review. Delete the full database backup (`heratio-2026-10-14.sql.gz`) 90 days after the S-GATE, because it is a complete copy of the shared database and is needed only for rollback. |
 
 ## Sign-off
 
