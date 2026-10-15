@@ -24,7 +24,7 @@ Programme plan V4 (14 October 2026), Phase S0: secure, preserve, and verify. Inc
 - Incident folder `/var/lib/openric-incidents/2026-10-14-open-write/`, outside the web roots and not readable by the developer account.
 - Database backup `/var/backups/openric-s0/heratio-2026-10-14.sql.gz`, SHA-256 `4d855a9d...41387` (full hash in the evidence register), restore-tested on 14 October: the restore matched.
 - Custodian: Dr Johan Pieterse.
-- Gap: no retention period has been set for the folder or the backup.
+- Retention: set 15 October 2026, see "Before the S-GATE" below.
 
 ### S0.3 - The 37 tracking entries
 
@@ -83,8 +83,8 @@ The plan requires the S0 changes to be reviewed by a second person. None is avai
 | Item | Status |
 |---|---|
 | Fuseki graph and OAI-PMH no longer carry the 37 | Done 15 October: a SPARQL query over the public graph (7,192 triples, 2,197 entities) for all 37 ids as subject or object found none; a full OAI-PMH harvest (420 identifiers) found none. |
-| Release rollback archives moved into the incident folder | Done 15 October, run by Dr Johan Pieterse: the ten archives for v0.17.1 to v0.17.9 and `rollback-SHA256SUMS` copied to `rollbacks/` in the incident folder, the copy checked with `sha256sum -c`. Archives for later releases are added the same way. |
-| Retention period for the evidence | Proposed, awaiting Dr Johan Pieterse: keep this record, the evidence register, hashes and rollback archives for five years, until 15 October 2031, then review. Delete the full database backup (`heratio-2026-10-14.sql.gz`) 90 days after the S-GATE, because it is a complete copy of the shared database and is needed only for rollback. |
+| Release rollback archives moved into the incident folder | Done 15 October, run by Dr Johan Pieterse: the ten archives for v0.17.1 to v0.17.9 and `rollback-SHA256SUMS` copied to `rollbacks/` in the incident folder, the copy checked with `sha256sum -c`. Archives for later releases are added the same way, each holding the state just before its release: on 15 October Dr Johan Pieterse also copied those for v0.17.12 (`rollback-0.17.11-specver.tgz`) and v0.17.13 (`rollback-0.17.12-drift.tgz`), and the v0.17.10 archive (`rollback-0.17.9-rte.tgz`) was already in the first copy. He then copied the v0.17.11 archive (`rollback-0.17.10-keys.tgz`), made the three newer files root-owned and read-only like the rest, checked the existing checksums and rewrote `rollback-SHA256SUMS` over all 13 archives (v0.17.1 to v0.17.13; v0.17.2 has two); `sha256sum -c` reported every one OK. |
+| Retention period for the evidence | Accepted by Dr Johan Pieterse, 15 October 2026: keep this record, the evidence register, hashes and rollback archives for five years, until 15 October 2031, then review. Delete the full database backup (`heratio-2026-10-14.sql.gz`) 90 days after the S-GATE, because it is a complete copy of the shared database and is needed only for rollback. |
 
 ## Sign-off
 
