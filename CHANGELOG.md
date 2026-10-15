@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.5 — 2026-10-15
+
+- List and vocabulary responses that used the RiC-O ontology URL as @context now bind their prefixes inline, with ric: as an alias of the openric: namespace so existing keys keep working; the agent list limit is an integer
 ## v0.17.4 — 2026-10-15
 
 - Activity list stubs are rico:Activity with rico:hasActivityType, as on the detail endpoint; place, rule, activity and instantiation lists bind the openricx: prefix their type uses
