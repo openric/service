@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.7 — 2026-10-15
+
+- API docs page keeps the API key for the browser session only and loads Swagger UI pinned to 5.29.1 with integrity hashes
 ## v0.17.6 — 2026-10-15
 
 - Records, agents, functions and repositories lists carry the Core Discovery 0.4.0 envelope: openric:total, page, limit and items as integers with next and prev links, keeping the ric: aliases; functions and repositories report a total
