@@ -93,6 +93,13 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
 fi
 
+# A second run straight after a release would tag a commit with no change in it.
+HEAD_TAG="$(git tag --points-at HEAD --list 'v[0-9]*' | head -1)"
+if [[ -n "$HEAD_TAG" ]]; then
+    printf "${RED}Error:${NC} HEAD is already release %s - nothing new to release.\n" "$HEAD_TAG" >&2
+    exit 1
+fi
+
 # --- parse current version --------------------------------------------------
 CURRENT="$(php -r "\$j=json_decode(file_get_contents('${VERSION_FILE}'),true); echo \$j['version'] ?? '';")"
 if [[ -z "$CURRENT" ]]; then
