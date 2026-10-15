@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.8 — 2026-10-15
+
+- Service description declares Core Discovery 0.4.0 and reports verification against spec v0.44.0
 ## v0.17.7 — 2026-10-15
 
 - API docs page keeps the API key for the browser session only and loads Swagger UI pinned to 5.29.1 with integrity hashes
