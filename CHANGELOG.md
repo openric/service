@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.9 — 2026-10-15
+
+- Publication status rows get their own object id, as Heratio requires: description create (V1 and V2) and CSV import no longer fail on the shared database; Heratio's StatusRow copied in, with a test that no code inserts status rows any other way
 ## v0.17.8 — 2026-10-15
 
 - Service description declares Core Discovery 0.4.0 and reports verification against spec v0.44.0
