@@ -640,7 +640,8 @@ class OpenApiSpec
             'RelationCreate' => ['type' => 'object', 'required' => ['subject_id', 'object_id', 'relation_type'],
                 'properties' => [
                     'subject_id' => ['type' => 'integer'], 'object_id' => ['type' => 'integer'],
-                    'relation_type' => ['type' => 'string', 'example' => 'hasInstantiation'],
+                    'relation_type' => ['type' => 'string', 'example' => 'has_instantiation',
+                        'description' => 'A relation type code from GET /relation-types.'],
                     'start_date' => ['type' => 'string', 'format' => 'date'],
                     'end_date' => ['type' => 'string', 'format' => 'date'],
                     'certainty' => ['type' => 'string', 'enum' => ['certain', 'probable', 'possible', 'uncertain', 'unknown']],

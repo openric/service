@@ -239,10 +239,12 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     
     // Health check
     Route::get('/health', function () {
+        // The service's own release, as the service description reports it.
+        $release = json_decode((string) @file_get_contents(base_path('version.json')), true);
         return response()->json([
             'status' => 'ok',
             'service' => 'RIC-O Linked Data API',
-            'version' => '1.0',
+            'version' => $release['version'] ?? 'unknown',
         ]);
     });
     

@@ -803,10 +803,21 @@ class LinkedDataApiController extends Controller
         $nodes = $graph['nodes'] ?? [];
         $rootUri = $nodes[0]['id'] ?? $uri;
 
+        // Viewing API §8.6: node types are CURIEs, never bare local names. The
+        // graph builders use local names, so prefix them here, once.
+        foreach ($nodes as &$node) {
+            $t = (string) ($node['type'] ?? '');
+            if ($t !== '' && !str_contains($t, ':')) {
+                $node['type'] = ($t === 'Function' ? 'openricx:' : 'rico:') . $t;
+            }
+        }
+        unset($node);
+
         return response()->json([
             '@context' => [
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'openric' => 'https://openric.org/ns/v1#',
+                'openricx' => 'https://openric.org/ns/ext/v1#',
             ],
             '@type' => 'openric:Subgraph',
             'openric:root' => $rootUri,

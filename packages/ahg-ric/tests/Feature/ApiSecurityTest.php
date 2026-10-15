@@ -87,7 +87,15 @@ class ApiSecurityTest extends TestCase
         $k = $this->key(['read', 'write']);
         $this->postJson('/api/ric/v1/_t/thing', [], ['X-API-Key' => $k])->assertStatus(201);
         $this->deleteJson('/api/ric/v1/_t/thing', [], ['X-API-Key' => $k])
-            ->assertStatus(403)->assertJsonFragment(['message' => "Scope 'delete' required."]);
+            ->assertStatus(403)->assertJsonFragment(['detail' => "Scope 'delete' required."]);
+    }
+
+    public function test_refusals_on_the_ric_api_are_rfc7807(): void
+    {
+        $this->postJson('/api/ric/v1/_t/thing', [])
+            ->assertStatus(401)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonFragment(['type' => 'https://openric.org/errors/authentication-required', 'status' => 401]);
     }
 
     public function test_every_destructive_api_route_requires_the_delete_scope(): void

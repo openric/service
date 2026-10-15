@@ -39,11 +39,7 @@ class ApiAuthenticate
             ?? $this->bearerToken($request);
 
         if (!$rawKey) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized',
-                'message' => 'API key required. Use X-API-Key header or Authorization: Bearer.',
-            ], 401);
+            return $this->deny($request, 401, 'Unauthorized', 'API key required. Use X-API-Key header or Authorization: Bearer.');
         }
 
         $hashedKey = hash('sha256', $rawKey);
@@ -54,20 +50,12 @@ class ApiAuthenticate
             ->first();
 
         if (!$apiKey) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized',
-                'message' => 'Invalid or inactive API key.',
-            ], 401);
+            return $this->deny($request, 401, 'Unauthorized', 'Invalid or inactive API key.');
         }
 
         // Check expiry
         if ($apiKey->expires_at && $apiKey->expires_at < now()) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized',
-                'message' => 'API key has expired.',
-            ], 401);
+            return $this->deny($request, 401, 'Unauthorized', 'API key has expired.');
         }
 
         // Update last_used_at
@@ -95,19 +83,13 @@ class ApiAuthenticate
     {
         // 1. Allowlist: entity-creation endpoints only. Blocks /import, /upload, etc.
         if (!preg_match('#(^|/)api/ric/v1/(records|record-parts|record-sets|agents|repositories|functions|places|rules|activities|instantiations|relations)$#', $request->path())) {
-            return response()->json([
-                'success' => false, 'error' => 'Forbidden',
-                'message' => 'Open access is limited to entity creation; this endpoint requires an API key.',
-            ], 403);
+            return $this->deny($request, 403, 'Forbidden', 'Open access is limited to entity creation; this endpoint requires an API key.');
         }
 
         // 2. Payload cap.
         $maxBytes = (int) config('ahg-api.open_write.max_bytes', 65536);
         if ((int) $request->header('Content-Length', 0) > $maxBytes || strlen($request->getContent()) > $maxBytes) {
-            return response()->json([
-                'success' => false, 'error' => 'Payload Too Large',
-                'message' => "Open-write requests are capped at {$maxBytes} bytes.",
-            ], 413);
+            return $this->deny($request, 413, 'Payload Too Large', "Open-write requests are capped at {$maxBytes} bytes.");
         }
 
         // 3. Per-IP daily cap, counted from the inventory (resilient if the
@@ -119,10 +101,7 @@ class ApiAuthenticate
                 ->where('created_at', '>=', now()->startOfDay())
                 ->count();
             if ($today >= $maxPerDay) {
-                return response()->json([
-                    'success' => false, 'error' => 'Too Many Requests',
-                    'message' => "Daily open-write limit ({$maxPerDay}) reached for this address.",
-                ], 429);
+                return $this->deny($request, 429, 'Too Many Requests', "Daily open-write limit ({$maxPerDay}) reached for this address.");
             }
         } catch (\Throwable $e) { /* table missing → skip the cap */ }
 
@@ -166,15 +145,32 @@ class ApiAuthenticate
         $scopes = $request->attributes->get('api_scopes', []);
         foreach ($requiredScopes as $scope) {
             if (!in_array($scope, $scopes)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Forbidden',
-                    'message' => "Scope '{$scope}' required.",
-                ], 403);
+                return $this->deny($request, 403, 'Forbidden', "Scope '{$scope}' required.");
             }
         }
 
         return $next($request);
+    }
+
+    /**
+     * A refusal. The OpenRiC API answers with an RFC 7807 problem document, as
+     * Core Discovery requires; the legacy V1/V2 APIs keep their own shape.
+     */
+    protected function deny(Request $request, int $status, string $title, string $message)
+    {
+        if (str_starts_with($request->path(), 'api/ric/v1')) {
+            $type = [401 => 'authentication-required', 403 => 'forbidden', 413 => 'payload-too-large']
+                [$status] ?? strtolower(str_replace(' ', '-', $title));
+            return response()->json([
+                'type'     => 'https://openric.org/errors/' . $type,
+                'title'    => $title,
+                'status'   => $status,
+                'detail'   => $message,
+                'instance' => '/' . $request->path(),
+            ], $status, ['Content-Type' => 'application/problem+json']);
+        }
+
+        return response()->json(['success' => false, 'error' => $title, 'message' => $message], $status);
     }
 
     protected function bearerToken(Request $request): ?string
