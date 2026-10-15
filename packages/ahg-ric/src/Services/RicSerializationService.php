@@ -451,6 +451,11 @@ class RicSerializationService
             $ricRepo['openricx:contact'] = $contact;
         }
 
+        // ISDIAH 5.3.1: History (mapping §7.4: rico:history)
+        if (!empty($repo->history)) {
+            $ricRepo['rico:history'] = $repo->history;
+        }
+
         // ISDIAH: Conditions of Access
         if (!empty($repo->access_conditions)) {
             $ricRepo['rico:conditionsOfAccess'] = $repo->access_conditions;

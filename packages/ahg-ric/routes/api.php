@@ -151,6 +151,7 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
 
     // Relations (API-R-1, R-2)
     Route::get('/relations', [LinkedDataApiController::class, 'listRelations']);
+    Route::get('/relations/{id}', [LinkedDataApiController::class, 'showRelation'])->where('id', '[0-9]+');
     Route::get('/relations-for/{id}', [LinkedDataApiController::class, 'relationsFor'])->where('id', '[0-9]+');
 
     // Hierarchy walk (API-R-3)

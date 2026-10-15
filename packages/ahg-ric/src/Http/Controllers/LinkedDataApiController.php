@@ -51,11 +51,11 @@ class LinkedDataApiController extends Controller
      * limit and items, with next/prev links. The ric:* keys are the deprecated
      * aliases these four lists used before; clients that read them keep working.
      */
-    private function listEnvelope(Request $request, string $type, array $items, int $total, int $page, int $limit): JsonResponse
+    private function listEnvelope(Request $request, string $type, array $items, int $total, int $page, int $limit, bool $ricAliases = true): JsonResponse
     {
         $link = fn (int $p) => $request->fullUrlWithQuery(['page' => $p, 'limit' => $limit]);
-        return response()->json([
-            '@context' => self::LIST_CONTEXT,
+        $body = [
+            '@context' => $ricAliases ? self::LIST_CONTEXT : array_diff_key(self::LIST_CONTEXT, ['ric' => 1]),
             '@type' => $type,
             'openric:total' => $total,
             'openric:page' => $page,
@@ -63,11 +63,11 @@ class LinkedDataApiController extends Controller
             'openric:next' => $page * $limit < $total ? $link($page + 1) : null,
             'openric:prev' => $page > 1 ? $link($page - 1) : null,
             'openric:items' => $items,
-            'ric:total' => $total,
-            'ric:page' => $page,
-            'ric:limit' => $limit,
-            'ric:items' => $items,
-        ]);
+        ];
+        if ($ricAliases) {
+            $body += ['ric:total' => $total, 'ric:page' => $page, 'ric:limit' => $limit, 'ric:items' => $items];
+        }
+        return response()->json($body);
     }
 
     private RicSerializationService $serializer;
@@ -416,18 +416,7 @@ class LinkedDataApiController extends Controller
             'openric:localType' => $p->type_id,
         ], $places->toArray());
 
-        return response()->json([
-            '@context' => [
-                'rico' => 'https://www.ica.org/standards/RiC/ontology#',
-                'openric' => 'https://openric.org/ns/v1#',
-                'openricx' => 'https://openric.org/ns/ext/v1#',
-            ],
-            '@type' => 'openricx:PlaceList',
-            'openric:total' => $total,
-            'openric:page' => $page,
-            'openric:limit' => $limit,
-            'openric:items' => $items,
-        ]);
+        return $this->listEnvelope($request, 'openricx:PlaceList', $items, $total, $page, $limit, false);
     }
 
     /**
@@ -486,18 +475,7 @@ class LinkedDataApiController extends Controller
             'openric:jurisdiction' => $r->jurisdiction,
         ], $items->toArray());
 
-        return response()->json([
-            '@context' => [
-                'rico' => 'https://www.ica.org/standards/RiC/ontology#',
-                'openric' => 'https://openric.org/ns/v1#',
-                'openricx' => 'https://openric.org/ns/ext/v1#',
-            ],
-            '@type' => 'openricx:RuleList',
-            'openric:total' => $total,
-            'openric:page' => $page,
-            'openric:limit' => $limit,
-            'openric:items' => $rows,
-        ]);
+        return $this->listEnvelope($request, 'openricx:RuleList', $rows, $total, $page, $limit, false);
     }
 
     /**
@@ -556,18 +534,7 @@ class LinkedDataApiController extends Controller
             'openric:localType' => $a->type_id,
         ], fn ($v) => $v !== null), $items->toArray());
 
-        return response()->json([
-            '@context' => [
-                'rico' => 'https://www.ica.org/standards/RiC/ontology#',
-                'openric' => 'https://openric.org/ns/v1#',
-                'openricx' => 'https://openric.org/ns/ext/v1#',
-            ],
-            '@type' => 'openricx:ActivityList',
-            'openric:total' => $total,
-            'openric:page' => $page,
-            'openric:limit' => $limit,
-            'openric:items' => $rows,
-        ]);
+        return $this->listEnvelope($request, 'openricx:ActivityList', $rows, $total, $page, $limit, false);
     }
 
     /**
@@ -630,18 +597,7 @@ class LinkedDataApiController extends Controller
             'rico:hasCarrierType' => $i->carrier_type,
         ], $items->toArray());
 
-        return response()->json([
-            '@context' => [
-                'rico' => 'https://www.ica.org/standards/RiC/ontology#',
-                'openric' => 'https://openric.org/ns/v1#',
-                'openricx' => 'https://openric.org/ns/ext/v1#',
-            ],
-            '@type' => 'openricx:InstantiationList',
-            'openric:total' => $total,
-            'openric:page' => $page,
-            'openric:limit' => $limit,
-            'openric:items' => $rows,
-        ]);
+        return $this->listEnvelope($request, 'openricx:InstantiationList', $rows, $total, $page, $limit, false);
     }
 
     /**
@@ -1392,17 +1348,7 @@ class LinkedDataApiController extends Controller
         $page = max(1, (int) $request->get('page', 1));
         $perPage = min(200, max(1, (int) $request->get('per_page', 50)));
 
-        $query = DB::table('relation as r')
-            ->join('ric_relation_meta as m', 'r.id', '=', 'm.relation_id')
-            ->leftJoin('object as subj_o', 'r.subject_id', '=', 'subj_o.id')
-            ->leftJoin('object as obj_o', 'r.object_id', '=', 'obj_o.id')
-            ->select([
-                'r.id', 'r.subject_id', 'r.object_id', 'r.start_date', 'r.end_date',
-                'm.rico_predicate', 'm.inverse_predicate', 'm.dropdown_code',
-                'm.certainty', 'm.evidence', 'm.domain_class', 'm.range_class',
-                'subj_o.class_name as subject_class', 'obj_o.class_name as object_class',
-            ])
-            ->orderBy('r.id', 'desc');
+        $query = $this->relationQuery()->orderBy('r.id', 'desc');
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
@@ -1422,6 +1368,31 @@ class LinkedDataApiController extends Controller
                 'last_page' => (int) ceil($total / $perPage),
             ],
         ]);
+    }
+
+    /** One relation row with its RiC metadata; shared by the list and show endpoints. */
+    private function relationQuery()
+    {
+        return DB::table('relation as r')
+            ->join('ric_relation_meta as m', 'r.id', '=', 'm.relation_id')
+            ->leftJoin('object as subj_o', 'r.subject_id', '=', 'subj_o.id')
+            ->leftJoin('object as obj_o', 'r.object_id', '=', 'obj_o.id')
+            ->select([
+                'r.id', 'r.subject_id', 'r.object_id', 'r.start_date', 'r.end_date',
+                'm.rico_predicate', 'm.inverse_predicate', 'm.dropdown_code',
+                'm.certainty', 'm.evidence', 'm.domain_class', 'm.range_class',
+                'subj_o.class_name as subject_class', 'obj_o.class_name as object_class',
+            ]);
+    }
+
+    /**
+     * GET /api/ric/v1/relations/{id}
+     * round-trip-editing §6.5: a relation can be read back after create or update.
+     */
+    public function showRelation(int $id): JsonResponse
+    {
+        $row = $this->relationQuery()->where('r.id', $id)->first();
+        return $row ? response()->json($row) : ProblemDetails::notFound('Relation not found', ['id' => $id]);
     }
 
     /**
@@ -1778,9 +1749,11 @@ class LinkedDataApiController extends Controller
     {
         $this->assertEntityTypeAllowed($type);
         $data = $request->all();
-        // round-trip-editing §6.9: a Place with no name is a validation failure.
-        if ($type === 'places' && trim((string) ($data['name'] ?? '')) === '') {
-            return ProblemDetails::validationFailed('A place needs a name.');
+        // round-trip-editing §6.9: a body without the type's required field
+        // (entity-write.schema.json) is a validation failure.
+        $required = ['places' => 'name', 'rules' => 'title', 'activities' => 'name', 'instantiations' => 'title'][$type];
+        if (trim((string) ($data[$required] ?? '')) === '') {
+            return ProblemDetails::validationFailed("The {$required} field is required.");
         }
         $singular = $this->singularType($type);
         try {
@@ -1913,6 +1886,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->updateAgent($id, $request->all());
+            \AhgRic\Support\AuditLog::record($request, 'update', 'agent', $id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateAgent failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -1931,6 +1905,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->deleteAgent($id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', 'agent', $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] deleteAgent failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -1979,6 +1954,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->updateRecord($id, $request->all());
+            \AhgRic\Support\AuditLog::record($request, 'update', 'record', $id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             Log::error('[RiC API] updateRecord failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -1998,6 +1974,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->deleteRecord($id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', 'record', $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\RuntimeException $e) {
             // e.g. "has descendants"
@@ -2103,6 +2080,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->updateRepository($id, $request->all());
+            \AhgRic\Support\AuditLog::record($request, 'update', 'repository', $id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
@@ -2116,6 +2094,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->deleteRepository($id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', 'repository', $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\RuntimeException $e) {
             return ProblemDetails::conflict($e->getMessage());
@@ -2153,6 +2132,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->updateFunction($id, $request->all());
+            \AhgRic\Support\AuditLog::record($request, 'update', 'function', $id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
@@ -2166,6 +2146,7 @@ class LinkedDataApiController extends Controller
         }
         try {
             $this->entities->deleteFunction($id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', 'function', $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
@@ -2189,7 +2170,10 @@ class LinkedDataApiController extends Controller
                 $request->input('relation_type'),
                 $request->only(['start_date', 'end_date', 'certainty', 'evidence'])
             );
-            return response()->json(['id' => $id], 201);
+            \AhgRic\Support\AuditLog::record($request, 'create', 'relation', $id, $request->all());
+            return response()->json([
+                'id' => $id, 'type' => 'relation', 'href' => "/api/ric/v1/relations/{$id}",
+            ], 201);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
         }
@@ -2205,6 +2189,7 @@ class LinkedDataApiController extends Controller
                 $id,
                 $request->only(['start_date', 'end_date', 'certainty', 'evidence', 'relation_type'])
             );
+            \AhgRic\Support\AuditLog::record($request, 'update', 'relation', $id, $request->all());
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
@@ -2218,6 +2203,7 @@ class LinkedDataApiController extends Controller
     {
         try {
             $this->entities->deleteRelation($id);
+            \AhgRic\Support\AuditLog::record(request(), 'delete', 'relation', $id);
             return response()->json(['success' => true, 'id' => $id]);
         } catch (\Throwable $e) {
             return ProblemDetails::validationFailed($e->getMessage());
