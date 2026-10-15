@@ -28,7 +28,8 @@ class SwaggerUiHtml
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>OpenRiC API Explorer · {$host}</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <!-- Swagger UI pinned to an exact version with integrity hashes: this page can hold an API key. -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.29.1/swagger-ui.min.css" integrity="sha384-OFyZ/BC2LThtP2XDBMEhSMeKdG9gk7udSIr1NlawKM1XL1APWlsIi856OIALfO5Q" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
     .ric-banner {
@@ -61,11 +62,14 @@ class SwaggerUiHtml
 
   <div id="swagger-ui"></div>
 
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.29.1/swagger-ui-bundle.min.js" integrity="sha384-o1NjSPoS/7sblYrybP8KfXpC7xOOIeuc538Mb1/4/307KIQPLwqmOWvrSS5e1T5s" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.29.1/swagger-ui-standalone-preset.min.js" integrity="sha384-TByQIwe2BhDZmqvvLKlhhGp6/rMrF26V+95Qvv/6kkSSmUjPOSXkvl/H5WLQ8I43" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     window.onload = () => {
-      const saved = localStorage.getItem('openric-docs-apikey') || '';
+      // The key is kept for this browser session only. Earlier versions left it in
+      // localStorage (our own key and Swagger UI's 'authorized'); remove both.
+      try { localStorage.removeItem('openric-docs-apikey'); localStorage.removeItem('authorized'); } catch (e) {}
+      const saved = sessionStorage.getItem('openric-docs-apikey') || '';
       const ui = SwaggerUIBundle({
         url: {$specJs},
         dom_id: '#swagger-ui',
@@ -73,7 +77,7 @@ class SwaggerUiHtml
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
         layout: 'BaseLayout',
         tryItOutEnabled: true,
-        persistAuthorization: true,
+        persistAuthorization: false, // true would make Swagger UI write the key to localStorage
         defaultModelsExpandDepth: 1,
         docExpansion: 'list',
         filter: true,
