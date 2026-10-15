@@ -70,6 +70,23 @@ class LinkedDataApiController extends Controller
         return response()->json($body);
     }
 
+    /**
+     * Core Discovery §2.1: a key is a slug or a numeric id. The slug wins, so a
+     * slug that happens to be all digits still resolves to its own entity.
+     */
+    private function findByKey(string $table, string $key): ?object
+    {
+        $row = \DB::table($table)
+            ->join('slug', "{$table}.id", '=', 'slug.object_id')
+            ->where('slug.slug', $key)
+            ->select("{$table}.*")
+            ->first();
+        if (!$row && ctype_digit($key)) {
+            $row = \DB::table($table)->where('id', (int) $key)->first();
+        }
+        return $row;
+    }
+
     private RicSerializationService $serializer;
     private ShaclValidationService $validator;
     private RicEntityService $entities;
@@ -137,11 +154,7 @@ class LinkedDataApiController extends Controller
      */
     public function showAgent(string $slug): JsonResponse
     {
-        $actor = \DB::table('actor')
-            ->join('slug', 'actor.id', '=', 'slug.object_id')
-            ->where('slug.slug', $slug)
-            ->select('actor.*')
-            ->first();
+        $actor = $this->findByKey('actor', $slug);
 
         if (!$actor) {
             return ProblemDetails::notFound('Agent not found');
@@ -214,11 +227,7 @@ class LinkedDataApiController extends Controller
      */
     public function showRecord(string $slug): JsonResponse
     {
-        $io = \DB::table('information_object')
-            ->join('slug', 'information_object.id', '=', 'slug.object_id')
-            ->where('slug.slug', $slug)
-            ->select('information_object.*')
-            ->first();
+        $io = $this->findByKey('information_object', $slug);
 
         if (!$io) {
             return ProblemDetails::notFound('Record not found');
@@ -364,11 +373,7 @@ class LinkedDataApiController extends Controller
      */
     public function showRepository(string $slug): JsonResponse
     {
-        $repo = \DB::table('repository')
-            ->join('slug', 'repository.id', '=', 'slug.object_id')
-            ->where('slug.slug', $slug)
-            ->select('repository.*')
-            ->first();
+        $repo = $this->findByKey('repository', $slug);
 
         if (!$repo) {
             return ProblemDetails::notFound('Repository not found');

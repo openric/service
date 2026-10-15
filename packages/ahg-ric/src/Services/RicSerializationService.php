@@ -196,8 +196,10 @@ class RicSerializationService
             $record['rico:identifier'] = $io->identifier;
         }
 
-        // Description
+        // ISAD(G) 3.3.1 Scope and content: rico:scopeAndContent (mapping §7.1, O-8).
+        // openricx:description is the deprecated form, sent as well until spec v0.47.0.
         if (!empty($io->scope_and_content)) {
+            $record['rico:scopeAndContent'] = $io->scope_and_content;
             $record['openricx:description'] = $io->scope_and_content;
         }
 
