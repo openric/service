@@ -33,6 +33,19 @@ use Illuminate\Support\Facades\Log;
  */
 class LinkedDataApiController extends Controller
 {
+    /**
+     * @context for the agent, record, function and repository lists. They used
+     * the RiC-O ontology URL, which is not a JSON-LD context, so no term in them
+     * expanded. "ric" is bound to the openric: namespace because clients read the
+     * ric:items / ric:total keys these lists have always used.
+     */
+    private const LIST_CONTEXT = [
+        'rico' => 'https://www.ica.org/standards/RiC/ontology#',
+        'openric' => 'https://openric.org/ns/v1#',
+        'openricx' => 'https://openric.org/ns/ext/v1#',
+        'ric' => 'https://openric.org/ns/v1#',
+    ];
+
     private RicSerializationService $serializer;
     private ShaclValidationService $validator;
     private RicEntityService $entities;
@@ -92,11 +105,11 @@ class LinkedDataApiController extends Controller
         ], $agents->toArray());
 
         return response()->json([
-            '@context' => 'https://www.ica.org/standards/RiC/ontology',
+            '@context' => self::LIST_CONTEXT,
             '@type' => 'openricx:AgentList',
             'ric:total' => $total,
             'ric:page' => $page,
-            'ric:limit' => $limit,
+            'ric:limit' => (int) $limit,
             'ric:items' => $items,
         ]);
     }
@@ -176,7 +189,7 @@ class LinkedDataApiController extends Controller
         ], $records->toArray());
 
         return response()->json([
-            '@context' => 'https://www.ica.org/standards/RiC/ontology',
+            '@context' => self::LIST_CONTEXT,
             '@type' => 'openricx:RecordList',
             'ric:total' => $total,
             'ric:page' => $page,
@@ -285,7 +298,7 @@ class LinkedDataApiController extends Controller
         ], $functions->toArray());
 
         return response()->json([
-            '@context' => 'https://www.ica.org/standards/RiC/ontology',
+            '@context' => self::LIST_CONTEXT,
             '@type' => 'openricx:FunctionList',
             'ric:items' => $items,
         ]);
@@ -332,7 +345,7 @@ class LinkedDataApiController extends Controller
         ], $repos->toArray());
 
         return response()->json([
-            '@context' => 'https://www.ica.org/standards/RiC/ontology',
+            '@context' => self::LIST_CONTEXT,
             '@type' => 'openricx:RepositoryList',
             'ric:items' => $items,
         ]);
@@ -870,6 +883,7 @@ class LinkedDataApiController extends Controller
                 'rico' => 'https://www.ica.org/standards/RiC/ontology#',
                 'rdf' => 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
                 'rdfs' => 'http://www.w3.org/2000/01/rdf-schema#',
+                'ric' => 'https://openric.org/ns/v1#', // ric:Vocabulary = openric:Vocabulary; see LIST_CONTEXT
             ],
             '@type' => 'ric:Vocabulary',
             'classes' => [
