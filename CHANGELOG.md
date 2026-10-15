@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.10 — 2026-10-15
+
+- Round-trip editing for every entity type: rules, activities and instantiations refuse a body without its required field with 422; updates and deletes of agents, records, repositories and functions, and every relation write, are recorded in the revision history; relations can be read back at GET /relations/{id} and their create response links there; repositories show their history; places, rules, activities and instantiations lists carry next and prev links
 ## v0.17.9 — 2026-10-15
 
 - Publication status rows get their own object id, as Heratio requires: description create (V1 and V2) and CSV import no longer fail on the shared database; Heratio's StatusRow copied in, with a test that no code inserts status rows any other way
