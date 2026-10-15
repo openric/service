@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.6 — 2026-10-15
+
+- Records, agents, functions and repositories lists carry the Core Discovery 0.4.0 envelope: openric:total, page, limit and items as integers with next and prev links, keeping the ric: aliases; functions and repositories report a total
 ## v0.17.5 — 2026-10-15
 
 - List and vocabulary responses that used the RiC-O ontology URL as @context now bind their prefixes inline, with ric: as an alias of the openric: namespace so existing keys keep working; the agent list limit is an integer
