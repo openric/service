@@ -626,7 +626,7 @@ class InformationObjectApiController extends Controller
 
                 // Publication status
                 $statusId = ($input['publication_status'] ?? 'draft') === 'published' ? 160 : 159;
-                DB::table('status')->insert(['object_id' => $objectId, 'type_id' => 158, 'status_id' => $statusId]);
+                \AhgCore\Support\StatusRow::set($objectId, 158, $statusId);
 
                 return response()->json([
                     'id' => $objectId,

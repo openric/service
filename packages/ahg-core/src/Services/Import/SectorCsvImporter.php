@@ -409,12 +409,7 @@ abstract class SectorCsvImporter
             DB::table('slug')->insert(['object_id' => $objectId, 'slug' => $slug]);
 
             // Draft publication status
-            DB::table('status')->insert([
-                'object_id' => $objectId,
-                'type_id' => self::STATUS_TYPE_PUBLICATION,
-                'status_id' => self::STATUS_DRAFT,
-                'serial_number' => 0,
-            ]);
+            \AhgCore\Support\StatusRow::set($objectId, self::STATUS_TYPE_PUBLICATION, self::STATUS_DRAFT, ['serial_number' => 0]);
 
             // Save keymap for legacy ID tracking
             $legacyId = $data['legacyId'] ?? null;

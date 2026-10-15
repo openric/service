@@ -210,11 +210,7 @@ class DescriptionController extends BaseApiController
             $statusId = ($input['publication_status'] ?? 'draft') === 'published'
                 ? TermId::PUBLICATION_STATUS_PUBLISHED
                 : TermId::PUBLICATION_STATUS_DRAFT;
-            DB::table('status')->insert([
-                'object_id' => $objectId,
-                'type_id' => TermId::STATUS_TYPE_PUBLICATION,
-                'status_id' => $statusId,
-            ]);
+            \AhgCore\Support\StatusRow::set($objectId, TermId::STATUS_TYPE_PUBLICATION, $statusId);
 
             // Trigger webhook
             $this->webhooks->trigger('item.created', 'informationobject', $objectId, [
