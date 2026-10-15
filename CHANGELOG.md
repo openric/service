@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.11 — 2026-10-15
+
+- Records, agents and repositories can be read by numeric id as well as by slug, as Core Discovery requires; records send rico:scopeAndContent alongside the deprecated openricx:description (mapping O-8)
 ## v0.17.10 — 2026-10-15
 
 - Round-trip editing for every entity type: rules, activities and instantiations refuse a body without its required field with 422; updates and deletes of agents, records, repositories and functions, and every relation write, are recorded in the revision history; relations can be read back at GET /relations/{id} and their create response links there; repositories show their history; places, rules, activities and instantiations lists carry next and prev links
