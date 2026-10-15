@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.12 — 2026-10-15
+
+- The service description reports that the service verifies against specification 0.46.0: the probe has not changed since 0.45.0, which the service passed 78 of 78, and 0.46.0 only adds the record terms the service has sent since v0.17.11
 ## v0.17.11 — 2026-10-15
 
 - Records, agents and repositories can be read by numeric id as well as by slug, as Core Discovery requires; records send rico:scopeAndContent alongside the deprecated openricx:description (mapping O-8)
