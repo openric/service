@@ -46,6 +46,30 @@ class LinkedDataApiController extends Controller
         'ric' => 'https://openric.org/ns/v1#',
     ];
 
+    /**
+     * Core Discovery §3.3 list envelope (profile 0.4.0): openric:total, page,
+     * limit and items, with next/prev links. The ric:* keys are the deprecated
+     * aliases these four lists used before; clients that read them keep working.
+     */
+    private function listEnvelope(Request $request, string $type, array $items, int $total, int $page, int $limit): JsonResponse
+    {
+        $link = fn (int $p) => $request->fullUrlWithQuery(['page' => $p, 'limit' => $limit]);
+        return response()->json([
+            '@context' => self::LIST_CONTEXT,
+            '@type' => $type,
+            'openric:total' => $total,
+            'openric:page' => $page,
+            'openric:limit' => $limit,
+            'openric:next' => $page * $limit < $total ? $link($page + 1) : null,
+            'openric:prev' => $page > 1 ? $link($page - 1) : null,
+            'openric:items' => $items,
+            'ric:total' => $total,
+            'ric:page' => $page,
+            'ric:limit' => $limit,
+            'ric:items' => $items,
+        ]);
+    }
+
     private RicSerializationService $serializer;
     private ShaclValidationService $validator;
     private RicEntityService $entities;
@@ -63,8 +87,8 @@ class LinkedDataApiController extends Controller
      */
     public function listAgents(Request $request): JsonResponse
     {
-        $page = $request->get('page', 1);
-        $limit = min($request->get('limit', 50), 200);
+        $page = max(1, (int) $request->get('page', 1));
+        $limit = max(1, min((int) $request->get('limit', 50), 200));
         $type = $request->get('type'); // person, corporate body, family
 
         // Culture filter — accept ?culture=fr|nl|de|etc.; fall back to app locale.
@@ -104,14 +128,7 @@ class LinkedDataApiController extends Controller
             'rico:name' => $a->name,
         ], $agents->toArray());
 
-        return response()->json([
-            '@context' => self::LIST_CONTEXT,
-            '@type' => 'openricx:AgentList',
-            'ric:total' => $total,
-            'ric:page' => $page,
-            'ric:limit' => (int) $limit,
-            'ric:items' => $items,
-        ]);
+        return $this->listEnvelope($request, 'openricx:AgentList', $items, $total, $page, $limit);
     }
 
     /**
@@ -145,8 +162,8 @@ class LinkedDataApiController extends Controller
      */
     public function listRecords(Request $request): JsonResponse
     {
-        $page = $request->get('page', 1);
-        $limit = min($request->get('limit', 50), 200);
+        $page = max(1, (int) $request->get('page', 1));
+        $limit = max(1, min((int) $request->get('limit', 50), 200));
         $level = $request->get('level'); // fonds, series, file, item
         $culture = $this->resolveCulture($request);
 
@@ -188,13 +205,7 @@ class LinkedDataApiController extends Controller
             'rico:title' => $r->title,
         ], $records->toArray());
 
-        return response()->json([
-            '@context' => self::LIST_CONTEXT,
-            '@type' => 'openricx:RecordList',
-            'ric:total' => $total,
-            'ric:page' => $page,
-            'ric:items' => $items,
-        ]);
+        return $this->listEnvelope($request, 'openricx:RecordList', $items, $total, $page, $limit);
     }
 
     /**
@@ -281,12 +292,14 @@ class LinkedDataApiController extends Controller
      */
     public function listFunctions(Request $request): JsonResponse
     {
-        $page = $request->get('page', 1);
-        $limit = min($request->get('limit', 50), 200);
+        $page = max(1, (int) $request->get('page', 1));
+        $limit = max(1, min((int) $request->get('limit', 50), 200));
 
-        $functions = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('function_object as f'), 'f.id')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('function_object as f'), 'f.id')
             ->leftJoin('function_object_i18n as fi', 'f.id', '=', 'fi.id')
-            ->select(['f.id', 'fi.authorized_form_of_name as name', 'fi.description'])
+            ->select(['f.id', 'fi.authorized_form_of_name as name', 'fi.description']);
+        $total = (clone $query)->distinct()->count('f.id');
+        $functions = $query
             ->offset(($page - 1) * $limit)
             ->limit($limit)
             ->get();
@@ -297,11 +310,7 @@ class LinkedDataApiController extends Controller
             'rico:name' => $f->name,
         ], $functions->toArray());
 
-        return response()->json([
-            '@context' => self::LIST_CONTEXT,
-            '@type' => 'openricx:FunctionList',
-            'ric:items' => $items,
-        ]);
+        return $this->listEnvelope($request, 'openricx:FunctionList', $items, $total, $page, $limit);
     }
 
     /**
@@ -327,13 +336,15 @@ class LinkedDataApiController extends Controller
      */
     public function listRepositories(Request $request): JsonResponse
     {
-        $page = $request->get('page', 1);
-        $limit = min($request->get('limit', 50), 200);
+        $page = max(1, (int) $request->get('page', 1));
+        $limit = max(1, min((int) $request->get('limit', 50), 200));
 
-        $repos = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('repository as r'), 'r.id')
+        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('repository as r'), 'r.id')
             ->leftJoin('actor_i18n as i18n', 'r.id', '=', 'i18n.id')
             ->leftJoin('slug', 'r.id', '=', 'slug.object_id')
-            ->select(['r.id', 'slug.slug', 'i18n.authorized_form_of_name as name'])
+            ->select(['r.id', 'slug.slug', 'i18n.authorized_form_of_name as name']);
+        $total = (clone $query)->distinct()->count('r.id');
+        $repos = $query
             ->offset(($page - 1) * $limit)
             ->limit($limit)
             ->get();
@@ -344,11 +355,7 @@ class LinkedDataApiController extends Controller
             'rico:name' => $r->name,
         ], $repos->toArray());
 
-        return response()->json([
-            '@context' => self::LIST_CONTEXT,
-            '@type' => 'openricx:RepositoryList',
-            'ric:items' => $items,
-        ]);
+        return $this->listEnvelope($request, 'openricx:RepositoryList', $items, $total, $page, $limit);
     }
 
     /**
