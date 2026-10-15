@@ -297,12 +297,12 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
             } catch (\Throwable $e) {
                 // fall through to the last known value
             }
-            return '0.43.14';
+            return '0.46.0';
         });
     };
 
     $openricConformance = [
-        'spec_version'        => '0.44.0',
+        'spec_version'        => '0.46.0',
         'latest_spec_version' => null, // filled per request below
         'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [
