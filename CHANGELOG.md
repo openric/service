@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.14 — 2026-10-16
+
+- Relation predicates leave the service as RiC-O 1.1 names: the 25 pre-1.1 names in the relation-type table shared with Heratio (rico:hasInstantiation, rico:heldBy and others) are mapped to their RiC-O 1.1 properties in the relation list, single relations, relations-for and graph edges, and new relations store the 1.1 name, without changing the shared data; the copied packages declare AGPL-3.0-or-later
 ## v0.17.13 — 2026-10-15
 
 - Graph nodes carry CURIE types such as rico:RecordSet, as the Viewing API requires; refusals on the OpenRiC API (missing, invalid or expired key, missing scope) are RFC 7807 problem documents, while the legacy V1 and V2 APIs keep their shape; X-Content-Type-Options and Referrer-Policy are sent once; /health reports the release version; the relation example in the OpenAPI description is a relation type code
