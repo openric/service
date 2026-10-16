@@ -106,6 +106,20 @@ class SparqlController
             );
         }
 
+        // A backend error (a malformed query is a 400) keeps its status but is
+        // reported as an RFC 7807 problem document, as SPARQL Access §6 and
+        // Core Discovery §4 require, with the backend's message as the detail.
+        if ($backend['status'] >= 400) {
+            $detail = trim(mb_substr(strip_tags((string) $backend['body']), 0, 500)) ?: 'The SPARQL backend refused the query.';
+            return ProblemDetails::build(
+                $backend['status'] < 500 ? ProblemDetails::BAD_REQUEST : ProblemDetails::TYPE_BASE . 'sparql-backend-unavailable',
+                $backend['status'] < 500 ? 'Bad Request' : 'SPARQL Backend Unavailable',
+                $backend['status'] < 500 ? 400 : 502,
+                $detail,
+                ['backend_status' => $backend['status']]
+            );
+        }
+
         return response($backend['body'], $backend['status'])
             ->header('Content-Type', $backend['content_type'] ?? 'application/sparql-results+json')
             ->header('Vary', 'Accept');

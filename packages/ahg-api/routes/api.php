@@ -260,6 +260,16 @@ Route::prefix('api')->middleware(['throttle:60,1', 'api.cors'])->group(function 
 */
 
 Route::fallback(function (\Illuminate\Http\Request $request) {
+    // The OpenRiC API answers with an RFC 7807 problem document (Core Discovery §4).
+    if ($request->is('api/ric/v1/*') || $request->is('api/ric/v1')) {
+        return response()->json([
+            'type'     => 'https://openric.org/errors/not-found',
+            'title'    => 'Not Found',
+            'status'   => 404,
+            'detail'   => 'No such endpoint: /' . $request->path(),
+            'instance' => '/' . $request->path(),
+        ], 404, ['Content-Type' => 'application/problem+json']);
+    }
     if ($request->is('api/*')) {
         return response()->json([
             'success' => false,

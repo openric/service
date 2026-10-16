@@ -24,15 +24,24 @@ class ListEnvelopeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Schema::create('function_object', fn ($t) => $t->id());
+        Schema::create('function_object', function ($t) {
+            $t->id();
+            $t->string('source_culture')->default('en');
+        });
         Schema::create('function_object_i18n', function ($t) {
             $t->unsignedBigInteger('id');
+            $t->string('culture')->default('en');
             $t->string('authorized_form_of_name')->nullable();
             $t->text('description')->nullable();
         });
         Schema::create('repository', fn ($t) => $t->id());
+        Schema::create('actor', function ($t) {
+            $t->id();
+            $t->string('source_culture')->default('en');
+        });
         Schema::create('actor_i18n', function ($t) {
             $t->unsignedBigInteger('id');
+            $t->string('culture')->default('en');
             $t->string('authorized_form_of_name')->nullable();
         });
         Schema::create('slug', function ($t) {
@@ -43,7 +52,11 @@ class ListEnvelopeTest extends TestCase
             DB::table('function_object')->insert(['id' => $i]);
             DB::table('function_object_i18n')->insert(['id' => $i, 'authorized_form_of_name' => "Function $i"]);
             DB::table('repository')->insert(['id' => 10 + $i]);
+            DB::table('actor')->insert(['id' => 10 + $i]);
             DB::table('actor_i18n')->insert(['id' => 10 + $i, 'authorized_form_of_name' => "Repository $i"]);
+            // A second translation must neither duplicate the row nor replace the source-culture name.
+            DB::table('function_object_i18n')->insert(['id' => $i, 'culture' => 'af', 'authorized_form_of_name' => "Funksie $i"]);
+            DB::table('actor_i18n')->insert(['id' => 10 + $i, 'culture' => 'af', 'authorized_form_of_name' => "Bewaarplek $i"]);
             DB::table('slug')->insert(['object_id' => 10 + $i, 'slug' => "repository-$i"]);
         }
     }
@@ -59,6 +72,8 @@ class ListEnvelopeTest extends TestCase
             $this->assertStringContainsString('page=2', $r->json('openric:next'), $list);
             $this->assertNull($r->json('openric:prev'), $list);
             $this->assertSame($r->json('openric:items'), $r->json('ric:items'), $list);
+            $this->assertStringNotContainsString('Funksie', $r->getContent(), $list);
+            $this->assertStringNotContainsString('Bewaarplek', $r->getContent(), $list);
             $this->assertSame('https://openric.org/ns/v1#', $r->json('@context.ric'), $list);
 
             $last = $this->getJson("/api/ric/v1/{$list}?limit=2&page=2")->assertOk();

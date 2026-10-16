@@ -149,7 +149,10 @@ class RicSerializationService
     public function serializeRecord(int $ioId, array $options = []): array
     {
         $io = DB::table('information_object as io')
-            ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
+            ->leftJoin('information_object_i18n as i18n', function ($j) {
+                // The description in its own source culture, not whichever translation comes first.
+                $j->on('io.id', '=', 'i18n.id')->on('i18n.culture', '=', 'io.source_culture');
+            })
             ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
             ->leftJoin('term as level', 'io.level_of_description_id', '=', 'level.id')
             // Filter the level name to English: term_i18n carries ~30 culture
@@ -360,7 +363,9 @@ class RicSerializationService
     public function serializeFunction(int $functionId, array $options = []): array
     {
         $function = DB::table('function_object as f')
-            ->leftJoin('function_object_i18n as i18n', 'f.id', '=', 'i18n.id')
+            ->leftJoin('function_object_i18n as i18n', function ($j) {
+                $j->on('f.id', '=', 'i18n.id')->on('i18n.culture', '=', 'f.source_culture');
+            })
             ->where('f.id', $functionId)
             ->first();
 
@@ -1118,7 +1123,10 @@ class RicSerializationService
     private function getChildRecords(int $parentId): array
     {
         return DB::table('information_object as io')
-            ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
+            ->leftJoin('information_object_i18n as i18n', function ($j) {
+                // The description in its own source culture, not whichever translation comes first.
+                $j->on('io.id', '=', 'i18n.id')->on('i18n.culture', '=', 'io.source_culture');
+            })
             ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
             ->where('io.parent_id', $parentId)
             ->select('io.id', 'slug.slug', 'i18n.title', 'io.identifier')
@@ -1348,10 +1356,15 @@ class RicSerializationService
     private function getHoldingsForRepository(int $repositoryId): array
     {
         $holdings = DB::table('information_object as io')
-            ->leftJoin('information_object_i18n as i18n', 'io.id', '=', 'i18n.id')
+            ->leftJoin('information_object_i18n as i18n', function ($j) {
+                // The description in its own source culture, not whichever translation comes first.
+                $j->on('io.id', '=', 'i18n.id')->on('i18n.culture', '=', 'io.source_culture');
+            })
             ->leftJoin('slug', 'io.id', '=', 'slug.object_id')
             ->leftJoin('term as level', 'io.level_of_description_id', '=', 'level.id')
-            ->leftJoin('term_i18n as level_i18n', 'level.id', '=', 'level_i18n.id')
+            ->leftJoin('term_i18n as level_i18n', function ($j) {
+                $j->on('level.id', '=', 'level_i18n.id')->where('level_i18n.culture', '=', 'en');
+            })
             ->where('io.repository_id', $repositoryId)
             ->whereIn('level_i18n.name', ['fonds', 'collection'])
             ->select('io.id', 'slug.slug', 'i18n.title', 'level_i18n.name as level')

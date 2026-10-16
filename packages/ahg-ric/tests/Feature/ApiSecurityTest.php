@@ -90,6 +90,23 @@ class ApiSecurityTest extends TestCase
             ->assertStatus(403)->assertJsonFragment(['detail' => "Scope 'delete' required."]);
     }
 
+    public function test_an_unknown_ric_endpoint_is_an_rfc7807_404(): void
+    {
+        $this->getJson('/api/ric/v1/no-such-endpoint-here')
+            ->assertStatus(404)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonFragment(['type' => 'https://openric.org/errors/not-found', 'status' => 404]);
+    }
+
+    public function test_request_validation_on_the_ric_api_is_rfc7807(): void
+    {
+        $k = $this->key(['read', 'write']);
+        $this->postJson('/api/ric/v1/relations', [], ['X-API-Key' => $k])
+            ->assertStatus(422)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonFragment(['type' => 'https://openric.org/errors/validation-failed', 'status' => 422]);
+    }
+
     public function test_refusals_on_the_ric_api_are_rfc7807(): void
     {
         $this->postJson('/api/ric/v1/_t/thing', [])

@@ -365,7 +365,10 @@ SPARQL;
         // Get events from AtoM event table
         $rows = DB::table('event')
             ->join('event_i18n', 'event.id', '=', 'event_i18n.id')
-            ->leftJoin('actor_i18n', 'event.actor_id', '=', 'actor_i18n.id')
+            ->leftJoin('actor_i18n', function ($j) {
+                $j->on('event.actor_id', '=', 'actor_i18n.id')
+                    ->whereRaw('actor_i18n.culture = (SELECT a.source_culture FROM actor a WHERE a.id = event.actor_id)');
+            })
             ->where(function ($q) use ($entityId) {
                 $q->where('event.object_id', $entityId)
                   ->orWhere('event.actor_id', $entityId);

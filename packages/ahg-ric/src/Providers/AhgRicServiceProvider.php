@@ -73,6 +73,19 @@ class AhgRicServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Request validation on the OpenRiC API fails with an RFC 7807 problem
+        // document (Core Discovery §4), not Laravel's default error shape.
+        $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)->renderable(
+            function (\Illuminate\Validation\ValidationException $e, $request) {
+                if ($request->is('api/ric/v1/*')) {
+                    return \AhgRic\Support\ProblemDetails::validationFailed(
+                        $e->validator->errors()->first() ?: 'The request is not valid.',
+                        ['errors' => $e->errors()]
+                    );
+                }
+            }
+        );
+
         // Load web routes
         $this->loadRoutesFrom(__DIR__ . '/../../routes/web.php');
 

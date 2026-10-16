@@ -305,7 +305,9 @@ class LinkedDataApiController extends Controller
         $limit = max(1, min((int) $request->get('limit', 50), 200));
 
         $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('function_object as f'), 'f.id')
-            ->leftJoin('function_object_i18n as fi', 'f.id', '=', 'fi.id')
+            ->leftJoin('function_object_i18n as fi', function ($j) {
+                $j->on('f.id', '=', 'fi.id')->on('fi.culture', '=', 'f.source_culture');
+            })
             ->select(['f.id', 'fi.authorized_form_of_name as name', 'fi.description']);
         $total = (clone $query)->distinct()->count('f.id');
         $functions = $query
@@ -349,7 +351,10 @@ class LinkedDataApiController extends Controller
         $limit = max(1, min((int) $request->get('limit', 50), 200));
 
         $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('repository as r'), 'r.id')
-            ->leftJoin('actor_i18n as i18n', 'r.id', '=', 'i18n.id')
+            ->leftJoin('actor_i18n as i18n', function ($j) {
+                $j->on('r.id', '=', 'i18n.id')
+                    ->whereRaw('i18n.culture = (SELECT a.source_culture FROM actor a WHERE a.id = r.id)');
+            })
             ->leftJoin('slug', 'r.id', '=', 'slug.object_id')
             ->select(['r.id', 'slug.slug', 'i18n.authorized_form_of_name as name']);
         $total = (clone $query)->distinct()->count('r.id');
