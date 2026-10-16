@@ -1,5 +1,6 @@
 {
     "name": "ahg/api",
+    "license": "AGPL-3.0-or-later",
     "description": "REST API v1 for Heratio",
     "type": "library",
     "require": {

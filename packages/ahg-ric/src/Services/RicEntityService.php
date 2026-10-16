@@ -443,8 +443,8 @@ class RicEntityService
             // Create RiC relation metadata
             DB::table('ric_relation_meta')->insert([
                 'relation_id' => $id,
-                'rico_predicate' => $metadata['predicate'] ?? 'openricx:isAssociatedWith',
-                'inverse_predicate' => $metadata['inverse'] ?? 'openricx:isAssociatedWith',
+                'rico_predicate' => \AhgRic\Support\RicoTerms::canonical($metadata['predicate'] ?? 'openricx:isAssociatedWith'),
+                'inverse_predicate' => \AhgRic\Support\RicoTerms::canonical($metadata['inverse'] ?? 'openricx:isAssociatedWith'),
                 'domain_class' => $metadata['domain'] ?? null,
                 'range_class' => $metadata['range'] ?? null,
                 'dropdown_code' => $relTypeCode,
@@ -468,8 +468,8 @@ class RicEntityService
 
                 DB::table('ric_relation_meta')->insert([
                     'relation_id' => $invId,
-                    'rico_predicate' => $metadata['inverse'] ?? $metadata['predicate'] ?? 'openricx:isAssociatedWith',
-                    'inverse_predicate' => $metadata['predicate'] ?? 'openricx:isAssociatedWith',
+                    'rico_predicate' => \AhgRic\Support\RicoTerms::canonical($metadata['inverse'] ?? $metadata['predicate'] ?? 'openricx:isAssociatedWith'),
+                    'inverse_predicate' => \AhgRic\Support\RicoTerms::canonical($metadata['predicate'] ?? 'openricx:isAssociatedWith'),
                     'domain_class' => $metadata['range'] ?? null,
                     'range_class' => $metadata['domain'] ?? null,
                     'dropdown_code' => $relTypeCode,
@@ -525,8 +525,8 @@ class RicEntityService
                 if ($relType) {
                     $metadata = $relType->metadata ? json_decode($relType->metadata, true) : [];
                     $metaFields['dropdown_code'] = $data['relation_type'];
-                    $metaFields['rico_predicate'] = $metadata['predicate'] ?? 'openricx:isAssociatedWith';
-                    $metaFields['inverse_predicate'] = $metadata['inverse'] ?? $metaFields['rico_predicate'];
+                    $metaFields['rico_predicate'] = \AhgRic\Support\RicoTerms::canonical($metadata['predicate'] ?? 'openricx:isAssociatedWith');
+                    $metaFields['inverse_predicate'] = \AhgRic\Support\RicoTerms::canonical($metadata['inverse'] ?? null) ?? $metaFields['rico_predicate'];
                     $metaFields['domain_class'] = $metadata['domain'] ?? null;
                     $metaFields['range_class'] = $metadata['range'] ?? null;
                 }
@@ -589,6 +589,7 @@ class RicEntityService
         // Resolve target entity names
         $relations = $outgoing->merge($incoming);
         foreach ($relations as $rel) {
+            \AhgRic\Support\RicoTerms::row($rel);
             $rel->target_name = $this->resolveEntityName($rel->target_id);
             $rel->target_type = $this->resolveEntityType($rel->target_id);
             $rel->relation_label = $this->resolveRelationLabel($rel);

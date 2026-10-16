@@ -2042,8 +2042,8 @@ SPARQL;
             // Direction: from the record's perspective, if we are the subject of
             // the relation the predicate applies as-is; otherwise use the inverse.
             $predicate = $isSubject
-                ? ($rel->rico_predicate ?: 'openricx:isAssociatedWith')
-                : ($rel->inverse_predicate ?: $rel->rico_predicate ?: 'openricx:isAssociatedWith');
+                ? \AhgRic\Support\RicoTerms::canonical($rel->rico_predicate ?: 'openricx:isAssociatedWith')
+                : \AhgRic\Support\RicoTerms::canonical($rel->inverse_predicate ?: $rel->rico_predicate ?: 'openricx:isAssociatedWith');
 
             $edges[] = [
                 'source' => $recordUri,
@@ -2163,7 +2163,7 @@ SPARQL;
                 $nodeIndex[$otherUri] = true;
                 $nodes[] = ['id' => $otherUri, 'label' => $otherName, 'type' => $otherType];
             }
-            $predicate = $rr->rico_predicate ?: 'openricx:isAssociatedWith';
+            $predicate = \AhgRic\Support\RicoTerms::canonical($rr->rico_predicate ?: 'openricx:isAssociatedWith');
             $label = $this->humanisePredicate($predicate);
             if ($rr->subject_id == $recordId) {
                 $edges[] = [

@@ -1,5 +1,6 @@
 {
     "name": "ahg/ric",
+    "license": "AGPL-3.0-or-later",
     "description": "RiC (Records in Contexts) Dashboard for Heratio",
     "type": "library",
     "require": {

@@ -967,7 +967,7 @@ class LinkedDataApiController extends Controller
             }
             $edges[] = [
                 'source' => $rootUri, 'target' => $recUri,
-                'predicate' => $rel->rico_predicate ?: 'openricx:isAssociatedWith',
+                'predicate' => \AhgRic\Support\RicoTerms::canonical($rel->rico_predicate ?: 'openricx:isAssociatedWith'),
                 'label' => 'associated with',
             ];
         }
@@ -1368,14 +1368,17 @@ class LinkedDataApiController extends Controller
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
+                // Stored names may predate RiC-O 1.1; a search for the 1.1 name finds them too.
+                $legacy = array_keys(array_filter(\AhgRic\Support\RicoTerms::LEGACY, fn ($v) => stripos($v, $q) !== false));
                 $w->where('m.rico_predicate', 'like', "%{$q}%")
+                    ->when($legacy, fn ($x) => $x->orWhereIn('m.rico_predicate', $legacy))
                     ->orWhere('m.evidence', 'like', "%{$q}%")
                     ->orWhere('m.dropdown_code', 'like', "%{$q}%");
             });
         }
 
         $total = (clone $query)->count();
-        $items = $query->forPage($page, $perPage)->get();
+        $items = $query->forPage($page, $perPage)->get()->map(fn ($r) => \AhgRic\Support\RicoTerms::row($r));
 
         return response()->json([
             'data' => $items,
@@ -1408,7 +1411,7 @@ class LinkedDataApiController extends Controller
     public function showRelation(int $id): JsonResponse
     {
         $row = $this->relationQuery()->where('r.id', $id)->first();
-        return $row ? response()->json($row) : ProblemDetails::notFound('Relation not found', ['id' => $id]);
+        return $row ? response()->json(\AhgRic\Support\RicoTerms::row($row)) : ProblemDetails::notFound('Relation not found', ['id' => $id]);
     }
 
     /**
