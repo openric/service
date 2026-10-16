@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.15 — 2026-10-16
+
+- Records, functions, repositories and agents in events are read in their own source culture, so the Egyptian Boat is "Egyptian Boat" again and lists no longer repeat an entity once per translation; every error on the OpenRiC API is an RFC 7807 problem document, including an unknown endpoint, request validation and a malformed SPARQL query
 ## v0.17.14 — 2026-10-16
 
 - Relation predicates leave the service as RiC-O 1.1 names: the 25 pre-1.1 names in the relation-type table shared with Heratio (rico:hasInstantiation, rico:heldBy and others) are mapped to their RiC-O 1.1 properties in the relation list, single relations, relations-for and graph edges, and new relations store the 1.1 name, without changing the shared data; the copied packages declare AGPL-3.0-or-later
