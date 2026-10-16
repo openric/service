@@ -455,7 +455,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': record['@id'],
                     'to': self.places[term_id]['@id'],
-                    'predicate': 'openricx:hasOrHadPlaceOfOrigin',
+                    'predicate': 'rico:hasOrHadSubject',  # place access point; mapping §7.1 (access points)
                 })
                 
             elif 'genre' in taxonomy_name or 'type' in taxonomy_name:
@@ -471,7 +471,7 @@ class RiCExtractor:
                 self.relations.append({
                     'from': record['@id'],
                     'to': self.genres[term_id]['@id'],
-                    'predicate': 'openricx:hasOrHadContentOfType',
+                    'predicate': 'rico:hasContentOfType',  # genre access point; RiC-O 1.1
                 })
     
     def _extract_digital_objects(self):
@@ -1536,7 +1536,7 @@ class RiCExtractor:
         
         all_predicates = [
             'rico:hasOrHadSubject', 'rico:hasOrHadMainSubject',
-            'openricx:hasOrHadPlaceOfOrigin', 'openricx:hasOrHadContentOfType',
+            'rico:hasContentOfType',
             'rico:hasOrHadInstantiation', 'openricx:isAssociatedWith',
             'rico:isOrWasRegulatedBy', 'rico:isOrWasDescribedBy',
             'rico:hasCreator', 'rico:hasAccumulator',
