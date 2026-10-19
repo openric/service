@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.25 — 2026-10-19
+
+- The wizard suggestion endpoint answers a gateway timeout, which almost always means the model is loading after a quiet period, with 503 model_warming, a Retry-After header and a plain message, instead of a generic unavailable error, so the modelling wizard can retry once by itself
 ## v0.17.24 — 2026-10-19
 
 - Graph nodes for AtoM workflow objects (accessions, feedback, rights and publication requests) are left out, because they have no RiC-O or OpenRiC class and were sent as rico:QubitAccession and similar (Graph Primitives invariant 5); labels for activities and instantiations found through SPARQL are looked up in the display language again instead of an undefined one
