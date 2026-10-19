@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.22 — 2026-10-19
+
+- Graph nodes for records, agents, repositories, places, activities, rules, instantiations and functions are named by the @id the API gives them, so a node can be followed to its description and matches the SPARQL graph (Graph Traversal 0.6.0, specification 0.51.0); record identifiers send a browser to the OpenRiC Graph Explorer record page and every other client to the API record, with 303 See Other, instead of redirecting to Heratio
 ## v0.17.21 — 2026-10-19
 
 - The service's own OpenAPI document is OpenAPI 3.1.0, matching the specification's contract: nullable fields use JSON Schema null types, the optional-key security entry is a valid empty object, info.version reports the service release instead of 1.0.0, and the unused static openapi.json that described RiC as ISO 23278 is removed
