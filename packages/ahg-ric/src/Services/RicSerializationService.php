@@ -213,9 +213,14 @@ class RicSerializationService
         }
 
         // Language
+        // RiC-O 1.1 limits rico:hasOrHadLanguage to Agent, Record and RecordPart.
+        // A RecordSet states the languages of its members instead: all members
+        // when one language is given, some members when several are (spec v0.50.0).
         $languages = $this->getLanguagesForRecord($ioId);
         if (!empty($languages)) {
-            $record['rico:hasOrHadLanguage'] = $languages;
+            $languagePredicate = $ricType !== 'RecordSet' ? 'rico:hasOrHadLanguage'
+                : (count($languages) === 1 ? 'rico:hasOrHadAllMembersWithLanguage' : 'rico:hasOrHadSomeMembersWithLanguage');
+            $record[$languagePredicate] = $languages;
         }
 
         // Extent
@@ -315,9 +320,11 @@ class RicSerializationService
             $agent['openricx:otherName'] = $actor->other_form_of_name;
         }
 
-        // Dates
+        // Dates of existence are free text in the source, so they go on the
+        // datatype property rico:date; rico:hasBeginningDate is an object
+        // property and never carries a literal (spec v0.50.0).
         if (!empty($actor->dates_of_existence)) {
-            $agent['rico:hasBeginningDate'] = $actor->dates_of_existence;
+            $agent['rico:date'] = $actor->dates_of_existence;
         }
 
         // History
@@ -390,11 +397,9 @@ class RicSerializationService
         }
 
         // ISDF: Dates
+        // ISDF 5.2.1 dates are free text: rico:date (mapping, ISDF 5.2.1).
         if (!empty($function->dates)) {
-            $ricFunc['openricx:hasDateRangeSet'] = [
-                '@type' => 'rico:DateRange',
-                'rico:beginningDate' => $function->dates,
-            ];
+            $ricFunc['rico:date'] = $function->dates;
         }
 
         // ISDF: Activities carried out under this function
@@ -980,7 +985,7 @@ class RicSerializationService
 
     /**
      * Get dates for a record (event rows attached to the information object).
-     * Returns a rico:DateRangeSet node, or null when there are no events.
+     * Returns a list of openricx:DateRange objects, or null when there are none.
      */
     private function getDatesForRecord(int $ioId): ?array
     {
@@ -997,21 +1002,28 @@ class RicSerializationService
             return null;
         }
 
+        // openricx:DateRange objects (a subclass of rico:Date) with the date
+        // type as a concept from the OpenRiC date-type vocabulary (spec v0.50.0).
+        // Event types 111 and 112 are creation and accumulation, as in the graph
+        // serializer; other event types carry no date type.
+        $dateTypes = [111 => 'creation', 112 => 'accumulation'];
         $dateRanges = [];
         foreach ($dates as $date) {
-            $dateRanges[] = [
-                '@type' => 'rico:DateRange',
+            $range = array_filter([
+                '@type' => 'openricx:DateRange',
                 'rico:beginningDate' => $date->start_date ?? null,
                 'rico:endDate' => $date->end_date ?? null,
                 'rico:expressedDate' => $date->date_display ?? null,
-                'openric:localType' => $date->type_id ?? 'existence',
-            ];
+            ], fn ($v) => $v !== null && $v !== '');
+            if (isset($dateTypes[(int) $date->type_id])) {
+                $range['rico:hasDateType'] = ['@id' => 'https://openric.org/vocab/date-type/' . $dateTypes[(int) $date->type_id]];
+            }
+            if (count($range) > 1) {
+                $dateRanges[] = $range;
+            }
         }
 
-        return [
-            '@type' => 'rico:DateRangeSet',
-            'rico:hasDateRange' => $dateRanges,
-        ];
+        return $dateRanges ?: null;
     }
 
     /**
@@ -1028,9 +1040,12 @@ class RicSerializationService
             ->where('object_term_relation.object_id', $ioId)
             ->where('term.taxonomy_id', 7)
             ->pluck('term_i18n.name')
+            // ponytail: the value is the language's English name from the term
+            // table, not an ISO 639 code; openricx:languageCode expects a code.
+            // Upgrade path: map names to ISO 639-3 when this path is next used.
             ->map(fn($lang) => [
                 '@type' => 'rico:Language',
-                'rico:languageCode' => $lang,
+                'rico:name' => $lang,
             ])
             ->toArray();
     }
