@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.16 — 2026-10-19
+
+- The service description reports that the service verifies against specification 0.48.0, the S-GATE baseline: every Core Discovery response validates against the 0.48.0 JSON Schemas, and the conformance probe, unchanged in 0.48.0, passed every declared profile on 18 October
 ## v0.17.15 — 2026-10-16
 
 - Records, functions, repositories and agents in events are read in their own source culture, so the Egyptian Boat is "Egyptian Boat" again and lists no longer repeat an entity once per translation; every error on the OpenRiC API is an RFC 7807 problem document, including an unknown endpoint, request validation and a malformed SPARQL query
