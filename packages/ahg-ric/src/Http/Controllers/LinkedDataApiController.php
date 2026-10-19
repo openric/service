@@ -806,6 +806,23 @@ class LinkedDataApiController extends Controller
         // buildGraphFromDatabase always places the root node first, so its id is
         // the authoritative root URI for the invariant check.
         $nodes = $graph['nodes'] ?? [];
+        $edges = $graph['edges'] ?? [];
+
+        // One identifier per entity (spec v0.51.0): a node is named by the @id
+        // the API gives that entity, not the graph builders' internal
+        // <base>/<instance>/<type>/<id> form. Nodes with no API record
+        // (subject terms, dates) keep their builder id.
+        $apiIds = $this->apiIdentifiers($nodes);
+        foreach ($nodes as &$node) {
+            $node['id'] = $apiIds[$node['id'] ?? ''] ?? ($node['id'] ?? null);
+        }
+        unset($node);
+        foreach ($edges as &$edge) {
+            $edge['source'] = $apiIds[$edge['source'] ?? ''] ?? ($edge['source'] ?? null);
+            $edge['target'] = $apiIds[$edge['target'] ?? ''] ?? ($edge['target'] ?? null);
+        }
+        unset($edge);
+
         $rootUri = $nodes[0]['id'] ?? $uri;
 
         // Viewing API §8.6: node types are CURIEs, never bare local names. The
@@ -828,10 +845,55 @@ class LinkedDataApiController extends Controller
             'openric:root' => $rootUri,
             'openric:depth' => $depth,
             'openric:nodes' => $nodes,
-            'openric:edges' => $graph['edges'] ?? [],
+            'openric:edges' => $edges,
         ], 200, [
             'Content-Type' => 'application/ld+json',
         ]);
+    }
+
+    /**
+     * Map graph-builder node ids (<scheme://host>/<instance>/<type>/<numeric id>)
+     * to the @id the API gives the same entity: /informationobject/{slug},
+     * /actor/{slug}, /repository/{slug}, and /{type}/{id} for places,
+     * activities, instantiations, rules and functions. A node with no API
+     * record, or whose slug cannot be found, is left out of the map.
+     */
+    private function apiIdentifiers(array $nodes): array
+    {
+        $records = ['recordset', 'record', 'recordpart', 'informationobject'];
+        $agents  = ['person', 'corporatebody', 'family', 'agent', 'actor', 'repository'];
+        $byId    = ['place', 'activity', 'instantiation', 'rule', 'function'];
+        $parsed = [];
+        $slugIds = [];
+        foreach ($nodes as $node) {
+            $id = (string) ($node['id'] ?? '');
+            if (!preg_match('#^(https?://[^/]+)/[^/]+/([a-z]+)/(\d+)$#', $id, $m)) {
+                continue;
+            }
+            [, $host, $seg, $num] = $m;
+            if (in_array($seg, $records, true) || in_array($seg, $agents, true) || in_array($seg, $byId, true)) {
+                $parsed[$id] = [$host, $seg, (int) $num];
+                if (!in_array($seg, $byId, true)) {
+                    $slugIds[] = (int) $num;
+                }
+            }
+        }
+        if (!$parsed) {
+            return [];
+        }
+        $slugs = $slugIds ? \DB::table('slug')->whereIn('object_id', $slugIds)->pluck('slug', 'object_id')->all() : [];
+        $repositories = $slugIds ? array_flip(\DB::table('repository')->whereIn('id', $slugIds)->pluck('id')->all()) : [];
+
+        $map = [];
+        foreach ($parsed as $id => [$host, $seg, $num]) {
+            if (in_array($seg, $byId, true)) {
+                $map[$id] = "$host/$seg/$num";
+            } elseif (!empty($slugs[$num])) {
+                $kind = in_array($seg, $records, true) ? 'informationobject' : (isset($repositories[$num]) ? 'repository' : 'actor');
+                $map[$id] = "$host/$kind/" . $slugs[$num];
+            }
+        }
+        return $map;
     }
 
     /**

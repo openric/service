@@ -299,18 +299,18 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
             } catch (\Throwable $e) {
                 // fall through to the last known value
             }
-            return '0.50.1';
+            return '0.51.0';
         });
     };
 
     $openricConformance = [
-        'spec_version'        => '0.50.1',
+        'spec_version'        => '0.51.0',
         'latest_spec_version' => null, // filled per request below
         'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [
             ['id' => 'core-discovery',         'version' => '0.6.0', 'conformance' => 'full'],
             ['id' => 'authority-context',      'version' => '0.4.0', 'conformance' => 'full'],
-            ['id' => 'graph-traversal',        'version' => '0.5.0', 'conformance' => 'full'],
+            ['id' => 'graph-traversal',        'version' => '0.6.0', 'conformance' => 'full'],
             ['id' => 'digital-object-linkage', 'version' => '0.6.0', 'conformance' => 'full'],
             ['id' => 'round-trip-editing',     'version' => '0.7.0', 'conformance' => 'full'],
             ['id' => 'export-only',            'version' => '0.9.0', 'conformance' => 'full'],
