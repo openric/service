@@ -1163,13 +1163,20 @@ class LinkedDataApiController extends Controller
             ->select('a.id', 'a.type_id', 'a.place_id', 'i18n.name')->first();
         if (!$act) return ['nodes' => [], 'edges' => []];
 
-        $shortType = match (strtolower($act->type_id ?? '')) {
-            'production', 'creation', 'contribution' => 'Production',
-            'accumulation', 'collection' => 'Accumulation',
-            default => 'Activity',
+        // RiC-O 1.1 has no Production or Accumulation class: the node is a
+        // rico:Activity and its kind is a concept from the OpenRiC activity-type
+        // vocabulary (Graph Primitives invariant 5).
+        $activityType = match (strtolower($act->type_id ?? '')) {
+            'production', 'creation', 'contribution' => 'production',
+            'accumulation', 'collection' => 'accumulation',
+            default => null,
         };
         $rootUri = $baseUri . '/' . $instanceId . '/activity/' . $activityId;
-        $nodes = [['id' => $rootUri, 'label' => $act->name ?: ucfirst($act->type_id ?? 'Activity'), 'type' => $shortType]];
+        $root = ['id' => $rootUri, 'label' => $act->name ?: ucfirst($act->type_id ?? 'Activity'), 'type' => 'Activity'];
+        if ($activityType) {
+            $root['activityType'] = 'https://openric.org/vocab/activity-type/' . $activityType;
+        }
+        $nodes = [$root];
         $edges = [];
         $seen = [$rootUri => true];
 

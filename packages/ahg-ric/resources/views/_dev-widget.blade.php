@@ -25,9 +25,9 @@
     ])
     <p class="small text-muted mt-3">
       Try other seeds:
-      <a href="?uri={{ urlencode('https://ric.theahg.co.za/entity/record/553') }}">record/553</a> ·
-      <a href="?uri={{ urlencode('https://ric.theahg.co.za/entity/record/901990') }}">record/901990</a> ·
-      <a href="?uri={{ urlencode('https://ric.theahg.co.za/entity/recordset/983') }}">recordset/983</a>
+      <a href="?uri={{ urlencode('https://ric.theahg.co.za/informationobject/egyptian-boat') }}">egyptian-boat</a> ·
+      <a href="?uri={{ urlencode('https://ric.theahg.co.za/informationobject/cat-in-arms') }}">cat-in-arms</a> ·
+      <a href="?uri={{ urlencode('https://ric.theahg.co.za/informationobject/mobrey-family-archive') }}">mobrey-family-archive</a>
     </p>
   </div>
 </body>

@@ -163,7 +163,7 @@ class SeedDemo extends Command
         $this->line('  Place       id=' . $this->ids['place']     . '  slug=openric-demo-stellenbosch');
         $this->newLine();
         $this->info('Browse: https://openric.org/demo/browse/');
-        $this->info('Graph:  https://viewer.openric.org/ → Start /default/recordset/' . $this->ids['rec_fonds']);
+        $this->info('Graph:  https://viewer.openric.org/?start=/informationobject/openric-demo-leroux-papers');
         return self::SUCCESS;
     }
 

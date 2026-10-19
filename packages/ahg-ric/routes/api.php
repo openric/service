@@ -287,10 +287,10 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
     // `latest_spec_version` and `spec_delta` are advisory, so a client can see
     // the gap rather than infer it from silence.
     // latest_spec_version is read from the published spec manifest, cached for
-    // a day; the literal is only the fallback when openric.org is unreachable.
+    // an hour (a day was long enough to show a stale figure through several releases); the literal is only the fallback when openric.org is unreachable.
     // spec_version above stays hand-set, for the reason given there.
     $latestSpecVersion = function (): string {
-        return \Illuminate\Support\Facades\Cache::remember('openric.latest_spec_version', 86400, function () {
+        return \Illuminate\Support\Facades\Cache::remember('openric.latest_spec_version', 3600, function () {
             try {
                 $v = \Illuminate\Support\Facades\Http::timeout(3)->get('https://openric.org/version.json')->json('version');
                 if (is_string($v) && preg_match('/^\d+\.\d+\.\d+$/', $v)) {

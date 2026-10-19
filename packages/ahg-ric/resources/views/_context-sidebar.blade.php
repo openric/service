@@ -3,7 +3,7 @@
 
   Usage:
     @include('ahg-ric::_context-sidebar', [
-        'resourceUri' => 'https://ric.theahg.co.za/entity/record/553',
+        'resourceUri' => 'https://ric.theahg.co.za/informationobject/egyptian-boat',
         'explorerUrl' => '/explorer',          // optional CTA target
         'maxNodes'    => 50,                    // optional, 1..500
         'title'       => 'Relationships',       // optional heading

@@ -1464,7 +1464,11 @@ SPARQL;
                     $nodes[] = [
                         'id'    => $uri,
                         'label' => isset($row['label']) ? $row['label']['value'] : $this->extractLabel($uri),
-                        'type'  => $row['type']['value'] ?? 'FindingAid',
+                        // FindingAid and AuthorityRecord are documentary form types in
+                        // RiC-O 1.1, not classes: the node is a rico:Record, and the form
+                        // type rides along as an attribute (Graph Primitives invariant 5).
+                        'type'  => 'Record',
+                        'documentaryFormType' => 'https://www.ica.org/standards/RiC/vocabularies/documentaryFormTypes#' . ($row['type']['value'] ?? 'FindingAid'),
                     ];
                 }
                 // Link finding aids to records they describe
@@ -2197,10 +2201,13 @@ SPARQL;
                     $nodes[] = [
                         'id'    => $faUri,
                         'label' => $fa->name ?: 'Finding Aid ' . $fa->id,
-                        'type'  => 'FindingAid',
+                        // A finding aid is a rico:Record whose documentary form type is
+                        // FindingAid; RiC-O 1.1 has no FindingAid class (invariant 5).
+                        'type'  => 'Record',
+                        'documentaryFormType' => 'https://www.ica.org/standards/RiC/vocabularies/documentaryFormTypes#FindingAid',
                     ];
                 }
-                $edges[] = ['source' => $faUri, 'target' => $recordUri, 'label' => 'describes Or Described'];
+                $edges[] = ['source' => $faUri, 'target' => $recordUri, 'predicate' => 'rico:describesOrDescribed', 'label' => 'describes or described'];
             }
         }
 
@@ -2332,8 +2339,8 @@ SPARQL;
                 'rule'               => 'Rule',
                 'mechanism'          => 'Mechanism',
                 'date'               => 'Date',
-                'authorityrecord'    => 'AuthorityRecord',
-                'findingaid'         => 'FindingAid',
+                'authorityrecord'    => 'Record',   // documentary form types in RiC-O 1.1, not classes
+                'findingaid'         => 'Record',
             ];
             return $map[strtolower($m[1])] ?? ucfirst($m[1]);
         }

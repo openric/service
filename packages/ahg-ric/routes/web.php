@@ -22,7 +22,7 @@ Route::prefix('ric-api')->middleware('web')->group(function () {
     // so it can never leak into production.
     Route::get('/dev/widget', function (\Illuminate\Http\Request $r) {
         abort_unless(config('app.debug'), 404);
-        $uri = $r->query('uri', 'https://ric.theahg.co.za/entity/record/901990');
+        $uri = $r->query('uri', 'https://ric.theahg.co.za/informationobject/egyptian-boat');
         abort_unless(filter_var($uri, FILTER_VALIDATE_URL), 400);
         return view('ahg-ric::_dev-widget', ['resourceUri' => $uri]);
     })->name('ric.dev-widget');
