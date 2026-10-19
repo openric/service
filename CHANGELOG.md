@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.23 — 2026-10-19
+
+- Graph nodes use only RiC-O 1.1 classes: finding aids and authority records are rico:Record with their documentary form type, production and accumulation activities are rico:Activity with an activity-type concept, and the finding-aid edge carries its rico:describesOrDescribed predicate; the latest specification version is cached for an hour instead of a day; the developer widget, its default and the seed-demo hint use the API record identifiers instead of the retired /entity/ and /default/ forms
 ## v0.17.22 — 2026-10-19
 
 - Graph nodes for records, agents, repositories, places, activities, rules, instantiations and functions are named by the @id the API gives them, so a node can be followed to its description and matches the SPARQL graph (Graph Traversal 0.6.0, specification 0.51.0); record identifiers send a browser to the OpenRiC Graph Explorer record page and every other client to the API record, with 303 See Other, instead of redirecting to Heratio
