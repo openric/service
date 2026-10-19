@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.20 — 2026-10-19
+
+- New command openric:rebuild-graph rebuilds the public SPARQL graph from the API serializer under the API identifiers, checked before it replaces the old graph; records state their languages from AtoM's language properties as ISO codes; functions and contact points are typed openricx:Function and openricx:ContactPoint, the classes the specification defines, instead of two classes RiC-O 1.1 does not have
 ## v0.17.19 — 2026-10-19
 
 - Place-to-place relations leave the service as rico:isOrWasContainedBy and rico:containsOrContained, and an instantiation's production technique as rico:productionTechnique, the RiC-O 1.1 terms that replace openricx terms deprecated in extension ontology 1.2.0; the service verifies against specification 0.50.1
