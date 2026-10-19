@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.24 — 2026-10-19
+
+- Graph nodes for AtoM workflow objects (accessions, feedback, rights and publication requests) are left out, because they have no RiC-O or OpenRiC class and were sent as rico:QubitAccession and similar (Graph Primitives invariant 5); labels for activities and instantiations found through SPARQL are looked up in the display language again instead of an undefined one
 ## v0.17.23 — 2026-10-19
 
 - Graph nodes use only RiC-O 1.1 classes: finding aids and authority records are rico:Record with their documentary form type, production and accumulation activities are rico:Activity with an activity-type concept, and the finding-aid edge carries its rico:describesOrDescribed predicate; the latest specification version is cached for an hour instead of a day; the developer widget, its default and the seed-demo hint use the API record identifiers instead of the retired /entity/ and /default/ forms
