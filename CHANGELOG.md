@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.19 — 2026-10-19
+
+- Place-to-place relations leave the service as rico:isOrWasContainedBy and rico:containsOrContained, and an instantiation's production technique as rico:productionTechnique, the RiC-O 1.1 terms that replace openricx terms deprecated in extension ontology 1.2.0; the service verifies against specification 0.50.1
 ## v0.17.18 — 2026-10-19
 
 - Agents send free-text dates of existence on rico:date, functions their dates on rico:date, record dates as openricx:DateRange objects with a date-type concept, and record sets their languages on rico:hasOrHadAllMembersWithLanguage or rico:hasOrHadSomeMembersWithLanguage, so no literal reaches a RiC-O object property; the service declares Core Discovery 0.6.0 and verifies against specification 0.50.0
