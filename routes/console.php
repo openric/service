@@ -16,3 +16,12 @@ Schedule::command('openric:daily-digest')
     ->dailyAt('06:30')
     ->timezone('Africa/Johannesburg')
     ->withoutOverlapping();
+
+// Rebuild the public SPARQL graph from the API serializer after the 02:20
+// demonstration reset (docs/plans/2026-10-19-sparql-graph-resync-design.md).
+// A run that finds nothing changed swaps nothing; a failed check keeps the old
+// graph and raises a bell notification.
+Schedule::command('openric:rebuild-graph')
+    ->dailyAt('03:00')
+    ->timezone('Africa/Johannesburg')
+    ->withoutOverlapping();
