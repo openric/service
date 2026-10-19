@@ -2159,8 +2159,12 @@ SPARQL;
                 'QubitInformationObject' => 'RecordSet',
                 'QubitRepository' => 'CorporateBody',
                 'QubitFunctionObject' => 'Function',
-                default => $otherClassName ?? 'Entity',
+                default => null,
             };
+            // Graph Primitives invariant 5: every node type is a RiC-O or OpenRiC
+            // class. AtoM workflow objects (accessions, feedback, rights,
+            // publication requests) have none, so they are left out of the graph.
+            if ($otherType === null) continue;
             $otherUri = $this->buildRecordUri(strtolower($otherType), $otherId, $baseUri, $instanceId);
 
             if (!isset($nodeIndex[$otherUri])) {
@@ -2222,6 +2226,7 @@ SPARQL;
     protected function extractLabel(string $uri): string
     {
         $cultures = $this->getLabelCultures();
+        $culture = $cultures[0] ?? 'en';
 
         // Ontology predicate URIs (e.g., https://...#hasOrHadSubject)
         if (preg_match('/#(\w+)$/', $uri, $m)) {
