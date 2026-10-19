@@ -75,6 +75,19 @@ class WizardSuggestController extends Controller
                     'temperature' => 0.2,
                     'stream'      => false,
                 ]);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // A timeout (cURL 28) almost always means the model was unloaded
+            // and the gateway is loading it again: this request started that,
+            // so the next one usually succeeds. The wizard retries once on this.
+            if (str_contains($e->getMessage(), 'cURL error 28')) {
+                Log::warning('[wizard/suggest] gateway timed out; model probably loading');
+                return response()->json([
+                    'error'   => 'model_warming',
+                    'message' => 'The model was idle and is starting up. Try again in a minute.',
+                ], 503)->header('Retry-After', '20');
+            }
+            Log::error('[wizard/suggest] gateway call failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'gateway_unreachable', 'message' => 'The model service is unavailable right now. Try again shortly.'], 502);
         } catch (\Throwable $e) {
             Log::error('[wizard/suggest] gateway call failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'gateway_unreachable', 'message' => 'The model service is unavailable right now. Try again shortly.'], 502);
