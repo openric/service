@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.18 — 2026-10-19
+
+- Agents send free-text dates of existence on rico:date, functions their dates on rico:date, record dates as openricx:DateRange objects with a date-type concept, and record sets their languages on rico:hasOrHadAllMembersWithLanguage or rico:hasOrHadSomeMembersWithLanguage, so no literal reaches a RiC-O object property; the service declares Core Discovery 0.6.0 and verifies against specification 0.50.0
 ## v0.17.17 — 2026-10-19
 
 - Records no longer send openricx:description, the alias deprecated in v0.46.0; scope and content arrives as rico:scopeAndContent only, and the service declares Core Discovery 0.5.0 and verifies against specification 0.49.0
