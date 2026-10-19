@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.17 — 2026-10-19
+
+- Records no longer send openricx:description, the alias deprecated in v0.46.0; scope and content arrives as rico:scopeAndContent only, and the service declares Core Discovery 0.5.0 and verifies against specification 0.49.0
 ## v0.17.16 — 2026-10-19
 
 - The service description reports that the service verifies against specification 0.48.0, the S-GATE baseline: every Core Discovery response validates against the 0.48.0 JSON Schemas, and the conformance probe, unchanged in 0.48.0, passed every declared profile on 18 October
