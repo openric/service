@@ -1263,7 +1263,8 @@ class RicSerializationService
     }
 
     /**
-     * Get structured rico:Occupation nodes for an actor.
+     * Get structured openricx:Occupation nodes for an actor (RiC-O 1.1 has
+     * only rico:OccupationType, the kind, not a dated occupation held).
      * Schema::hasTable guard lets the serializer survive a half-installed
      * instance where ric_occupation model code is deployed but the
      * migration hasn't run yet.
@@ -1284,7 +1285,7 @@ class RicSerializationService
         foreach ($rows as $row) {
             $node = [
                 '@id' => $this->baseUri . '/occupation/' . $row->id,
-                '@type' => 'rico:Occupation',
+                '@type' => 'openricx:Occupation',
                 'rdfs:label' => $row->title,
             ];
             if (!empty($row->start_date)) {
@@ -1431,10 +1432,10 @@ class RicSerializationService
                 $entry['openricx:customText'] = $r->custom_restriction_text;
             }
             if (!empty($r->start_date)) {
-                $entry['openricx:startDate'] = $r->start_date;
+                $entry['rico:beginningDate'] = $r->start_date;
             }
             if (!empty($r->end_date)) {
-                $entry['openricx:endDate'] = $r->end_date;
+                $entry['rico:endDate'] = $r->end_date;
             }
             $entry['openricx:appliesToDescendants'] = (bool) ($r->applies_to_descendants ?? false);
             $out[] = $entry;

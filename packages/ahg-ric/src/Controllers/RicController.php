@@ -1836,7 +1836,7 @@ SPARQL;
                         => 'rico:hasCreator',
                     str_contains($evTypeLower, 'accumulat'), str_contains($evTypeLower, 'collect')
                         => 'rico:hasAccumulator',
-                    default => 'openricx:isAssociatedWith',
+                    default => 'rico:isRelatedTo',
                 };
                 $edges[] = [
                     'source' => $actorUri,
@@ -2662,7 +2662,7 @@ SPARQL;
             'hasCreationDate'     => ['@id' => 'rico:hasCreationDate', '@type' => '@id'],
             'hasAccumulationDate' => ['@id' => 'rico:hasAccumulationDate', '@type' => '@id'],
             'describesOrDescribed'=> ['@id' => 'rico:describesOrDescribed', '@type' => '@id'],
-            'isAssociatedWith'    => ['@id' => 'openricx:isAssociatedWith', '@type' => '@id'],
+            'isRelatedTo'         => ['@id' => 'rico:isRelatedTo', '@type' => '@id'],
             'hasProvenanceOf'     => ['@id' => 'rico:isOrganicProvenanceOf', '@type' => '@id'],
             'isEquivalentTo'      => ['@id' => 'rico:isEquivalentTo', '@type' => '@id'],
             'resultsOrResultedFrom' => ['@id' => 'rico:resultsOrResultedFrom', '@type' => '@id'],
@@ -2729,7 +2729,8 @@ SPARQL;
             'has Creation Date'        => 'hasCreationDate',
             'has Accumulation Date'    => 'hasAccumulationDate',
             'describes Or Described'   => 'describesOrDescribed',
-            'is Associated With'       => 'isAssociatedWith',
+            'is Associated With'       => 'isRelatedTo',
+            'is Related To'            => 'isRelatedTo',
             'has Provenance Of'        => 'hasProvenanceOf',
             'is Equivalent To'         => 'isEquivalentTo',
             'results Or Resulted From' => 'resultsOrResultedFrom',

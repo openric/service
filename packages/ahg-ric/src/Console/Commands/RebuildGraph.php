@@ -207,12 +207,18 @@ class RebuildGraph extends Command
         if ($last && $last['triples'] > 0 && ($triples < $last['triples'] * 0.5 || $triples > $last['triples'] * 2)) {
             $problems[] = "the staging graph has $triples triples against {$last['triples']} in the last build, outside the expected band";
         }
-        $known = $this->ricoTerms();
-        if ($known) {
-            $used = $this->select('SELECT DISTINCT ?t WHERE { GRAPH <' . self::STAGING . '> { { ?s ?t ?o } UNION { ?s a ?t } } FILTER(STRSTARTS(STR(?t), "https://www.ica.org/standards/RiC/ontology#")) }');
-            $unknown = array_values(array_diff(array_map(fn ($t) => substr($t, strlen('https://www.ica.org/standards/RiC/ontology#')), $used), $known));
+        $vocabularies = [
+            ['rico', 'https://www.ica.org/standards/RiC/ontology#', $this->ricoTerms(), 'RiC-O 1.1'],
+            ['openricx', 'https://openric.org/ns/ext/v1#', $this->openricxTerms(), 'the published OpenRiC extension ontology'],
+        ];
+        foreach ($vocabularies as [$prefix, $ns, $known, $source]) {
+            if (!$known) {
+                continue;
+            }
+            $used = $this->select('SELECT DISTINCT ?t WHERE { GRAPH <' . self::STAGING . '> { { ?s ?t ?o } UNION { ?s a ?t } } FILTER(STRSTARTS(STR(?t), "' . $ns . '")) }');
+            $unknown = array_values(array_diff(array_map(fn ($t) => substr($t, strlen($ns)), $used), $known));
             if ($unknown) {
-                $problems[] = 'terms in the RiC-O namespace that RiC-O 1.1 does not define: rico:' . implode(', rico:', array_slice($unknown, 0, 10));
+                $problems[] = "terms in the $prefix: namespace that $source does not define: $prefix:" . implode(", $prefix:", array_slice($unknown, 0, 10));
             }
         }
         return $problems;
@@ -227,6 +233,19 @@ class RebuildGraph extends Command
             return [];
         }
         preg_match_all('#rdf:about="https://www\.ica\.org/standards/RiC/ontology\#([A-Za-z0-9_]+)"#', file_get_contents($file), $m);
+        return array_values(array_unique($m[1]));
+    }
+
+    /** Local names of every term the published extension ontology defines. */
+    private function openricxTerms(): array
+    {
+        try {
+            $ttl = Http::timeout(30)->get('https://openric.org/ns/ext/v1.ttl')->throw()->body();
+        } catch (\Throwable $e) {
+            $this->warn('Extension ontology not reachable; skipping the openricx: term check');
+            return [];
+        }
+        preg_match_all('/^openricx:([A-Za-z0-9_]+)\s+a\s/m', $ttl, $m);
         return array_values(array_unique($m[1]));
     }
 

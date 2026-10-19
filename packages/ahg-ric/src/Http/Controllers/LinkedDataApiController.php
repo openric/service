@@ -1006,7 +1006,7 @@ class LinkedDataApiController extends Controller
                     => 'rico:hasCreator',
                 str_contains(strtolower($ev->event_type ?? ''), 'accumulat')
                     => 'rico:hasAccumulator',
-                default => 'openricx:isAssociatedWith',
+                default => 'rico:isRelatedTo',
             };
             $edges[] = [
                 'source' => $rootUri, 'target' => $recUri,
@@ -1371,9 +1371,9 @@ class LinkedDataApiController extends Controller
             str_contains($typeLc, 'creation')      => 'rico:hasCreationDate',
             str_contains($typeLc, 'accumulation')  => 'rico:hasAccumulationDate',
             str_contains($typeLc, 'existence')     => 'openricx:hasDateOfExistence',
-            default                                => 'openricx:hasDate',
+            default                                => 'rico:isAssociatedWithDate',
         };
-        $edgeLabel = strtolower(preg_replace('/([A-Z])/', ' $1', substr($predicate, 5)));
+        $edgeLabel = strtolower(preg_replace('/([A-Z])/', ' $1', substr($predicate, strpos($predicate, ':') + 1)));
 
         // Attach the parent information_object, if any.
         if ($event->object_id) {
