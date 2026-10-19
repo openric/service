@@ -901,9 +901,10 @@ class RicSerializationService
             $ricInst['openricx:technicalCharacteristics'] = $inst->technical_characteristics;
         }
 
+        // rico:productionTechnique (RiC-O 1.1, domain Instantiation) replaces
+        // openricx:productionTechnicalCharacteristics, deprecated in ontology 1.2.0.
         if (!empty($inst->production_technical_characteristics)) {
-            $ricInst['openricx:productionTechnicalCharacteristics'] =
-                $inst->production_technical_characteristics;
+            $ricInst['rico:productionTechnique'] = $inst->production_technical_characteristics;
         }
 
         if ($inst->record_id && $inst->record_slug) {

@@ -53,6 +53,10 @@ final class RicoTerms
         'rico:manages'                   => 'rico:isOrWasManagerOf',
         'rico:isDocumentedBy'            => 'rico:documentedBy',
         'rico:isAssociatedWith'          => 'rico:isRelatedTo',
+        // openricx: place-to-place terms deprecated in extension ontology 1.2.0
+        // (spec v0.50.1): RiC-O 1.1 has its own place containment pair.
+        'openricx:hasBroaderGeographicalContext'  => 'rico:isOrWasContainedBy',
+        'openricx:hasNarrowerGeographicalContext' => 'rico:containsOrContained',
     ];
 
     /** The RiC-O 1.1 name for a predicate; anything not in the map is returned as given. */
