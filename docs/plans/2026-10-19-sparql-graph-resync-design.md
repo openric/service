@@ -1,6 +1,6 @@
 # Public SPARQL graph: resync design
 
-Status: proposed, for Dr Johan Pieterse. 19 October 2026. Nothing here is implemented.
+Status: decided by Dr Johan Pieterse on 19 October 2026 (see Decisions, at the end). Nothing here is implemented yet.
 
 ## The problem
 
@@ -42,8 +42,9 @@ Option 1, with one identifier scheme.
   2. serialise each with `RicSerializationService`, collect the JSON-LD and parse it to N-Quads;
   3. load it into a staging named graph in the `openric` dataset;
   4. check: triple count within an expected band of the last build, every published entity present, no `rico:` term outside RiC-O 1.1, no identifier outside the API's scheme;
-  5. only if the checks pass, replace the default graph with the staging graph in one SPARQL Update (`DROP` then `ADD`, or `MOVE`), keep the previous build as a backup file, and write a one-line report (counts, duration, checksum) to the log;
-  6. if a check fails, keep the old graph, keep the staging graph for inspection, and raise a bell notification.
+  5. compare a checksum of the new graph with the last build's; if they match, stop here and log "no change" (the 02:20 reset restores the same snapshot most nights, so this is the usual case);
+  6. otherwise, and only if the checks pass, replace the default graph with the staging graph in one SPARQL Update (`DROP` then `ADD`, or `MOVE`), keep the previous build as a backup file, and write a one-line report (counts, duration, checksum) to the log;
+  7. if a check fails, keep the old graph, keep the staging graph for inspection, and raise a bell notification.
 - **Schedule.** Nightly at 03:00, after the 02:20 reset, through the service's scheduler (`routes/console.php`), so it runs as www-data like the daily digest. On demand with the same command after a rights or privacy removal.
 - **Credentials.** The Fuseki user and password the service already holds in `.env`.
 
@@ -66,8 +67,10 @@ Option 1, with one identifier scheme.
 - Heratio's own triplestore and its extractor, which are Heratio's.
 - The reference service's dependency on a database shared with Heratio (K-9); the outbox design (option 3) belongs to the day the service has its own database.
 
-## Decisions needed
+## Decisions
 
-1. Option 1, and one identifier scheme taken from the API's `@id`.
-2. Whether `/graph` node ids change in the same release (a fixture change and a visible change for clients that stored those ids).
-3. Nightly at 03:00, after the reset.
+Taken by Dr Johan Pieterse on 19 October 2026.
+
+1. **Option 1, with one identifier scheme taken from the API's `@id`.** Agreed.
+2. **`/graph` node ids change in the same release**. Today's ids return 404, so no client can have dereferenced one; changing `/graph` separately would leave the SPARQL graph and `/graph` disagreeing for a release cycle. The change ships as a minor release with a migration note, and the `subgraph-depth-1` and `subgraph-depth-2` fixtures are re-captured in it. The old ids are not kept as aliases: they never dereferenced, and an alias could not be removed later without another breaking change.
+3. **Nightly at 03:00, after the reset.** Agreed. Little changes from day to day, so a run whose graph matches the last build's checksum swaps nothing and logs one line. The command is also run by hand straight after any rights or privacy removal.
