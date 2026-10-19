@@ -404,7 +404,7 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(fu
         ]);
     });
 
-    // OpenAPI 3.0 spec — single source of truth is AhgRic\Support\OpenApiSpec.
+    // OpenAPI 3.1 document - single source of truth is AhgRic\Support\OpenApiSpec.
     Route::get('/openapi.json', function (\Illuminate\Http\Request $r) {
         $spec = \AhgRic\Support\OpenApiSpec::build(url('/api/ric/v1'));
         return response()->json($spec, 200, [

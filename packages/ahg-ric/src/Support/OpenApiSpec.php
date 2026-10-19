@@ -5,7 +5,7 @@
  * Email: johan@plainsailingisystems.co.za
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * OpenAPI 3.0 spec for the OpenRiC Viewing + Write API. Consumed by:
+ * OpenAPI 3.1 document for the OpenRiC Viewing + Write API. Consumed by:
  *   - LinkedDataApiController::openapi()  — JSON at /api/ric/v1/openapi.json
  *   - The /api/ric/v1/docs Swagger UI page
  *   - openric.org/api-explorer/ (static copy checked into openric-spec)
@@ -21,8 +21,9 @@ class OpenApiSpec
     public static function build(string $baseUrl): array
     {
         $base = rtrim($baseUrl, '/');
-        return [
-            'openapi' => '3.0.3',
+        $release = json_decode((string) @file_get_contents(base_path('version.json')), true);
+        return self::toOpenApi31([
+            'openapi' => '3.1.0',
             'info' => [
                 'title' => 'OpenRiC Reference API',
                 'description' => implode("\n\n", [
@@ -30,12 +31,12 @@ class OpenApiSpec
                     'The same surface any OpenRiC-conformant server is expected to provide. See the spec at https://openric.org/.',
                     'All read endpoints are public. Write endpoints require `X-API-Key` with the appropriate scope (`write` / `delete`).',
                 ]),
-                'version' => '1.0.0',
+                'version' => $release['version'] ?? 'unknown',
                 'license' => ['name' => 'AGPL-3.0-or-later', 'url' => 'https://www.gnu.org/licenses/agpl-3.0.html'],
                 'contact' => ['name' => 'OpenRiC', 'url' => 'https://openric.org/'],
             ],
             'servers' => [['url' => $base, 'description' => 'This server']],
-            'security' => [[], ['ApiKeyAuth' => []]],
+            'security' => [(object) [], ['ApiKeyAuth' => []]],   // {} = no key needed; an empty PHP array would encode as [] and be invalid
             'components' => [
                 'securitySchemes' => [
                     'ApiKeyAuth' => ['type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Key',
@@ -73,7 +74,7 @@ class OpenApiSpec
                 ['name' => 'profile: round-trip-editing',     'description' => 'Create / update / delete across every writable entity. Requires X-API-Key with the `write` or `delete` scope.'],
             ],
             'paths' => self::attachProfileTags(self::paths()),
-        ];
+        ]);
     }
 
     /**
@@ -672,5 +673,25 @@ class OpenApiSpec
                 'created_at' => ['type' => 'string', 'format' => 'date-time'],
                 'reviewed_at' => ['type' => 'string', 'format' => 'date-time', 'nullable' => true]]],
         ];
+    }
+
+    /**
+     * OpenAPI 3.1 schemas are JSON Schema 2020-12, which has no `nullable`:
+     * a nullable string is `type: [string, "null"]`. Rewrite every
+     * `nullable: true` so the document is valid 3.1. (`example` stays: 3.1
+     * deprecates it on schemas but still allows it.)
+     */
+    private static function toOpenApi31(array $node): array
+    {
+        if (($node['nullable'] ?? null) === true && isset($node['type'])) {
+            $node['type'] = array_values(array_unique(array_merge((array) $node['type'], ['null'])));
+            unset($node['nullable']);
+        }
+        foreach ($node as $key => $value) {
+            if (is_array($value)) {
+                $node[$key] = self::toOpenApi31($value);
+            }
+        }
+        return $node;
     }
 }
