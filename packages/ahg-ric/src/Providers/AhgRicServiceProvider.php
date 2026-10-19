@@ -113,6 +113,7 @@ class AhgRicServiceProvider extends ServiceProvider
                 \AhgRic\Console\Commands\BackfillProductionParticipants::class,
                 \AhgRic\Console\Commands\PurgeOpenWrite::class,
                 \AhgRic\Console\Commands\DailyDigest::class,
+                \AhgRic\Console\Commands\RebuildGraph::class,
             ]);
         }
 

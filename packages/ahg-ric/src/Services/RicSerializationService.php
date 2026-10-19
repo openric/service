@@ -383,7 +383,7 @@ class RicSerializationService
         $ricFunc = [
             '@context' => $this->ricoContext(),
             '@id' => $this->baseUri . '/function/' . $function->id,
-            '@type' => 'rico:Function',
+            '@type' => 'openricx:Function',
         ];
 
         // ISDF: Name
@@ -1032,23 +1032,31 @@ class RicSerializationService
      */
     private function getLanguagesForRecord(int $ioId): array
     {
-        return DB::table('object_term_relation')
-            ->join('term_i18n', function ($j) {
-                $j->on('object_term_relation.term_id', '=', 'term_i18n.id')
-                   ->where('term_i18n.culture', '=', 'en');
-            })
-            ->join('term', 'object_term_relation.term_id', '=', 'term.id')
-            ->where('object_term_relation.object_id', $ioId)
-            ->where('term.taxonomy_id', 7)
-            ->pluck('term_i18n.name')
-            // ponytail: the value is the language's English name from the term
-            // table, not an ISO 639 code; openricx:languageCode expects a code.
-            // Upgrade path: map names to ISO 639-3 when this path is next used.
-            ->map(fn($lang) => [
-                '@type' => 'rico:Language',
-                'rico:name' => $lang,
-            ])
-            ->toArray();
+        // AtoM keeps a description's languages of material in the property
+        // table (name 'language'), as a PHP-serialized list of ISO 639 codes
+        // in property_i18n.value. Read it without allowing objects, and keep
+        // only values shaped like a language code; anything else is skipped
+        // rather than guessed at.
+        $values = DB::table('property')
+            ->join('property_i18n', 'property.id', '=', 'property_i18n.id')
+            ->where('property.object_id', $ioId)
+            ->where('property.name', 'language')
+            ->pluck('property_i18n.value');
+
+        $codes = [];
+        foreach ($values as $value) {
+            $list = is_string($value) ? @unserialize($value, ['allowed_classes' => false]) : false;
+            foreach (is_array($list) ? $list : [$value] as $code) {
+                if (is_string($code) && preg_match('/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/', $code)) {
+                    $codes[$code] = true;
+                }
+            }
+        }
+
+        return array_map(fn ($code) => [
+            '@type' => 'rico:Language',
+            'openricx:languageCode' => $code,
+        ], array_keys($codes));
     }
 
     /**
@@ -1248,7 +1256,7 @@ class RicSerializationService
             ->get()
             ->map(fn($func) => [
                 '@id' => $this->baseUri . '/function/' . $func->id,
-                '@type' => 'rico:Function',
+                '@type' => 'openricx:Function',
                 'rico:name' => $func->authorized_form_of_name,
             ])
             ->toArray();
@@ -1312,7 +1320,7 @@ class RicSerializationService
         }
 
         return [
-            '@type' => 'rico:ContactPoint',
+            '@type' => 'openricx:ContactPoint',
             'openricx:streetAddress' => $contact->street_address ?? null,
             'openricx:postalCode' => $contact->postal_code ?? null,
             'openricx:city' => $contact->city ?? null,
