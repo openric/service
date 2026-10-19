@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.21 — 2026-10-19
+
+- The service's own OpenAPI document is OpenAPI 3.1.0, matching the specification's contract: nullable fields use JSON Schema null types, the optional-key security entry is a valid empty object, info.version reports the service release instead of 1.0.0, and the unused static openapi.json that described RiC as ISO 23278 is removed
 ## v0.17.20 — 2026-10-19
 
 - New command openric:rebuild-graph rebuilds the public SPARQL graph from the API serializer under the API identifiers, checked before it replaces the old graph; records state their languages from AtoM's language properties as ISO codes; functions and contact points are typed openricx:Function and openricx:ContactPoint, the classes the specification defines, instead of two classes RiC-O 1.1 does not have
