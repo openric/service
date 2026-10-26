@@ -137,12 +137,13 @@ XML;
 
     private function listSets(Request $request): string
     {
-        // Sets = top-level (fonds-level) information_objects.
+        // Sets = top-level (fonds-level) information_objects: children of AtoM's
+        // root, or rows with no parent.
         $fonds = \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
             })
-            ->whereNull('io.parent_id')
+            ->where(fn ($w) => $w->whereNull('io.parent_id')->orWhere('io.parent_id', \AhgRic\Support\Visibility::ROOT_ID))
             ->select('io.id', 'i18n.title')
             ->orderBy('io.id')
             ->limit(500)
@@ -209,7 +210,7 @@ XML;
         foreach ($rows as $r) {
             $identifier = "oai:{$host}:{$r->id}";
             $datestamp = gmdate('Y-m-d\TH:i:s\Z', strtotime($r->updated_at ?? 'now'));
-            $setSpec = $r->parent_id === null ? "      <setSpec>fonds:{$r->id}</setSpec>\n" : '';
+            $setSpec = $this->isTopLevel($r) ? "      <setSpec>fonds:{$r->id}</setSpec>\n" : '';
             $header = "      <header>\n"
                     . "        <identifier>{$identifier}</identifier>\n"
                     . "        <datestamp>{$datestamp}</datestamp>\n"
@@ -265,7 +266,7 @@ XML;
         $identifier = "oai:{$host}:{$row->id}";
         $datestamp = gmdate('Y-m-d\TH:i:s\Z', strtotime($row->updated_at ?? 'now'));
         $meta = $this->renderMetadata($row, $prefix);
-        $setSpec = $row->parent_id === null ? "      <setSpec>fonds:{$row->id}</setSpec>\n" : '';
+        $setSpec = $this->isTopLevel($row) ? "      <setSpec>fonds:{$row->id}</setSpec>\n" : '';
 
         return "  <GetRecord>\n"
              . "    <record>\n"
@@ -326,6 +327,11 @@ XML;
     }
 
     // ----- Helpers -------------------------------------------------
+
+    private function isTopLevel(object $row): bool
+    {
+        return $row->parent_id === null || (int) $row->parent_id === \AhgRic\Support\Visibility::ROOT_ID;
+    }
 
     private function parseOaiIdentifier(string $ident): ?int
     {

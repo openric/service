@@ -22,11 +22,12 @@ use Illuminate\Http\Request;
 class HideUnpublished
 {
     /**
-     * Reads that carry no entity data. Their ids are dropdown or term ids, which
-     * can collide with an object id. SPARQL answers from the published-only
+     * Reads that carry no entity data. Their ids are dropdown, term or audit-row
+     * ids, which can collide with an object id; revisions check their entity in
+     * the controller. SPARQL answers from the published-only
      * graph that openric:rebuild-graph builds.
      */
-    private const SKIP = '#^api/ric/v1/(vocabulary|relation-types|sparql|openapi\.json|health|conformance|stats)(/|$)#';
+    private const SKIP = '#^api/ric/v1/(vocabulary|relation-types|sparql|openapi\.json|health|conformance|stats)(/|$)|/revisions$#';
 
     public function handle(Request $request, Closure $next)
     {

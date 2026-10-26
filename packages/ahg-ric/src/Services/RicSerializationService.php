@@ -985,41 +985,63 @@ class RicSerializationService
     // =========================================================================
 
     /**
-     * Get dates for a record (event rows attached to the information object).
+     * Get dates for a record: its AtoM events, and the production and
+     * accumulation activities it results from.
      * Returns a list of openricx:DateRange objects, or null when there are none.
      */
     private function getDatesForRecord(int $ioId): ?array
     {
+        // Event types 111 and 112 are creation and accumulation, as in the graph
+        // serializer; other event types carry no date type.
+        $eventTypes = [111 => 'creation', 112 => 'accumulation'];
         $dates = DB::table('event')
             ->leftJoin('event_i18n', function ($j) {
                 $j->on('event.id', '=', 'event_i18n.id')
                    ->where('event_i18n.culture', '=', 'en');
             })
             ->where('event.object_id', $ioId)
-            ->select('event.id', 'event.type_id', 'event.start_date', 'event.end_date', 'event_i18n.date as date_display')
-            ->get();
+            ->select('event.type_id', 'event.start_date', 'event.end_date', 'event_i18n.date as date_display')
+            ->get()
+            ->map(fn ($d) => [$eventTypes[(int) $d->type_id] ?? null, $d->start_date, $d->end_date, $d->date_display]);
 
-        if ($dates->isEmpty()) {
-            return null;
-        }
+        // RiC-native descriptions date the record through the production and
+        // accumulation activities related to it (mapping 7.2: the dates of
+        // creation and accumulation), not through AtoM events.
+        $activityTypes = ['production' => 'creation', 'accumulation' => 'accumulation'];
+        $activities = DB::table('relation as r')
+            ->join('ric_activity as a', function ($j) {
+                $j->on('a.id', '=', 'r.subject_id')->orOn('a.id', '=', 'r.object_id');
+            })
+            ->leftJoin('ric_activity_i18n as ai', function ($j) {
+                $j->on('a.id', '=', 'ai.id')->on('ai.culture', '=', 'a.source_culture');
+            })
+            ->join('ric_relation_meta as m', 'm.relation_id', '=', 'r.id')
+            ->where(fn ($w) => $w->where('r.subject_id', $ioId)->orWhere('r.object_id', $ioId))
+            ->whereIn('m.rico_predicate', ['rico:resultsOrResultedIn', 'rico:resultsOrResultedFrom'])
+            ->whereIn('a.type_id', array_keys($activityTypes))
+            ->select('a.id', 'a.type_id', 'a.start_date', 'a.end_date', 'ai.date_display')
+            ->distinct()
+            ->orderBy('a.start_date')
+            ->get()
+            ->map(fn ($a) => [$activityTypes[$a->type_id], $a->start_date, $a->end_date, $a->date_display]);
 
         // openricx:DateRange objects (a subclass of rico:Date) with the date
         // type as a concept from the OpenRiC date-type vocabulary (spec v0.50.0).
-        // Event types 111 and 112 are creation and accumulation, as in the graph
-        // serializer; other event types carry no date type.
-        $dateTypes = [111 => 'creation', 112 => 'accumulation'];
         $dateRanges = [];
-        foreach ($dates as $date) {
+        foreach ($dates->concat($activities) as [$type, $begin, $end, $display]) {
             $range = array_filter([
                 '@type' => 'openricx:DateRange',
-                'rico:beginningDate' => $date->start_date ?? null,
-                'rico:endDate' => $date->end_date ?? null,
-                'rico:expressedDate' => $date->date_display ?? null,
+                'rico:beginningDate' => $begin,
+                'rico:endDate' => $end,
+                'rico:expressedDate' => $display,
             ], fn ($v) => $v !== null && $v !== '');
-            if (isset($dateTypes[(int) $date->type_id])) {
-                $range['rico:hasDateType'] = ['@id' => 'https://openric.org/vocab/date-type/' . $dateTypes[(int) $date->type_id]];
+            if (count($range) === 1) {
+                continue; // no date at all, only the @type
             }
-            if (count($range) > 1) {
+            if ($type) {
+                $range['rico:hasDateType'] = ['@id' => 'https://openric.org/vocab/date-type/' . $type];
+            }
+            if (!in_array($range, $dateRanges, true)) {
                 $dateRanges[] = $range;
             }
         }

@@ -29,8 +29,8 @@ use Illuminate\Support\Facades\Schema;
 
 final class Visibility
 {
-    /** AtoM's root description: the tree root, not a description anyone reads. */
-    private const ROOT_ID = 1;
+    /** QubitInformationObject::ROOT_ID. */
+    public const ROOT_ID = 1;
 
     /** Keys whose value names the entity a node is about, or an end of an edge. */
     private const REFERENCE_KEYS = [
@@ -51,9 +51,11 @@ final class Visibility
         // Fail closed: a description that is not marked Published, or that also
         // carries any other publication status, is hidden. With no status table
         // every description is hidden. (Missing tables occur only in tests.)
+        // AtoM's root (parent_id null, no title) is hidden too: it is the tree's
+        // anchor, not a description; parent_id null rows are otherwise ordinary.
         $records = [];
         if (Schema::hasTable('information_object')) {
-            $query = DB::table('information_object')->where('id', '!=', self::ROOT_ID);
+            $query = DB::table('information_object');
             if (Schema::hasTable('status')) {
                 $status = fn (bool $published) => DB::table('status')
                     ->where('type_id', TermId::STATUS_TYPE_PUBLICATION)
@@ -61,7 +63,7 @@ final class Visibility
                     ->select('object_id');
                 $query->where(fn ($w) => $w->whereNotIn('id', $status(true))->orWhereIn('id', $status(false)));
             }
-            $records = $query->pluck('id')->all();
+            $records = array_merge($query->pluck('id')->all(), [self::ROOT_ID]);
         }
 
         $ids = $records;

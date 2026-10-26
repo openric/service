@@ -26,6 +26,7 @@ class PublishedOnlyTest extends TestCase
     private const PUBLISHED = 101;
     private const DRAFT = 102;
     private const NO_STATUS = 103;
+    private const PUBLISHED_CHILD = 104;
     private const DRAFT_IMAGE = 201;
 
     protected function setUp(): void
@@ -44,6 +45,8 @@ class PublishedOnlyTest extends TestCase
             $t->string('identifier')->nullable();
             $t->unsignedBigInteger('level_of_description_id')->nullable();
             $t->unsignedBigInteger('parent_id')->nullable();
+            $t->integer('lft')->default(0);
+            $t->string('source_culture')->default('en');
         });
         Schema::create('information_object_i18n', function ($t) {
             $t->unsignedBigInteger('id');
@@ -69,13 +72,27 @@ class PublishedOnlyTest extends TestCase
             $t->string('mime_type')->nullable();
         });
 
-        foreach ([self::PUBLISHED => 'published-fonds', self::DRAFT => 'draft-file', self::NO_STATUS => 'unmarked-item'] as $id => $slug) {
+        // AtoM's root (id 1) above a fonds; under the fonds a published file,
+        // a draft and a description with no status, in that tree order.
+        $tree = [
+            1 => ['root-slug', null],
+            self::PUBLISHED => ['published-fonds', 1],
+            self::PUBLISHED_CHILD => ['published-file', self::PUBLISHED],
+            self::DRAFT => ['draft-file', self::PUBLISHED],
+            self::NO_STATUS => ['unmarked-item', self::PUBLISHED],
+        ];
+        $lft = 0;
+        foreach ($tree as $id => [$slug, $parent]) {
             DB::table('object')->insert(['id' => $id, 'class_name' => 'QubitInformationObject']);
             DB::table('slug')->insert(['object_id' => $id, 'slug' => $slug]);
-            DB::table('information_object')->insert(['id' => $id]);
-            DB::table('information_object_i18n')->insert(['id' => $id, 'title' => ucfirst(str_replace('-', ' ', $slug))]);
+            DB::table('information_object')->insert(['id' => $id, 'parent_id' => $parent, 'lft' => ++$lft]);
+            if ($id !== 1) {
+                DB::table('information_object_i18n')->insert(['id' => $id, 'title' => ucfirst(str_replace('-', ' ', $slug))]);
+            }
         }
-        DB::table('status')->insert(['object_id' => self::PUBLISHED, 'type_id' => 158, 'status_id' => 160]);
+        foreach ([1, self::PUBLISHED, self::PUBLISHED_CHILD] as $id) {
+            DB::table('status')->insert(['object_id' => $id, 'type_id' => 158, 'status_id' => 160]);
+        }
         DB::table('status')->insert(['object_id' => self::DRAFT, 'type_id' => 158, 'status_id' => 159]);
         DB::table('object')->insert(['id' => self::DRAFT_IMAGE, 'class_name' => 'QubitDigitalObject']);
         DB::table('digital_object')->insert(['id' => self::DRAFT_IMAGE, 'object_id' => self::DRAFT, 'path' => 'a.jpg', 'mime_type' => 'image/jpeg']);
@@ -84,9 +101,27 @@ class PublishedOnlyTest extends TestCase
 
     public function test_lists_hold_published_descriptions_only(): void
     {
+        // The root is published in AtoM but is the tree's anchor, not a description.
         $r = $this->getJson('/api/ric/v1/records')->assertOk();
-        $this->assertSame(1, $r->json('openric:total'));
-        $this->assertSame(['Published fonds'], array_column($r->json('openric:items'), 'rico:title'));
+        $this->assertSame(2, $r->json('openric:total'));
+        $this->assertSame(['Published fonds', 'Published file'], array_column($r->json('openric:items'), 'rico:title'));
+        $this->getJson('/api/ric/v1/records/root-slug')->assertNotFound();
+
+        $this->assertSame(['Published fonds', 'Published file'],
+            array_column($this->getJson('/api/ric/v1/autocomplete?q=published&types=Record')->assertOk()->json(), 'label'));
+        $this->assertSame([], $this->getJson('/api/ric/v1/autocomplete?q=draft&types=records')->assertOk()->json());
+    }
+
+    public function test_hierarchy_follows_the_tree_and_shows_visible_descriptions_only(): void
+    {
+        $fonds = $this->getJson('/api/ric/v1/hierarchy/' . self::PUBLISHED)->assertOk();
+        $this->assertNull($fonds->json('parent'));
+        $this->assertSame(['published-file'], array_column($fonds->json('children'), 'slug'));
+        $this->assertSame(url('/informationobject/published-file'), $fonds->json('children.0.@id'));
+
+        $file = $this->getJson('/api/ric/v1/hierarchy/' . self::PUBLISHED_CHILD)->assertOk();
+        $this->assertSame('Published fonds', $file->json('parent.title'));
+        $this->assertSame([], $file->json('siblings'));
     }
 
     public function test_hidden_descriptions_answer_404_as_missing_ones_do(): void

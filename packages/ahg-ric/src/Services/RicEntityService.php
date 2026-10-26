@@ -807,7 +807,18 @@ class RicEntityService
         $results = collect();
         $q = '%' . $query . '%';
 
-        $types = $typeFilter ? explode(',', $typeFilter) : ['place', 'rule', 'activity', 'instantiation', 'actor', 'io', 'repository', 'digital_object'];
+        // types= takes the internal keys or the names results carry (Record,
+        // Agent, DigitalObject, as the API documents: types=place,agent,record),
+        // in any case and singular or plural.
+        $aliases = [
+            'record' => 'io', 'records' => 'io', 'agent' => 'actor', 'agents' => 'actor', 'actors' => 'actor',
+            'digitalobject' => 'digital_object', 'digitalobjects' => 'digital_object', 'digital_objects' => 'digital_object',
+            'places' => 'place', 'rules' => 'rule', 'activities' => 'activity',
+            'instantiations' => 'instantiation', 'repositories' => 'repository',
+        ];
+        $types = $typeFilter
+            ? array_map(fn ($t) => $aliases[strtolower(trim($t))] ?? strtolower(trim($t)), explode(',', $typeFilter))
+            : ['place', 'rule', 'activity', 'instantiation', 'actor', 'io', 'repository', 'digital_object'];
 
         if (in_array('place', $types)) {
             $results = $results->merge(

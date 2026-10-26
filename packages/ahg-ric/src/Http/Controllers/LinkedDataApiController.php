@@ -1561,7 +1561,25 @@ class LinkedDataApiController extends Controller
             return response()->json($result);
         }
 
-        // For non-RicPlace entities, fall back to relation-based hierarchy using
+        // Descriptions: the AtoM tree (information_object.parent_id), visible
+        // descriptions only, so a top-level description has no parent (the root
+        // is hidden).
+        if ($className === 'QubitInformationObject') {
+            $parentId = DB::table('information_object')->where('id', $id)->value('parent_id');
+            if (in_array('parent', $include)) {
+                $result['parent'] = $parentId ? $this->recordNode($this->recordNodes()->where('io.id', $parentId)->first()) : null;
+            }
+            if (in_array('children', $include)) {
+                // ponytail: unpaged; fine at this catalogue's size (hundreds), page it when a series holds thousands.
+                $result['children'] = $this->recordNodes()->where('io.parent_id', $id)->get()->map(fn ($r) => $this->recordNode($r));
+            }
+            if (in_array('siblings', $include) && $parentId) {
+                $result['siblings'] = $this->recordNodes()->where('io.parent_id', $parentId)->where('io.id', '!=', $id)->get()->map(fn ($r) => $this->recordNode($r));
+            }
+            return response()->json($result);
+        }
+
+        // For other entities, fall back to relation-based hierarchy using
         // ric_relation_meta dropdown_code IN (has_part, includes, is_superior_of).
         $hierPredicates = ['has_part', 'includes', 'is_superior_of', 'is_part_of', 'is_included_in'];
         if (in_array('children', $include)) {
@@ -1583,6 +1601,26 @@ class LinkedDataApiController extends Controller
                 ->first();
         }
         return response()->json($result);
+    }
+
+    /** Visible descriptions as hierarchy nodes: id, @id, slug, title, level. */
+    private function recordNodes()
+    {
+        return \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
+            ->leftJoin('information_object_i18n as i18n', function ($j) {
+                $j->on('io.id', '=', 'i18n.id')->on('i18n.culture', '=', 'io.source_culture');
+            })
+            ->leftJoin('term_i18n as level', function ($j) {
+                $j->on('io.level_of_description_id', '=', 'level.id')->where('level.culture', '=', 'en');
+            })
+            ->leftJoin('slug as s', 'io.id', '=', 's.object_id')
+            ->select('io.id', 's.slug', 'i18n.title', 'level.name as level')
+            ->orderBy('io.lft');
+    }
+
+    private function recordNode(?object $row): ?array
+    {
+        return $row ? ['@id' => url('/informationobject/' . $row->slug)] + (array) $row : null;
     }
 
     private function flatPlace(int $id): ?array
