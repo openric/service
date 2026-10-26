@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.26 — 2026-10-26
+
+- The public read API shows published descriptions only: a draft, or a description with no publication status, is left out of every list, search and harvest, answers 404 exactly as a missing one does, and nested references to it are removed from every response and from the nightly SPARQL graph; descriptions created through the write API get a publication status, draft unless publication_status is published
 ## v0.17.25 — 2026-10-19
 
 - The wizard suggestion endpoint answers a gateway timeout, which almost always means the model is loading after a quiet period, with 503 model_warming, a Retry-After header and a plain message, instead of a generic unavailable error, so the modelling wizard can retry once by itself
