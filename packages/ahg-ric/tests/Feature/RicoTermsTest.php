@@ -26,7 +26,8 @@ class RicoTermsTest extends TestCase
         $this->assertSame('rico:hasOrHadInstantiation', RicoTerms::canonical('rico:hasInstantiation'));
         $this->assertSame('rico:hasOrHadHolder', RicoTerms::canonical('rico:heldBy'));
         $this->assertSame('rico:isOrWasPerformedBy', RicoTerms::canonical('rico:isOrWasPerformedBy'));
-        $this->assertSame('openricx:isAssociatedWith', RicoTerms::canonical('openricx:isAssociatedWith'));
+        // openricx:isAssociatedWith is not in the published extension ontology; the fallback is rico:isRelatedTo.
+        $this->assertSame('rico:isRelatedTo', RicoTerms::canonical('openricx:isAssociatedWith'));
         $this->assertNull(RicoTerms::canonical(null));
     }
 
