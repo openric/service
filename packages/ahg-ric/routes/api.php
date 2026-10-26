@@ -33,6 +33,7 @@ use AhgRic\Http\Controllers\WizardSuggestController;
 use AhgRic\Http\Controllers\UsageController;
 use AhgRic\Http\Controllers\AskController;
 use AhgRic\Http\Controllers\StatsController;
+use AhgRic\Http\Middleware\HideUnpublished;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,7 +55,8 @@ use AhgRic\Http\Controllers\StatsController;
 |
 */
 
-Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+// HideUnpublished: a visitor sees published descriptions only (Support\Visibility).
+Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', HideUnpublished::class])->group(function () {
     // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
     Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
     

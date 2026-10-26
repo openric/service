@@ -172,7 +172,13 @@ class RebuildGraph extends Command
                         $skipped++;
                         continue;
                     }
-                    $doc = $response->getData(true);
+                    // The list already leaves hidden entities out; this drops
+                    // nested references to them, as HideUnpublished does for the API.
+                    $doc = \AhgRic\Support\Visibility::scrub($response->getData(true));
+                    if ($doc === null) {
+                        $skipped++;
+                        continue;
+                    }
                     $context ??= $doc['@context'] ?? null;
                     unset($doc['@context']);
                     $docs[] = $doc;

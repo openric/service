@@ -905,14 +905,9 @@ class RicEntityService
             );
         }
 
-        // Hide open-write (sandbox) entities from autocomplete (all RiC entity
-        // ids share one global object-id space, so a single id set suffices).
-        if (\AhgRic\Support\OpenWriteFilter::enabled()) {
-            $hidden = array_flip(DB::table('openric_open_write')->pluck('entity_id')->all());
-            if ($hidden) {
-                $results = $results->reject(function ($r) use ($hidden) { return isset($hidden[$r->id]); });
-            }
-        }
+        // Hide unpublished descriptions, their digital objects and open-write
+        // (sandbox) entities (all ids share one object-id space).
+        $results = $results->reject(fn ($r) => \AhgRic\Support\Visibility::isHidden((int) $r->id));
 
         return $results->take($limit);
     }
@@ -1065,6 +1060,7 @@ class RicEntityService
      *   repository_id              → information_object.repository_id
      *   parent_id                  → information_object.parent_id (hierarchy)
      *   description_status_id, description_detail_id, source_standard (default "ISAD(G)")
+     *   publication_status         → "published" or "draft" (default)
      *   scope_and_content, extent_and_medium, archival_history, acquisition,
      *   arrangement, access_conditions, physical_characteristics, etc.
      *                              → information_object_i18n.*
@@ -1128,6 +1124,16 @@ class RicEntityService
                 'sources' => $data['sources'] ?? null,
                 'revision_history' => $data['revision_history'] ?? null,
             ]);
+
+            // Publication status, as Heratio's V2 create: draft unless asked for.
+            // A draft is not visible on the public read API (Support\Visibility).
+            \AhgCore\Support\StatusRow::set(
+                $id,
+                \AhgCore\Constants\TermId::STATUS_TYPE_PUBLICATION,
+                ($data['publication_status'] ?? 'draft') === 'published'
+                    ? \AhgCore\Constants\TermId::PUBLICATION_STATUS_PUBLISHED
+                    : \AhgCore\Constants\TermId::PUBLICATION_STATUS_DRAFT,
+            );
 
             return $id;
         });

@@ -110,7 +110,7 @@ class LinkedDataApiController extends Controller
 
         // Culture filter — accept ?culture=fr|nl|de|etc.; fall back to app locale.
         $culture = $this->resolveCulture($request);
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('actor as a'), 'a.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('actor as a'), 'a.id')
             ->leftJoin('actor_i18n as i18n', function ($j) use ($culture) {
                 $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -156,7 +156,7 @@ class LinkedDataApiController extends Controller
     {
         $actor = $this->findByKey('actor', $slug);
 
-        if (!$actor) {
+        if (!$actor || \AhgRic\Support\Visibility::isHidden($actor->id)) {
             return ProblemDetails::notFound('Agent not found');
         }
 
@@ -182,7 +182,7 @@ class LinkedDataApiController extends Controller
 
         // Filter every _i18n join by culture — without this, one IO row with
         // three translations appears three times (a regression seen in v0.2.x).
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('information_object as io'), 'io.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) use ($culture) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -229,7 +229,7 @@ class LinkedDataApiController extends Controller
     {
         $io = $this->findByKey('information_object', $slug);
 
-        if (!$io) {
+        if (!$io || \AhgRic\Support\Visibility::isHidden($io->id)) {
             return ProblemDetails::notFound('Record not found');
         }
 
@@ -254,13 +254,14 @@ class LinkedDataApiController extends Controller
             ->select('information_object.*')
             ->first();
 
-        if (!$io) {
+        if (!$io || \AhgRic\Support\Visibility::isHidden($io->id)) {
             return ProblemDetails::notFound('Record not found');
         }
 
         // pretty=true returns a JSON string; we need the array so Turtle + RDF/XML
         // converters (and default JSON-LD response) can all consume the same shape.
-        $graph = $this->serializer->exportRecordSet($io->id);
+        // Turtle and RDF/XML bypass the JSON scrub in HideUnpublished, so scrub here.
+        $graph = \AhgRic\Support\Visibility::scrub($this->serializer->exportRecordSet($io->id)) ?? [];
 
         // Content negotiation — ?format= takes precedence over Accept.
         $format = strtolower((string) $request->query('format', ''));
@@ -304,7 +305,7 @@ class LinkedDataApiController extends Controller
         $page = max(1, (int) $request->get('page', 1));
         $limit = max(1, min((int) $request->get('limit', 50), 200));
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('function_object as f'), 'f.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('function_object as f'), 'f.id')
             ->leftJoin('function_object_i18n as fi', function ($j) {
                 $j->on('f.id', '=', 'fi.id')->on('fi.culture', '=', 'f.source_culture');
             })
@@ -330,7 +331,7 @@ class LinkedDataApiController extends Controller
      */
     public function showFunction(int $id): JsonResponse
     {
-        $ric = $this->serializer->serializeFunction($id);
+        $ric = \AhgRic\Support\Visibility::isHidden($id) ? ['error' => 'Function not found'] : $this->serializer->serializeFunction($id);
 
         if (isset($ric['error'])) {
             return ProblemDetails::notFound($ric['error']);
@@ -350,7 +351,7 @@ class LinkedDataApiController extends Controller
         $page = max(1, (int) $request->get('page', 1));
         $limit = max(1, min((int) $request->get('limit', 50), 200));
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('repository as r'), 'r.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('repository as r'), 'r.id')
             ->leftJoin('actor_i18n as i18n', function ($j) {
                 $j->on('r.id', '=', 'i18n.id')
                     ->whereRaw('i18n.culture = (SELECT a.source_culture FROM actor a WHERE a.id = r.id)');
@@ -380,7 +381,7 @@ class LinkedDataApiController extends Controller
     {
         $repo = $this->findByKey('repository', $slug);
 
-        if (!$repo) {
+        if (!$repo || \AhgRic\Support\Visibility::isHidden($repo->id)) {
             return ProblemDetails::notFound('Repository not found');
         }
 
@@ -402,7 +403,7 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_place as p'), 'p.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('ric_place as p'), 'p.id')
             ->leftJoin('ric_place_i18n as i18n', function ($j) use ($culture) {
                 $j->on('p.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -435,7 +436,7 @@ class LinkedDataApiController extends Controller
      */
     public function showPlace(int $id): JsonResponse
     {
-        $ric = $this->serializer->serializePlace($id);
+        $ric = \AhgRic\Support\Visibility::isHidden($id) ? ['error' => 'Place not found'] : $this->serializer->serializePlace($id);
 
         if (isset($ric['error'])) {
             return ProblemDetails::notFound($ric['error']);
@@ -457,7 +458,7 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_rule as r'), 'r.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('ric_rule as r'), 'r.id')
             ->leftJoin('ric_rule_i18n as i18n', function ($j) use ($culture) {
                 $j->on('r.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -494,7 +495,7 @@ class LinkedDataApiController extends Controller
      */
     public function showRule(int $id): JsonResponse
     {
-        $ric = $this->serializer->serializeRule($id);
+        $ric = \AhgRic\Support\Visibility::isHidden($id) ? ['error' => 'Rule not found'] : $this->serializer->serializeRule($id);
 
         if (isset($ric['error'])) {
             return ProblemDetails::notFound($ric['error']);
@@ -517,7 +518,7 @@ class LinkedDataApiController extends Controller
         $type = $request->get('type');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_activity as a'), 'a.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('ric_activity as a'), 'a.id')
             ->leftJoin('ric_activity_i18n as i18n', function ($j) use ($culture) {
                 $j->on('a.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -553,7 +554,7 @@ class LinkedDataApiController extends Controller
      */
     public function showActivity(int $id): JsonResponse
     {
-        $ric = $this->serializer->serializeActivity($id);
+        $ric = \AhgRic\Support\Visibility::isHidden($id) ? ['error' => 'Activity not found'] : $this->serializer->serializeActivity($id);
 
         if (isset($ric['error'])) {
             return ProblemDetails::notFound($ric['error']);
@@ -576,7 +577,7 @@ class LinkedDataApiController extends Controller
         $mime = $request->get('mime');
         $culture = app()->getLocale() ?: 'en';
 
-        $query = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('ric_instantiation as ri'), 'ri.id')
+        $query = \AhgRic\Support\Visibility::hide(\DB::table('ric_instantiation as ri'), 'ri.id')
             ->leftJoin('ric_instantiation_i18n as i18n', function ($j) use ($culture) {
                 $j->on('ri.id', '=', 'i18n.id')->where('i18n.culture', '=', $culture);
             })
@@ -616,7 +617,7 @@ class LinkedDataApiController extends Controller
      */
     public function showInstantiation(int $id): JsonResponse
     {
-        $ric = $this->serializer->serializeInstantiation($id);
+        $ric = \AhgRic\Support\Visibility::isHidden($id) ? ['error' => 'Instantiation not found'] : $this->serializer->serializeInstantiation($id);
 
         if (isset($ric['error'])) {
             return ProblemDetails::notFound($ric['error']);
@@ -798,7 +799,7 @@ class LinkedDataApiController extends Controller
                 break;
         }
 
-        if (!$graph || empty($graph['nodes'])) {
+        if (!$graph || empty($graph['nodes']) || \AhgRic\Support\Visibility::isHiddenKey($lastSegment)) {
             return ProblemDetails::notFound("no entity found for uri {$uri}", ['uri' => $uri]);
         }
 
@@ -1015,7 +1016,7 @@ class LinkedDataApiController extends Controller
         }
 
         // Records linked via relation table (with ric_relation_meta predicates where available).
-        $rels = \AhgRic\Support\OpenWriteFilter::hide(\DB::table('relation as r'), 'r.id')
+        $rels = \AhgRic\Support\Visibility::hide(\DB::table('relation as r'), 'r.id')
             ->leftJoin('ric_relation_meta as rm', 'r.id', '=', 'rm.relation_id')
             ->leftJoin('information_object_i18n as ioi_o', function ($j) use ($culture) {
                 $j->on('r.object_id', '=', 'ioi_o.id')->where('ioi_o.culture', '=', $culture);
@@ -1377,7 +1378,7 @@ class LinkedDataApiController extends Controller
 
         // Attach the parent information_object, if any.
         if ($event->object_id) {
-            $io = \AhgRic\Support\OpenWriteFilter::hide(DB::table('information_object as io'), 'io.id')
+            $io = \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
                 ->leftJoin('information_object_i18n as i18n', function ($j) {
                     $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
                 })
@@ -1400,7 +1401,7 @@ class LinkedDataApiController extends Controller
 
         // Attach the parent actor, if any.
         if ($event->actor_id) {
-            $actor = \AhgRic\Support\OpenWriteFilter::hide(DB::table('actor as a'), 'a.id')
+            $actor = \AhgRic\Support\Visibility::hide(DB::table('actor as a'), 'a.id')
                 ->leftJoin('actor_i18n as ai', function ($j) {
                     $j->on('a.id', '=', 'ai.id')->where('ai.culture', 'en');
                 })
@@ -1466,7 +1467,8 @@ class LinkedDataApiController extends Controller
     /** One relation row with its RiC metadata; shared by the list and show endpoints. */
     private function relationQuery()
     {
-        return DB::table('relation as r')
+        $q = \AhgRic\Support\Visibility::hide(DB::table('relation as r'), 'r.subject_id');
+        return \AhgRic\Support\Visibility::hide($q, 'r.object_id')
             ->join('ric_relation_meta as m', 'r.id', '=', 'm.relation_id')
             ->leftJoin('object as subj_o', 'r.subject_id', '=', 'subj_o.id')
             ->leftJoin('object as obj_o', 'r.object_id', '=', 'obj_o.id')
@@ -1494,7 +1496,13 @@ class LinkedDataApiController extends Controller
      */
     public function relationsFor(int $id): JsonResponse
     {
-        $relations = $this->entities->getRelationsForEntity($id);
+        if (\AhgRic\Support\Visibility::isHidden($id) || !DB::table('object')->where('id', $id)->exists()) {
+            return ProblemDetails::notFound('Resource not found');
+        }
+        $relations = $this->entities->getRelationsForEntity($id)->reject(
+            fn ($r) => \AhgRic\Support\Visibility::isHidden((int) $r->subject_id)
+                || \AhgRic\Support\Visibility::isHidden((int) $r->target_id)
+        );
         $grouped = $relations->groupBy('direction');
         return response()->json([
             'entity_id' => $id,
@@ -1514,6 +1522,9 @@ class LinkedDataApiController extends Controller
 
         // Find entity class_name to route the query.
         $className = DB::table('object')->where('id', $id)->value('class_name');
+        if (!$className || \AhgRic\Support\Visibility::isHidden($id)) {
+            return ProblemDetails::notFound('Resource not found');
+        }
 
         $result = ['entity_id' => $id, 'class' => $className];
 
@@ -1631,6 +1642,9 @@ class LinkedDataApiController extends Controller
      */
     public function entitiesForRecord(int $id, Request $request): JsonResponse
     {
+        if (\AhgRic\Support\Visibility::isHidden($id) || !DB::table('information_object')->where('id', $id)->exists()) {
+            return ProblemDetails::notFound('Record not found');
+        }
         $types = array_filter(explode(',', $request->get('types', 'place,rule,activity,instantiation')));
 
         // Find outgoing relations whose object is one of the requested types.
@@ -1674,7 +1688,7 @@ class LinkedDataApiController extends Controller
     public function entityInfo(int $id): JsonResponse
     {
         $className = DB::table('object')->where('id', $id)->value('class_name');
-        if (!$className) {
+        if (!$className || \AhgRic\Support\Visibility::isHidden($id)) {
             return ProblemDetails::notFound('Resource not found');
         }
 
@@ -1771,6 +1785,9 @@ class LinkedDataApiController extends Controller
                      'instantiations' => 'instantiation', 'agents' => 'agent', 'records' => 'record',
                      'repositories' => 'repository', 'functions' => 'function', 'relations' => 'relation'];
         $entityType = $singular[$type] ?? rtrim($type, 's');
+        if (\AhgRic\Support\Visibility::isHidden($id)) {
+            return ProblemDetails::notFound('Resource not found');
+        }
         $rows = DB::table('openric_audit_log')
             ->where('entity_type', $entityType)
             ->where('entity_id', $id)
@@ -1780,6 +1797,12 @@ class LinkedDataApiController extends Controller
                 'id', 'action', 'entity_type', 'entity_id',
                 'api_key_id', 'requester_ip', 'payload_json', 'created_at',
             ]);
+
+        // An id that never existed answers like a hidden one; a deleted entity
+        // keeps its audit trail.
+        if ($rows->isEmpty() && !DB::table('object')->where('id', $id)->exists()) {
+            return ProblemDetails::notFound('Resource not found');
+        }
 
         $items = $rows->map(fn($r) => [
             'id'         => (int) $r->id,
@@ -2401,7 +2424,7 @@ class LinkedDataApiController extends Controller
     public function thumbnail(Request $request, int $id): \Symfony\Component\HttpFoundation\Response
     {
         $row = DB::table('digital_object')->where('id', $id)->first(['path', 'mime_type']);
-        if (!$row) return ProblemDetails::notFound('Digital object not found', ['code' => 'not_found']);
+        if (!$row || \AhgRic\Support\Visibility::isHidden($id)) return ProblemDetails::notFound('Digital object not found', ['code' => 'not_found']);
 
         $sourceAbs = storage_path('app/uploads/' . $row->path);
         if (!file_exists($sourceAbs)) return ProblemDetails::notFound('Source file missing on disk', ['code' => 'source_missing']);

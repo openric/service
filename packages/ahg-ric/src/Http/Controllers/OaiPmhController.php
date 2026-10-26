@@ -77,7 +77,7 @@ class OaiPmhController extends Controller
 
     private function identify(string $base): string
     {
-        $earliest = DB::table('information_object as io')
+        $earliest = \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
             ->join('object as o', 'io.id', '=', 'o.id')
             ->min('o.created_at');
         $earliest = $earliest ? gmdate('Y-m-d\TH:i:s\Z', strtotime($earliest)) : '1970-01-01T00:00:00Z';
@@ -115,7 +115,7 @@ XML;
         $ident = $request->input('identifier');
         if ($ident) {
             $id = $this->parseOaiIdentifier($ident);
-            if (!$id || !DB::table('information_object')->where('id', $id)->exists()) {
+            if (!$id || \AhgRic\Support\Visibility::isHidden($id) || !DB::table('information_object')->where('id', $id)->exists()) {
                 $this->oaiError('idDoesNotExist', "Unknown identifier: {$ident}");
             }
         }
@@ -138,7 +138,7 @@ XML;
     private function listSets(Request $request): string
     {
         // Sets = top-level (fonds-level) information_objects.
-        $fonds = DB::table('information_object as io')
+        $fonds = \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
             })
@@ -177,7 +177,7 @@ XML;
             $until = $request->input('until');
         }
 
-        $q = \AhgRic\Support\OpenWriteFilter::hide(DB::table('information_object as io'), 'io.id')
+        $q = \AhgRic\Support\Visibility::hide(DB::table('information_object as io'), 'io.id')
             ->leftJoin('information_object_i18n as i18n', function ($j) {
                 $j->on('io.id', '=', 'i18n.id')->where('i18n.culture', 'en');
             })
@@ -190,7 +190,7 @@ XML;
             if (preg_match('/^fonds:(\d+)$/', $set, $m)) {
                 $fondsId = (int) $m[1];
                 $fonds = DB::table('information_object')->where('id', $fondsId)->first(['lft', 'rgt']);
-                if (!$fonds) $this->oaiError('badArgument', "Unknown set: {$set}");
+                if (!$fonds || \AhgRic\Support\Visibility::isHidden($fondsId)) $this->oaiError('badArgument', "Unknown set: {$set}");
                 $q->whereBetween('io.lft', [$fonds->lft, $fonds->rgt]);
             } else {
                 $this->oaiError('badArgument', "Unsupported set spec: {$set}");
@@ -259,7 +259,7 @@ XML;
             ->select('io.id', 'io.identifier', 'io.parent_id', 'i18n.title', 'i18n.scope_and_content',
                     'o.created_at', 'o.updated_at')
             ->first();
-        if (!$row) $this->oaiError('idDoesNotExist', "Record {$id} not found.");
+        if (!$row || \AhgRic\Support\Visibility::isHidden($id)) $this->oaiError('idDoesNotExist', "Record {$id} not found.");
 
         $host = parse_url($request->url(), PHP_URL_HOST) ?: 'openric';
         $identifier = "oai:{$host}:{$row->id}";
@@ -312,7 +312,7 @@ XML;
     private function renderRicoLd(object $row): string
     {
         try {
-            $ric = $this->serializer->serializeRecord((int) $row->id);
+            $ric = \AhgRic\Support\Visibility::scrub($this->serializer->serializeRecord((int) $row->id)) ?? [];
             $json = json_encode($ric, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             // Wrap in CDATA to escape JSON cleanly. The element name is in the
             // OpenRiC extension namespace (rico:jsonld is not a real RiC-O term).

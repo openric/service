@@ -184,7 +184,7 @@ class SeedDemo extends Command
             'agent'         => $this->svc->createAgent($data),
             'rule'          => $this->svc->createRule($data),
             'function'      => $this->svc->createFunction($data),
-            'record'        => $this->svc->createRecord($data),
+            'record'        => $this->svc->createRecord($data + ['publication_status' => 'published']),
             'activity'      => $this->svc->createActivity($data),
             'instantiation' => $this->svc->createInstantiation($data),
         };
