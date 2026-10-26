@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.17.27 — 2026-10-26
+
+- Records answer the hierarchy from the description tree (parent, children and siblings from information_object.parent_id, visible descriptions only), carry their dates of creation and accumulation from the production and accumulation activities they result from, and autocomplete accepts the documented type names (types=record, agent, any case, singular or plural); AtoM's root description is no longer listed as a record, and OAI-PMH sets are the top-level descriptions under it
 ## v0.17.26 — 2026-10-26
 
 - The public read API shows published descriptions only: a draft, or a description with no publication status, is left out of every list, search and harvest, answers 404 exactly as a missing one does, and nested references to it are removed from every response and from the nightly SPARQL graph; descriptions created through the write API get a publication status, draft unless publication_status is published
