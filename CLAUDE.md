@@ -5,19 +5,19 @@
 
 ## Project Overview
 
-Standalone Laravel implementation of the OpenRiC reference API (RiC-O / SPARQL / SHACL endpoints). Decoupled from Heratio per the separation plan — graph + SPARQL + SHACL engine lives here; `ric_*` tables stay in Heratio.
+Standalone Laravel implementation of the OpenRiC reference API (RiC-O / SPARQL / SHACL endpoints). Decoupled from Heratio per the separation plan - graph + SPARQL + SHACL engine lives here; `ric_*` tables stay in Heratio.
 
 Public reference site: ric.theahg.co.za.
 
 ## Rules
 
-- NEVER commit or push directly. Stage with `git add`, then supply commands to the user.
+- Git writes follow the workflow's gate 3: draft the commit message, get approval, then commit and push. The old stage-only rule is superseded by `global_rules.md`.
 - AGPL header on new files (Johan Pieterse / Plain Sailing iSystems).
 - Each MCP server lives in its own folder under `.claude/mcp-servers/<name>/`.
 
 ## MCP Servers
 
-- `heratio-km` — query the Heratio Knowledge Base at km.theahg.co.za (includes the RiC corpus). Use `source="ric"` for RiC-specific lookups.
+- `heratio-km` - query the Heratio Knowledge Base at km.theahg.co.za (includes the RiC corpus). Use `source="ric"` for RiC-specific lookups.
 
 ## Knowledge Base
 

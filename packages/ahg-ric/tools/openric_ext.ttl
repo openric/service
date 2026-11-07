@@ -63,6 +63,24 @@ openricx:relationHasAgentRole
 rico:creationWithRole
     rdfs:subPropertyOf openricx:relationHasAgentRole .
 
+# Language used in the context of a relation (the sibling of relationHasAgentRole).
+# The language of e.g. a performance belongs to the reified relation (this agent,
+# performing this activity), not to the Activity type nor the Agent - so it is a
+# relation qualifier, not a widening of rico:hasOrHadLanguage to Activity. Raised
+# by Sylvain Loiseau (RiC-O issue #146; Records_in_Contexts_users list, 2026-07).
+# RiC-O 1.2 plans a PerformanceRelation-specific performanceRelationWithLanguage
+# (Clavaud); this generic property subsumes it, as rico:creationWithRole does for
+# openricx:relationHasAgentRole. Cf. Sylvain's languageWithUsage / LanguageUseType
+# idea in #146 - the language analogue of RoleType (a use-type on the relation).
+openricx:relationHasLanguage
+    a owl:ObjectProperty ;
+    rdfs:label "relation has language"@en ;
+    rdfs:comment "Relates a rico:Relation (typically a rico:PerformanceRelation, but also e.g. a CreationRelation or EventRelation) to a rico:Language used in the context of that relation - for example the language in which a performance was given. Keeps the language as a qualifier of the reified relation rather than an inherent property of the Activity."@en ;
+    rdfs:domain rico:Relation ;
+    rdfs:range  rico:Language ;
+    rdfs:seeAlso rico:hasOrHadLanguage ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
 # ---------------------------------------------------------------------------
 # 2. Kinship of care — adoption, fostering, guardianship
 # ---------------------------------------------------------------------------

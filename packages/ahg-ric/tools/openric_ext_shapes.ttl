@@ -76,3 +76,13 @@
         sh:class openricx:Carrier ;
         sh:message "openricx:hasCarrier must reference an openricx:Carrier."
     ] .
+
+# A relation that names a language: the value must be a rico:Language.
+:RelationLanguageShape a sh:NodeShape ;
+    sh:targetSubjectsOf openricx:relationHasLanguage ;
+    sh:name "Relation with language" ;
+    sh:property [
+        sh:path openricx:relationHasLanguage ;
+        sh:class rico:Language ;
+        sh:message "openricx:relationHasLanguage must reference a rico:Language."
+    ] .
