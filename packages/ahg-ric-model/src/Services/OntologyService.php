@@ -622,12 +622,13 @@ SPARQL;
     private function staticRelationAttributes(): array
     {
         return [
+            // As RiC-CM 1.0.1, section 5.5 (August 2026), which keeps the numbering and wording of 1.0.
             ['id' => 'RiC-RA01', 'name' => 'Certainty of Relation',    'definition' => 'Qualifies the level of certainty of the accuracy of the relation.'],
-            ['id' => 'RiC-RA02', 'name' => 'Date of Relation',         'definition' => 'Qualifies the date (or date range) at which the relation was effective.'],
-            ['id' => 'RiC-RA03', 'name' => 'Role of Relation',         'definition' => 'Qualifies the role played in the relation by one of the related entities.'],
-            ['id' => 'RiC-RA04', 'name' => 'Source of Relation',       'definition' => 'Qualifies the source(s) of the information that describes the relation.'],
-            ['id' => 'RiC-RA05', 'name' => 'Type of Relation',         'definition' => 'Qualifies the relation by typifying it according to a specific vocabulary.'],
-            ['id' => 'RiC-RA06', 'name' => 'Description of Relation',  'definition' => 'General description of the relation itself.'],
+            ['id' => 'RiC-RA02', 'name' => 'Date of Relation',         'definition' => 'The date when the relation occurred.'],
+            ['id' => 'RiC-RA03', 'name' => 'Description of Relation',  'definition' => 'Further information about a relation that is not otherwise addressed.'],
+            ['id' => 'RiC-RA04', 'name' => 'Identifier of Relation',   'definition' => 'A word, number, letter, symbol, or any combination of these used to uniquely identify or reference an individual instance of a relation within a specific information domain.'],
+            ['id' => 'RiC-RA05', 'name' => 'Source of Relation',       'definition' => 'A source of information used for identifying and describing the relation.'],
+            ['id' => 'RiC-RA06', 'name' => 'Place of Relation',        'definition' => 'Information about the place of a relation.'],
         ];
     }
 }
