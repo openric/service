@@ -2,14 +2,14 @@
 
 An open-source Records in Contexts (RiC-O) service. Laravel 12 backend with Apache Jena Fuseki as the RDF store.
 
-OpenRiC is the authoritative RiC-O implementation for the Archive & Heritage Group stack. Heratio currently consumes RiC features in-process; over time it will migrate to consuming them via OpenRiC's HTTP API.
+This is the reference implementation of the [OpenRiC specification](https://openric.org), running at [ric.theahg.co.za](https://ric.theahg.co.za), maintained by Dr Johan Pieterse, The Archive and Heritage Digital Commons Group. It reads the `heratio` database on the same MySQL server as Heratio, the group's GLAM platform, which still writes RiC through its own routes on that database ([known issue K-9](https://openric.org/spec/known-issues.html)). The [OpenRiC Workspace](https://github.com/openric/workspace) is a separate application that implements the specification on its own.
 
 ## Repository layout
 
 ```
 /
 ├── app/                       Laravel application code
-├── bin/release                Release script — bumps version, commits, tags
+├── bin/release                Release script: bumps version, commits, tags
 ├── config/                    Laravel config
 ├── database/                  Migrations, seeders
 ├── docs/
@@ -17,9 +17,11 @@ OpenRiC is the authoritative RiC-O implementation for the Archive & Heritage Gro
 │   ├── outreach/              Email drafts, contribution proposals
 │   └── plans/                 Implementation plans (read before executing)
 ├── packages/
-│   ├── ahg-core/              Vendored from Heratio — shared base services
-│   ├── ahg-api/               Vendored from Heratio — REST/auth plumbing
-│   └── ahg-ric/               Vendored from Heratio — RiC entity mgmt
+│   ├── ahg-core/              Vendored from Heratio: shared base services
+│   ├── ahg-api/               Vendored from Heratio: REST and auth plumbing
+│   ├── ahg-ric/               Vendored from Heratio: RiC entity management
+│   └── ahg-ric-model/         The RiC-CM reference browser and ontology services
+│                              (mirrored into vendor/ahg/, which is what runs)
 ├── public/
 ├── resources/                 Views, JS, CSS
 ├── routes/                    HTTP + console routes
@@ -31,7 +33,7 @@ OpenRiC is the authoritative RiC-O implementation for the Archive & Heritage Gro
 └── README.md
 ```
 
-The `packages/` dir holds our own copies of Heratio's shared packages. **Do not symlink them back to Heratio** — that re-couples the two trees. Drift is tracked per-bug-fix in `docs/drift-log.md`.
+The `packages/` dir holds our own copies of Heratio's shared packages. **Do not symlink them back to Heratio**: that re-couples the two trees. Drift is tracked per-bug-fix in `docs/drift-log.md`.
 
 ## Release flow
 
@@ -39,7 +41,7 @@ The `packages/` dir holds our own copies of Heratio's shared packages. **Do not 
 
 ```bash
 ./bin/release patch "Fix OntologyService SPARQL escape bug"
-./bin/release minor "Phase 1 — RiC-O load + OntologyService" --issue 7
+./bin/release minor "Phase 1: RiC-O load and OntologyService" --issue 7
 ./bin/release major "Break: rename route prefix to /reference/ric-cm"
 ```
 
@@ -63,10 +65,10 @@ git reset --hard HEAD~1
 
 See `.env.example` for the full list. Minimum required beyond Laravel defaults:
 
-- `FUSEKI_URL` — the Jena Fuseki endpoint (default `http://localhost:3030`).
-- `FUSEKI_DATASET_DATA=openric` — instance data.
-- `FUSEKI_DATASET_MODEL=openric-model` — RiC-O OWL ontology (populated in Phase 1 of the reference-browser plan).
-- `FUSEKI_USER` / `FUSEKI_PASSWORD` — admin credentials for ontology loads; public SPARQL reads are anonymous.
+- `FUSEKI_URL`: the Jena Fuseki endpoint (default `http://localhost:3030`).
+- `FUSEKI_DATASET_DATA=openric`: instance data.
+- `FUSEKI_DATASET_MODEL=openric-model`: RiC-O OWL ontology (populated in Phase 1 of the reference-browser plan).
+- `FUSEKI_USER` / `FUSEKI_PASSWORD`: admin credentials for ontology loads; public SPARQL reads are anonymous.
 
 ## Contributing
 
@@ -74,4 +76,4 @@ Read `docs/plans/` for the current implementation plan before writing code. Foll
 
 ## License
 
-AGPL-3.0 (matching the rest of the AHG stack).
+AGPL-3.0-or-later, matching the rest of the OpenRiC software. The specification itself is CC BY 4.0.

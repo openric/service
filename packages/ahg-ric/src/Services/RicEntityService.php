@@ -918,9 +918,11 @@ class RicEntityService
 
         // Hide unpublished descriptions, their digital objects and open-write
         // (sandbox) entities (all ids share one object-id space).
+        // values(): reject() keeps the keys, and a list with gaps in its keys is sent as a JSON object, not the array
+        // the autocomplete schema requires (found by the conformance probe, 17 November 2026).
         $results = $results->reject(fn ($r) => \AhgRic\Support\Visibility::isHidden((int) $r->id));
 
-        return $results->take($limit);
+        return $results->take($limit)->values();
     }
 
     // ================================================================
