@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.18.0 — 2026-11-22
+
+- Profile negotiation (OpenRiC or plain RiC-O 1.1) and the language-use-type terms
+- Closes #8
+- Closes #13
 ## v0.17.27 — 2026-10-26
 
 - Records answer the hierarchy from the description tree (parent, children and siblings from information_object.parent_id, visible descriptions only), carry their dates of creation and accumulation from the production and accumulation activities they result from, and autocomplete accepts the documented type names (types=record, agent, any case, singular or plural); AtoM's root description is no longer listed as a record, and OAI-PMH sets are the top-level descriptions under it
