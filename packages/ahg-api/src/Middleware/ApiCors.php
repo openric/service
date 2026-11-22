@@ -17,7 +17,9 @@ use Illuminate\Http\Request;
  */
 class ApiCors
 {
-    private const ALLOW_HEADERS = 'Content-Type, X-API-Key, X-REST-API-Key, Authorization, Accept';
+    private const ALLOW_HEADERS = 'Content-Type, X-API-Key, X-REST-API-Key, Authorization, Accept, Accept-Profile';
+    // Profile negotiation answers in these; a browser hides them from scripts unless exposed.
+    private const EXPOSE_HEADERS = 'Content-Profile, Link';
     private const READ_METHODS = ['GET', 'HEAD'];
 
     public function handle(Request $request, Closure $next)
@@ -45,6 +47,7 @@ class ApiCors
             $response->headers->set('Access-Control-Allow-Origin', '*');
             $response->headers->set('Access-Control-Allow-Methods', $method === 'POST' ? 'GET, HEAD, POST, OPTIONS' : 'GET, HEAD, OPTIONS');
             $response->headers->set('Access-Control-Allow-Headers', self::ALLOW_HEADERS);
+            $response->headers->set('Access-Control-Expose-Headers', self::EXPOSE_HEADERS);
             return $response;
         }
 
@@ -55,6 +58,7 @@ class ApiCors
             $response->headers->set('Access-Control-Allow-Origin', $origin);
             $response->headers->set('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS');
             $response->headers->set('Access-Control-Allow-Headers', self::ALLOW_HEADERS);
+            $response->headers->set('Access-Control-Expose-Headers', self::EXPOSE_HEADERS);
         }
         return $response;
     }

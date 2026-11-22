@@ -81,6 +81,28 @@ openricx:relationHasLanguage
     rdfs:seeAlso rico:hasOrHadLanguage ;
     rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
 
+# How the language is used in the relation (primary text, commentary, gloss,
+# transcription, translation, code-switching), as against which language:
+# Sylvain Loiseau's languageWithUsage -> LanguageUseType on RiC-O #146. Published
+# in the extension ontology 1.9.0 (spec v0.59.0); provisional until ICA-EGAD
+# decides #146. Values: https://openric.org/vocab/language-use-type/
+openricx:LanguageUseType
+    a owl:Class ;
+    rdfs:label "language use type"@en ;
+    rdfs:comment "A category of use of a language in the context of a relation, such as primary text, commentary, gloss, transcription, translation or code-switching. The language analogue of rico:RoleType. Provisional, pending RiC-O issue #146."@en ;
+    rdfs:subClassOf rico:Type ;
+    rdfs:seeAlso rico:RoleType ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
+openricx:languageWithUsage
+    a owl:ObjectProperty ;
+    rdfs:label "language with usage"@en ;
+    rdfs:comment "Relates a rico:Relation to the openricx:LanguageUseType saying how a language is used in it. Orthogonal to openricx:relationHasLanguage, which says which language; a relation that names a use type should also name the language."@en ;
+    rdfs:domain rico:Relation ;
+    rdfs:range  openricx:LanguageUseType ;
+    rdfs:seeAlso openricx:relationHasLanguage ;
+    rdfs:isDefinedBy <https://openric.org/ns/ext/v1> .
+
 # ---------------------------------------------------------------------------
 # 2. Kinship of care — adoption, fostering, guardianship
 # ---------------------------------------------------------------------------

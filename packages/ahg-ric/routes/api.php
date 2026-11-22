@@ -34,6 +34,7 @@ use AhgRic\Http\Controllers\UsageController;
 use AhgRic\Http\Controllers\AskController;
 use AhgRic\Http\Controllers\StatsController;
 use AhgRic\Http\Middleware\HideUnpublished;
+use AhgRic\Http\Middleware\ProfileNegotiation;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,7 +57,8 @@ use AhgRic\Http\Middleware\HideUnpublished;
 */
 
 // HideUnpublished: a visitor sees published descriptions only (Support\Visibility).
-Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', HideUnpublished::class])->group(function () {
+// ProfileNegotiation: Accept-Profile / ?_profile= (OpenRiC or plain RiC-O 1.1), openric/service#13.
+Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', ProfileNegotiation::class, HideUnpublished::class])->group(function () {
     // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
     Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
     

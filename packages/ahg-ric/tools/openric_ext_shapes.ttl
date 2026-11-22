@@ -3,7 +3,8 @@
 # Copyright (C) 2026 Johan Pieterse / Plain Sailing Information Systems
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# Companion to openric_ext.ttl. Validates the agent-role-in-relation pattern.
+# Companion to openric_ext.ttl. Validates the agent-role-in-relation pattern,
+# carriers, and the language of a relation (which language, and how it is used).
 #
 # Usage:
 #   pyshacl -s openric_ext_shapes.ttl -d data.jsonld -f human
@@ -85,4 +86,32 @@
         sh:path openricx:relationHasLanguage ;
         sh:class rico:Language ;
         sh:message "openricx:relationHasLanguage must reference a rico:Language."
+    ] .
+
+# A use type must be a named openricx:LanguageUseType, at most one per relation,
+# and a relation that says how a language is used should say which language
+# (Warning: the two may come from different sources).
+:LanguageUseTypeValueShape a sh:NodeShape ;
+    sh:name "Language use type" ;
+    sh:property [
+        sh:path rico:name ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "A LanguageUseType should have a rico:name (e.g. \"gloss\"), or be a concept from https://openric.org/vocab/language-use-type/."
+    ] .
+
+:RelationLanguageUsageShape a sh:NodeShape ;
+    sh:targetSubjectsOf openricx:languageWithUsage ;
+    sh:name "Relation with language use type" ;
+    sh:property [
+        sh:path openricx:languageWithUsage ;
+        sh:maxCount 1 ;
+        sh:class openricx:LanguageUseType ;
+        sh:message "openricx:languageWithUsage must reference one openricx:LanguageUseType."
+    ] ;
+    sh:property [
+        sh:path openricx:relationHasLanguage ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "A relation that says how a language is used (openricx:languageWithUsage) should also say which language (openricx:relationHasLanguage)."
     ] .
