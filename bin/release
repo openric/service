@@ -58,6 +58,10 @@ case "$TYPE" in
     *) echo "Error: TYPE must be patch|minor|major" >&2; exit 2 ;;
 esac
 
+# The feature freeze (Dr Johan Pieterse, 23 November 2026): refused here, before anything changes.
+G=/usr/share/nginx/workbench/bin/release-freeze-check
+if [ -x "$G" ]; then "$G" openric "$TYPE" "$MSG" || exit 1; fi
+
 # --- locate repo root -------------------------------------------------------
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
