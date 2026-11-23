@@ -341,6 +341,9 @@ class RicSerializationService
         // Mandates
         $mandates = $this->getMandatesForActor($actorId);
         if (!empty($mandates)) {
+            // A rico:Mandate entity is linked by rico:authorizedBy (mapping 7.3, spec v0.61.0). ponytail: the same nodes
+            // on rico:authorizingMandate, a text property, stay for one further minor release of the specification.
+            $agent['rico:authorizedBy'] = $mandates;
             $agent['rico:authorizingMandate'] = $mandates;
         }
 
@@ -470,6 +473,14 @@ class RicSerializationService
 
         // ISDIAH: Conditions of Access
         if (!empty($repo->access_conditions)) {
+            // A repository's conditions of access are a Rule it is regulated by (ISDIAH 5.4.2, mapping 7.4, spec v0.61.0).
+            // ponytail: rico:conditionsOfAccess, outside its RiC-O domain here, stays for one further minor release.
+            $ricRepo['rico:isOrWasRegulatedBy'] = [[
+                '@type' => 'rico:Rule',
+                'rico:title' => 'Conditions of access',
+                'rico:hasOrHadRuleType' => ['@id' => 'https://openric.org/vocab/rule-type/access-rule'],
+                'rico:generalDescription' => $repo->access_conditions,
+            ]];
             $ricRepo['rico:conditionsOfAccess'] = $repo->access_conditions;
         }
 
