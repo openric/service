@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.1 — 2026-11-23
+
+- RiC-O conformance: a repository's access conditions go out as a rico:Rule and an agent's Mandate entity by rico:authorizedBy, as spec v0.61.0 corrects; the old forms kept for one further minor release
 ## v0.18.0 — 2026-11-22
 
 - Profile negotiation (OpenRiC or plain RiC-O 1.1) and the language-use-type terms
