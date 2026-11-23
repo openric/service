@@ -959,7 +959,9 @@ class RicSerializationService
         // Access Restriction
         $restrictions = $this->getAccessRestrictions($entityType, $entityId);
         if (!empty($restrictions)) {
-            $ricEntity['rico:isOrWasRegulatedBy'] = $restrictions;
+            // Beside the security classification above, which a plain assignment here used to discard.
+            $rules = $ricEntity['rico:isOrWasRegulatedBy'] ?? [];
+            $ricEntity['rico:isOrWasRegulatedBy'] = array_merge(isset($rules['@type']) ? [$rules] : $rules, $restrictions);
         }
 
         // Personal Data
