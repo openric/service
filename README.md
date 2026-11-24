@@ -74,6 +74,8 @@ See `.env.example` for the full list. Minimum required beyond Laravel defaults:
 
 Read `docs/plans/` for the current implementation plan before writing code. Follow the architectural decisions captured there; do not introduce new frontend stacks or break the declared package interface without the decision being explicitly reopened.
 
+How we use AI: see [AI-STATEMENT.md](AI-STATEMENT.md).
+
 ## License
 
 AGPL-3.0-or-later, matching the rest of the OpenRiC software. The specification itself is CC BY 4.0.
