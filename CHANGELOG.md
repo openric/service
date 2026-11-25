@@ -6,6 +6,7 @@
 ## v0.18.1 — 2026-11-23
 
 - RiC-O conformance: a repository's access conditions go out as a rico:Rule and an agent's Mandate entity by rico:authorizedBy, as spec v0.61.0 corrects; the old forms kept for one further minor release
+- The old forms (`rico:conditionsOfAccess` on a repository, a Mandate node on `rico:authorizingMandate`) are sent until spec v0.62.0 and removed with spec v0.63.0, after the feature freeze: `docs/plans/2026-11-24-remove-deprecated-forms.md` (note added 25 November 2026)
 ## v0.18.0 — 2026-11-22
 
 - Profile negotiation (OpenRiC or plain RiC-O 1.1) and the language-use-type terms

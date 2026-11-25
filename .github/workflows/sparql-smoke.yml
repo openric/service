@@ -67,3 +67,19 @@ jobs:
           FUSEKI_URL: http://localhost:3030/openric
         run: |
           vendor/bin/phpunit --group smoke --colors=never --log-junit junit-smoke.xml
+
+      # The package's feature tests and the export tests, on the in-memory SQLite database of phpunit.xml.
+      # rdflib compares the three export formats, as the conformance probe does (openric/service#19).
+      # Not yet here: tests/Unit/RicSerializationServiceTest.php, which needs tables an empty database lacks.
+      - name: Install rdflib for the export comparison
+        run: python3 -m pip install --quiet rdflib
+
+      - name: Run the package tests
+        env:
+          OPENRIC_REQUIRE_RDFLIB: "1"
+        run: |
+          vendor/bin/phpunit --colors=never --exclude-group smoke \
+            packages/ahg-ric/tests/Feature \
+            packages/ahg-ric/tests/Unit/JsonLdConverterTest.php \
+            packages/ahg-ric/tests/Unit/ShaclValidationServiceTest.php \
+            packages/ahg-ric/tests/Unit/SparqlQueryServiceTest.php

@@ -32,6 +32,9 @@ final class Visibility
     /** QubitInformationObject::ROOT_ID. */
     public const ROOT_ID = 1;
 
+    /** QubitRepository::ROOT_ID: the repository tree's anchor, with no name; never a repository (openric/service#20). */
+    public const REPOSITORY_ROOT_ID = 6;
+
     /** Keys whose value names the entity a node is about, or an end of an edge. */
     private const REFERENCE_KEYS = [
         '@id', 'id', 'atomId', 'entity_id', 'openric:root',
@@ -67,6 +70,9 @@ final class Visibility
         }
 
         $ids = $records;
+        if (Schema::hasTable('repository')) {
+            $ids[] = self::REPOSITORY_ROOT_ID;
+        }
         foreach (['digital_object' => 'object_id', 'ric_instantiation' => 'record_id'] as $table => $column) {
             if ($records && Schema::hasTable($table)) {
                 $ids = array_merge($ids, DB::table($table)->whereIn($column, $records)->pluck('id')->all());

@@ -1210,13 +1210,18 @@ class RicSerializationService
             return [];
         }
 
-        $children = $this->getChildRecords($parentId);
+        // The child ids themselves: a child's @id ends in its slug, so reading the id back from the
+        // URI gave 0 ("not found") or, for a slug starting with digits, another record (openric/service#19).
+        $childIds = DB::table('information_object')->where('parent_id', $parentId)->orderBy('lft')->pluck('id');
         $allDescendants = [];
 
-        foreach ($children as $child) {
-            $childId = $this->extractIdFromUri($child['@id']);
-            $allDescendants[] = $this->serializeRecord($childId, ['include_children' => false]);
-            $allDescendants = array_merge($allDescendants, $this->getAllDescendants($childId, $depth + 1));
+        foreach ($childIds as $childId) {
+            $child = $this->serializeRecord((int) $childId, ['include_children' => false]);
+            if (isset($child['error'])) {
+                continue;
+            }
+            $allDescendants[] = $child;
+            $allDescendants = array_merge($allDescendants, $this->getAllDescendants((int) $childId, $depth + 1));
         }
 
         return $allDescendants;

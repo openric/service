@@ -78,3 +78,26 @@ systemctl show php8.3-fpm | grep ReadWritePaths                                #
 ```
 
 The probe only reads. Probes or tests that write go to `openric_staging`, never to the live dataset.
+
+## 9. Conformance probe
+
+The probe is `conformance/probe.sh` in the specification repository (`/usr/share/nginx/openric-spec`, GitHub `openric/spec`). It checks the service against the specification version of that checkout: the endpoints, the JSON Schemas and the SHACL shapes of each profile. Run it from a checkout at the release you mean to verify, and give that version with every result.
+
+```
+cd /usr/share/nginx/openric-spec && git log -1 --oneline       # the spec version the run checks
+BASE=https://ric.theahg.co.za/api/ric/v1 bash conformance/probe.sh --profile=export-only --json=/tmp/export-only.json
+```
+
+- It needs `python3` with `jsonschema`, `pyshacl` and `rdflib`; without them the SHACL and triple checks are skipped, not passed.
+- The service allows 60 requests a minute from one address. A run that is not throttled meets HTTP 429 and its counts are not valid: pause between profiles, as the scheduled run does (65 seconds), or between requests.
+- The write round trip needs an API key in `KEY` and writes; it is skipped without one. Never run it against the live dataset.
+
+Where the results are kept:
+
+| Where | What |
+|---|---|
+| `conformance-results` branch of `openric/spec` (`latest.json`, `history/<date>.json`) | The scheduled read-only run of the GitHub workflow `conformance.yml`, one file a day |
+| The workflow run's `conformance-run` artifact | The same run with each profile's text log, for 30 days |
+| `docs/status/` in this repository | A dated note for each run made by hand, with the spec version, the counts and what failed |
+
+The service's description (`GET /api/ric/v1/`) declares in `openric_conformance.spec_version` the specification version it was last verified against. It is set by hand in `packages/ahg-ric/routes/api.php` and raised only after a probe run against the newer version passes.

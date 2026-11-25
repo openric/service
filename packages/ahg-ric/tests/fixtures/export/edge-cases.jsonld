@@ -1,0 +1,23 @@
+{
+  "@context": {"rico": "https://www.ica.org/standards/RiC/ontology#", "openricx": "https://openric.org/ns/ext/v1#", "ex": "https://example.org/"},
+  "@graph": [
+    {
+      "@id": "https://example.org/record/1",
+      "@type": ["rico:Record", "https://example.org/types/local-type"],
+      "rico:title": [{"@value": "Titel", "@language": "af"}, {"@value": "Title", "@language": "en"}],
+      "rico:identifier": "R-1",
+      "openricx:isPublic": true,
+      "openricx:score": 0.75,
+      "rico:hasOrHadHolder": {"@id": "https://example.org/agent/holder", "@type": "rico:CorporateBody", "rico:name": "Holder & Sons <Ltd>"},
+      "rico:hasCreator": [{"@id": "https://example.org/agent/holder"}, {"@id": "_:anon"}],
+      "rico:hasExtent": {
+        "@type": "rico:RecordResourceExtent",
+        "rico:textualValue": "2 boxes, \"fragile\"\nsecond line",
+        "rico:hasUnitOfMeasurement": {"@type": "rico:UnitOfMeasurement", "rico:name": "box"},
+        "rico:quantity": 2
+      },
+      "rico:date": {"@value": "1950-01-01", "@type": "http://www.w3.org/2001/XMLSchema#date"}
+    },
+    {"@id": "_:anon", "@type": "rico:Person", "rico:name": "Anonymous"}
+  ]
+}
