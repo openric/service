@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.4 — 2026-11-25
+
+- Conformance: the service description declares spec v0.61.2, with Core Discovery 0.7.1, Authority & Context 0.5.0, Graph Traversal 0.7.1, Digital Object Linkage 0.8.0 and Export-Only 0.10.0, verified against spec v0.61.2 by the read-only probe of 25 November 2026 (docs/status/2026-11-25-status.md); a test ties the declaration to this changelog
 ## v0.18.3 — 2026-11-25
 
 - Turtle and RDF/XML exports hold the same triples as the JSON-LD, nested instantiations and extents included, and a record set's export holds its descendants; AtoM's root repository, which has no name, is no longer listed and answers 404
