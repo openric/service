@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.6 — 2026-11-25
+
+- Security: the graph viewer's /ric-api routes and the /ricExplorer aliases apply the published-only rule, as /api/ric/v1 does; a request naming an unpublished record by route id, id, node or uri answers 404, and answers are scrubbed
 ## v0.18.5 — 2026-11-25
 
 - A record set's export, in JSON-LD, Turtle and RDF/XML, carries the security classification, access restrictions and personal-data flag of the record set and of each descendant, as /records/{slug} already did; the security-classification query is guarded for instances without its tables
