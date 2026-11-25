@@ -936,7 +936,8 @@ class RicSerializationService
     {
         $culture = app()->getLocale() ?: 'en';
 
-        $security = DB::table('security_access_condition_link as sacl')
+        // Guarded like the restriction and personal-data tables, for instances without the security tables.
+        $security = ! Schema::hasTable('security_access_condition_link') ? null : DB::table('security_access_condition_link as sacl')
             ->join('security_level as sl', 'sacl.classification_id', '=', 'sl.id')
             ->leftJoin('security_level_i18n as sl_i18n', function ($j) use ($culture) {
                 $j->on('sl.id', '=', 'sl_i18n.id')->where('sl_i18n.culture', '=', $culture);
@@ -983,6 +984,8 @@ class RicSerializationService
         if (isset($fonds['error'])) {
             return $fonds;
         }
+        // The same security classification, access restrictions and personal-data flag as /records/{slug}.
+        $fonds = $this->addIscapCompliance($fonds, $fondsId, 'information_object');
 
         $descendants = $this->getAllDescendants($fondsId);
 
@@ -1220,7 +1223,7 @@ class RicSerializationService
             if (isset($child['error'])) {
                 continue;
             }
-            $allDescendants[] = $child;
+            $allDescendants[] = $this->addIscapCompliance($child, (int) $childId, 'information_object');
             $allDescendants = array_merge($allDescendants, $this->getAllDescendants((int) $childId, $depth + 1));
         }
 

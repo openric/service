@@ -1,6 +1,6 @@
 <?php
 
-// OpenRiC - a record's security classification and its access restrictions are both published.
+// OpenRiC - a record's security classification and its access restrictions are both published, on its page and in its export.
 // Copyright (C) 2026 Johan Pieterse / Plain Sailing Information Systems
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -78,5 +78,33 @@ class IscapComplianceTest extends TestCase
 
         $this->assertSame('rico:Rule', $service->addIscapCompliance([], 11, 'information_object')['rico:isOrWasRegulatedBy']['@type']);
         $this->assertSame([self::RESTRICTION], $this->ruleTypes($service->addIscapCompliance([], 12, 'information_object')));
+    }
+
+    public function test_a_record_sets_export_carries_them_on_the_root_and_its_descendants(): void
+    {
+        // /records/{slug} always added them; /records/{slug}/export did not, so an export carried less.
+        Schema::create('information_object', function (Blueprint $t) {
+            $t->integer('id');
+            $t->integer('parent_id')->nullable();
+            $t->integer('lft')->default(0);
+        });
+        DB::table('information_object')->insert([['id' => 20, 'parent_id' => null, 'lft' => 1], ['id' => 21, 'parent_id' => 20, 'lft' => 2]]);
+        DB::table('security_access_condition_link')->insert(['object_id' => 20, 'classification_id' => 1]);
+        DB::table('icip_access_restriction')->insert(['information_object_id' => 21, 'restriction_type' => 'community']);
+
+        $serializer = new class extends RicSerializationService {
+            public function __construct()
+            {
+            }
+
+            public function serializeRecord(int $ioId, array $options = []): array
+            {
+                return ['@id' => "record/{$ioId}"];
+            }
+        };
+        [$root, $child] = $serializer->exportRecordSet(20)['@graph'];
+
+        $this->assertSame([self::CLASSIFICATION], $this->ruleTypes($root));
+        $this->assertSame([self::RESTRICTION], $this->ruleTypes($child));
     }
 }
