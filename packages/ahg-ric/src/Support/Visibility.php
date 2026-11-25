@@ -165,7 +165,7 @@ final class Visibility
      * alone identifies the entity, whatever URI shape names it (/informationobject/,
      * /api/ric/v1/records/, the graph's /<instance>/recordset/, a thumbnail).
      */
-    private static function isHiddenIri(string $value): bool
+    public static function isHiddenIri(string $value): bool
     {
         // Only this service's own IRIs and paths: an external link that happens
         // to end in a hidden slug is someone else's resource.

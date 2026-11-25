@@ -4,8 +4,10 @@ use AhgRic\Controllers\RicController;
 use AhgRic\Controllers\RicEntityController;
 use Illuminate\Support\Facades\Route;
 
-// Public RiC API — web middleware for session support (view-mode toggle needs session)
-Route::prefix('ric-api')->middleware('web')->group(function () {
+// Public RiC API — web middleware for session support (view-mode toggle needs session).
+// HideUnpublished, as on /api/ric/v1, with "inputs": the handlers here do not filter
+// unpublished records themselves, so a request naming one is refused and answers are scrubbed.
+Route::prefix('ric-api')->middleware(['web', \AhgRic\Http\Middleware\HideUnpublished::class . ':inputs'])->group(function () {
     Route::get('/data', [RicController::class, 'getData'])->name('ric.public-data');
     Route::get('/autocomplete', [RicController::class, 'autocomplete'])->name('ric.public-autocomplete');
     Route::get('/dashboard', [RicController::class, 'ajaxDashboard'])->name('ric.public-dashboard');
@@ -77,8 +79,11 @@ Route::middleware('web')->group(function () {
 });
 
 // Legacy camelCase public endpoints (ricExplorer prefix)
-Route::get('/ricExplorer/getData', [RicController::class, 'getData'])->name('ric.getData-legacy');
-Route::get('/ricExplorer/autocomplete', [RicController::class, 'autocomplete'])->name('ric.autocomplete-legacy');
+// The same handlers as /ric-api, so the same filter.
+Route::middleware(\AhgRic\Http\Middleware\HideUnpublished::class . ':inputs')->group(function () {
+    Route::get('/ricExplorer/getData', [RicController::class, 'getData'])->name('ric.getData-legacy');
+    Route::get('/ricExplorer/autocomplete', [RicController::class, 'autocomplete'])->name('ric.autocomplete-legacy');
+});
 
 // ================================================================
 // RiC Entity CRUD — Record-level AJAX + Standalone browse
