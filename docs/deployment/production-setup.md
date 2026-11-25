@@ -66,6 +66,8 @@ Fuseki listens on `localhost:3030` only, with basic authentication from `.env`. 
 
 Mint keys with `openric:issue-key` (or `ric:mint-service-key` for the Heratio service key) and switch them off with `openric:revoke-key`. A raw key is shown once, at minting. Delete routes need the `delete` scope, not `write`.
 
+The `/admin/ric` pages (sync status, queue, orphans, entity browse and edit) need a signed-in session or a key with the `admin` scope, from v0.18.7; without one they answer 401, and a key without `admin` gets 403. The app has no login page, so mint an operator key with `ric:mint-service-key --scopes=read,admin` and send it as `X-API-Key`. Never grant `admin` to a key issued from a public key request. On ric.theahg.co.za nginx also answers 404 for `/admin`.
+
 ## 8. Checks after a deployment
 
 ```

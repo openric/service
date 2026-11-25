@@ -9,13 +9,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExplorerPageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_explorer_page_loads(): void
     {
-        $response = $this->get('/admin/ric/explorer');
+        // An admin page: signed in (AdminRoutesRequireSignInTest checks that a visitor is refused).
+        $response = $this->actingAs(User::factory()->create())->get('/admin/ric/explorer');
         $response->assertStatus(200);
         $response->assertSee('ric-explorer-root');
     }

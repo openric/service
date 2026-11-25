@@ -25,11 +25,11 @@ class ApiAuthenticate
             return $this->openWrite($request, $next, $requiredScopes);
         }
 
-        // Try session auth first (logged-in admin = full scopes)
+        // Try session auth first (logged-in admin = full scopes, "admin" included for the /admin/ric pages)
         if ($request->user()) {
             $request->attributes->set('api_key_id', null);
             $request->attributes->set('api_user_id', $request->user()->id ?? null);
-            $request->attributes->set('api_scopes', ['read', 'write', 'delete', 'batch', 'publish:write']);
+            $request->attributes->set('api_scopes', ['read', 'write', 'delete', 'batch', 'publish:write', 'admin']);
             return $this->checkScopes($request, $next, $requiredScopes);
         }
 

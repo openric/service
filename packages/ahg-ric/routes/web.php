@@ -32,7 +32,10 @@ Route::prefix('ric-api')->middleware(['web', \AhgRic\Http\Middleware\HideUnpubli
     Route::get('/explain/{sourceId}/{targetId}', [RicController::class, 'explainRelation'])->name('ric.public-explain');
 });
 
-Route::middleware('web')->group(function () {
+// Admin pages: they show drafts and can resync, clear the queue and change orphans, so a caller
+// must be signed in (a session) or hold an API key with the "admin" scope. That scope is never
+// granted by the self-service key request, which offers read, write and delete only.
+Route::middleware(['web', 'api.auth:admin'])->group(function () {
     Route::get('/admin/ric', [RicController::class, 'index'])->name('ric.index');
     Route::get('/admin/ric/sync-status', [RicController::class, 'syncStatus'])->name('ric.sync-status');
     Route::get('/admin/ric/orphans', [RicController::class, 'orphans'])->name('ric.orphans');
@@ -96,7 +99,10 @@ Route::middleware(\AhgRic\Http\Middleware\HideUnpublished::class . ':inputs')->g
 // distinct from the pure-JSON API endpoints.
 
 // Standalone browse/show/edit pages
-Route::middleware('web')->group(function () {
+// Admin pages: they show drafts and can resync, clear the queue and change orphans, so a caller
+// must be signed in (a session) or hold an API key with the "admin" scope. That scope is never
+// granted by the self-service key request, which offers read, write and delete only.
+Route::middleware(['web', 'api.auth:admin'])->group(function () {
     Route::get('/admin/ric/entities/places', [RicEntityController::class, 'browsePlaces'])->name('ric.places.browse');
     Route::get('/admin/ric/entities/rules', [RicEntityController::class, 'browseRules'])->name('ric.rules.browse');
     Route::get('/admin/ric/entities/activities', [RicEntityController::class, 'browseActivities'])->name('ric.activities.browse');
@@ -115,12 +121,13 @@ Route::middleware('web')->group(function () {
     // Global relations browse (G8)
     Route::get('/admin/ric/relations', [RicEntityController::class, 'browseRelations'])->name('ric.relations.browse');
 
-    // Capture workflow moved to https://capture.openric.org — the neutral
-    // browser-only client. Old URL preserved as a 302 for any bookmarks/links.
-    Route::get('/ric-capture', function () {
-        return redirect('https://capture.openric.org/', 302);
-    })->name('ric.capture.studio');
 });
+
+// Capture workflow moved to https://capture.openric.org — the neutral
+// browser-only client. Old URL preserved as a 302 for any bookmarks/links.
+Route::middleware('web')->get('/ric-capture', function () {
+    return redirect('https://capture.openric.org/', 302);
+})->name('ric.capture.studio');
 
 // Spec-canonical semantic URIs — openric-spec viewing-api §3.1.
 // Pattern: /id/{kind}/{id}  (13 kinds per the spec)
