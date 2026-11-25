@@ -78,6 +78,8 @@ jobs:
         env:
           OPENRIC_REQUIRE_RDFLIB: "1"
         run: |
+          # A throwaway key for this run: the runner has no .env, and pages with a session need one.
+          export APP_KEY="base64:$(openssl rand -base64 32)"
           vendor/bin/phpunit --colors=never --exclude-group smoke \
             packages/ahg-ric/tests/Feature \
             packages/ahg-ric/tests/Unit/JsonLdConverterTest.php \
