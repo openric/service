@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.7 — 2026-11-25
+
+- Security: the /admin/ric pages need a signed-in session or an API key with the admin scope; self-service keys never hold it; operator help on minting an admin key
 ## v0.18.6 — 2026-11-25
 
 - Security: the graph viewer's /ric-api routes and the /ricExplorer aliases apply the published-only rule, as /api/ric/v1 does; a request naming an unpublished record by route id, id, node or uri answers 404, and answers are scrubbed
