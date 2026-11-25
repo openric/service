@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.18.3 — 2026-11-25
+
+- Turtle and RDF/XML exports hold the same triples as the JSON-LD, nested instantiations and extents included, and a record set's export holds its descendants; AtoM's root repository, which has no name, is no longer listed and answers 404
+- Closes #19
+- Closes #20
 ## v0.18.2 — 2026-11-23
 
 - A record's security classification is kept when it also has access restrictions, which replaced it in the output
