@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.5 — 2026-11-25
+
+- A record set's export, in JSON-LD, Turtle and RDF/XML, carries the security classification, access restrictions and personal-data flag of the record set and of each descendant, as /records/{slug} already did; the security-classification query is guarded for instances without its tables
 ## v0.18.4 — 2026-11-25
 
 - Conformance: the service description declares spec v0.61.2, with Core Discovery 0.7.1, Authority & Context 0.5.0, Graph Traversal 0.7.1, Digital Object Linkage 0.8.0 and Export-Only 0.10.0, verified against spec v0.61.2 by the read-only probe of 25 November 2026 (docs/status/2026-11-25-status.md); a test ties the declaration to this changelog
