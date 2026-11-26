@@ -31,7 +31,12 @@ Change control says a deprecated item stays "for at least one further minor rele
 
 ## Before v0.63.0
 
-- **Heratio (K-9).** heratio-dev confirms whether any Heratio code reads the old forms from OpenRiC output. Requested by the OpenRiC session; Heratio's code is changed only by heratio-dev.
+- **Heratio (K-9).** Answered on 26 November 2026 by heratio-dev (code at v1.167.11):
+  - D-1: Heratio sends `rico:conditionsOfAccess` on a repository (`RicSerializationService.php:519`; on a record, line 197, is correct). Nothing reads it: the write API takes Heratio column names, not RiC-O terms, and `RdfImportService` has no reader for it. A move to `rico:isOrWasRegulatedBy` a `rico:Rule` is not planned; it is Dr Johan Pieterse's decision.
+  - D-2: `rico:classification` on a function is neither sent nor read.
+  - D-3: no `rico:authorizingMandate` anywhere. Heratio sends Mandate nodes on `rico:hasMandate` (not in RiC-O 1.1), and its one reader is internal: `Crm/RicToCrmMapper.php:144` maps it to `crm:P104_is_subject_to`. A move to `rico:authorizedBy` would change that mapper too; not planned, his decision.
+  - Write paths: none of Heratio's RiC write or delete routes parses the three forms as RiC-O input, so none has to keep accepting them until v0.63.0. `/import` was checked through `RdfImportService`'s term map only.
+  - So Heratio does not block v0.63.0; its D-1 output will fail the removal release's shapes once they reject the form.
 - **Consumers.** The drift log and the v0.62.0 changelog name the removal release, so clients have one full minor release of warning.
 - **PSIS.** Answered on 26 November 2026 by the session working on the PSIS plugins (atom-ahg-plugins main, v3.121.242, read from code, line numbers approximate):
   - The PHP export (`RicManageService::exportRicO`, `/ricManage/export/{id}`) sends none of D-1, D-2, D-3 or `rico:hasMandate` and reads none of them. No PSIS write path accepts them.
