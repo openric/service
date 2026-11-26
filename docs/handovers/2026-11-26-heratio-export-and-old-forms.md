@@ -19,7 +19,7 @@ Read on heratio-dev at `fe929b902` (v1.167.11), `packages/ahg-ric`, on 26 Novemb
 
 ### 1b. The descendants are looked up by slug, not id (defect; openric/service#19)
 
-- `getAllDescendants` (line 1132) reads each child's id back from its `@id` (`extractIdFromUri`). That `@id` ends in the slug, so every child comes out as "Information Object not found". A slug that starts with digits gives another record instead.
+- How `getAllDescendants` finds each child: the detail went to heratio-dev directly and is held back here until heratio-dev has dealt with it.
 - The same file has the converter defect from #19: Turtle and RDF/XML drop nested nodes and datatypes.
 - **The OpenRiC fix (service v0.18.3, commit `0708699`):**
   - take the child ids from `information_object.parent_id`, ordered by `lft`, and skip error nodes;
