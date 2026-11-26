@@ -33,7 +33,9 @@ Change control says a deprecated item stays "for at least one further minor rele
 
 - **Heratio (K-9).** heratio-dev confirms whether any Heratio code reads the old forms from OpenRiC output. Requested by the OpenRiC session; Heratio's code is changed only by heratio-dev.
 - **Consumers.** The drift log and the v0.62.0 changelog name the removal release, so clients have one full minor release of warning.
-- **PSIS.** The archive session confirms that PSIS does not read or send these forms before v0.63.0.
+- **PSIS.** Answered on 26 November 2026 by the session working on the PSIS plugins (atom-ahg-plugins main, v3.121.242, read from code, line numbers approximate):
+  - The PHP export (`RicManageService::exportRicO`, `/ricManage/export/{id}`) sends none of D-1, D-2, D-3 or `rico:hasMandate` and reads none of them. No PSIS write path accepts them.
+  - The Python Fuseki sync (`ahgRicExplorerPlugin/tools/ric_extractor_v5.py`) sends D-2, `rico:classification` on a function (about line 678). It sends D-1 on records rather than on a repository, mapped wrongly from `physical_characteristics` (about line 264). It creates `rico:Mandate` nodes linked by `rico:isOrWasRegulatedBy`, not by `rico:authorizingMandate` (about line 712). Its triplestore is read only through admin and editor routes. Moving the extractor is a PSIS batch decision for Dr Johan Pieterse; it does not block v0.63.0, because nothing outside PSIS reads that store.
 
 ## Done when
 
