@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.9 — 2026-11-26
+
+- Security: SPARQL refuses SERVICE clauses, so the store never fetches an address a caller names, and checks updates and SERVICE on the query's syntax alone; a backend failure's message is not passed on; the AtoM-compatible /api/v1 and /api routes and the /api/v2 privacy, breach and audit reads need the admin scope
 ## v0.18.8 — 2026-11-26
 
 - Canonical identifiers resolve for browsers: /id/{kind}/{id} sends a browser to the Graph Explorer record page, as the short entity paths do, instead of admin pages and bare slugs that answer 404; an unpublished record answers 404 rather than a redirect naming its slug
