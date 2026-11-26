@@ -129,6 +129,20 @@ Route::middleware('web')->get('/ric-capture', function () {
     return redirect('https://capture.openric.org/', 302);
 })->name('ric.capture.studio');
 
+// Where a browser goes from an identifier: the record page in the OpenRiC Graph
+// Explorer, as the short entity paths in the app's routes/web.php send it (same
+// OPENRIC_RECORD_PAGE and default). The admin entity pages and the bare /{slug}
+// these routes used to send browsers to answer 404 on the public host.
+$openricBrowserPage = function (string $apiType, string $key): string {
+    $segment = [
+        'records' => 'informationobject', 'agents' => 'actor', 'repositories' => 'repository',
+        'functions' => 'function', 'places' => 'place', 'activities' => 'activity',
+        'rules' => 'rule', 'instantiations' => 'instantiation',
+    ][$apiType];
+
+    return (string) env('OPENRIC_RECORD_PAGE', 'https://viewer.openric.org/?start=') . "/{$segment}/{$key}";
+};
+
 // Spec-canonical semantic URIs — openric-spec viewing-api §3.1.
 // Pattern: /id/{kind}/{id}  (13 kinds per the spec)
 // Content-negotiates Accept and 303-redirects to either the JSON-LD API
@@ -136,7 +150,7 @@ Route::middleware('web')->get('/ric-capture', function () {
 // `corporate-body` is dispatched against both the actor and repository tables
 // because RiC-O 1.1 Repository is an ISDIAH-shaped CorporateBody but lives in
 // a separate table in this implementation.
-Route::get('/id/{kind}/{id}', function (string $kind, string $id) {
+Route::get('/id/{kind}/{id}', function (string $kind, string $id) use ($openricBrowserPage) {
     // 13 spec kinds → internal API collection
     $kindMap = [
         'record'         => 'records',
@@ -155,6 +169,11 @@ Route::get('/id/{kind}/{id}', function (string $kind, string $id) {
     ];
     $apiType = $kindMap[strtolower($kind)] ?? null;
     if (!$apiType) {
+        abort(404);
+    }
+
+    // An unpublished entity answers as a missing one: no redirect that names its slug.
+    if (\AhgRic\Support\Visibility::isHiddenKey($id)) {
         abort(404);
     }
 
@@ -195,20 +214,7 @@ Route::get('/id/{kind}/{id}', function (string $kind, string $id) {
     }
 
     // Browser default — 303 to the human-readable view.
-    if ($apiType === 'records' || $apiType === 'agents') {
-        return redirect('/' . $id, 303, $headers);
-    }
-    if ($apiType === 'repositories') {
-        return redirect('/repository/' . $id, 303, $headers);
-    }
-    $singular = [
-        'functions'      => 'function',
-        'places'         => 'place',
-        'activities'     => 'activity',
-        'rules'          => 'rule',
-        'instantiations' => 'instantiation',
-    ][$apiType];
-    return redirect('/admin/ric/entities/' . $singular . '/' . $id, 303, $headers);
+    return redirect($openricBrowserPage($apiType, $id), 303, $headers);
 })->where('kind', 'record|record-set|record-part|agent|person|corporate-body|family|mechanism|place|rule|activity|instantiation|function')
   ->where('id', '[A-Za-z0-9_-]+')
   ->name('openric.semantic-uri');
@@ -218,7 +224,7 @@ Route::get('/id/{kind}/{id}', function (string $kind, string $id) {
 // Those IRIs are stable SPARQL subject identifiers but were not HTTP-routable.
 // This route content-negotiates Accept and 303-redirects to either the
 // JSON-LD API endpoint (machine clients) or the public slug page (browsers).
-Route::get('/{instance}/{type}/{key}', function (string $instance, string $type, string $key) {
+Route::get('/{instance}/{type}/{key}', function (string $instance, string $type, string $key) use ($openricBrowserPage) {
     $accept  = (string) request()->header('Accept', '');
     $wantsLd = request()->wantsJson()
         || str_contains($accept, 'ld+json')
@@ -242,6 +248,10 @@ Route::get('/{instance}/{type}/{key}', function (string $instance, string $type,
         abort(404);
     }
 
+    if (\AhgRic\Support\Visibility::isHiddenKey($key)) {
+        abort(404);
+    }
+
     $slugTypes = ['records', 'agents', 'repositories'];
     if (ctype_digit($key) && in_array($apiType, $slugTypes, true)) {
         $resolvedSlug = \DB::table('slug')->where('object_id', (int) $key)->value('slug');
@@ -256,21 +266,7 @@ Route::get('/{instance}/{type}/{key}', function (string $instance, string $type,
         return redirect('/api/ric/v1/' . $apiType . '/' . $key, 303, $headers);
     }
 
-    if ($apiType === 'records' || $apiType === 'agents') {
-        return redirect('/' . $key, 303, $headers);
-    }
-    if ($apiType === 'repositories') {
-        return redirect('/repository/' . $key, 303, $headers);
-    }
-
-    $singular = [
-        'functions' => 'function',
-        'places' => 'place',
-        'activities' => 'activity',
-        'rules' => 'rule',
-        'instantiations' => 'instantiation',
-    ][$apiType];
-    return redirect('/admin/ric/entities/' . $singular . '/' . $key, 303, $headers);
+    return redirect($openricBrowserPage($apiType, $key), 303, $headers);
 })->where('instance', '[a-z0-9_-]+')
   ->where('type', 'record|recordset|informationobject|agent|actor|person|corporatebody|family|repository|function|place|activity|rule|instantiation')
   ->where('key', '[A-Za-z0-9_-]+')

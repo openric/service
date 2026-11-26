@@ -31,6 +31,14 @@ The site file is `/etc/nginx/sites-enabled/ric.theahg.co.za.conf`; the copy in `
 - nginx passes `HTTPS=on` to php-fpm through `fastcgi_params`, so Laravel sees requests as secure. No proxy sits in between, so `X-Forwarded-Proto` and trusted proxies are not needed.
 - nginx sets `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options`, `Referrer-Policy` and the Content Security Policy. The middleware sets only `Strict-Transport-Security` and `Permissions-Policy`. Setting a header in both places sends it twice; that happened once already.
 
+### Where identifiers resolve
+
+- `/id/{kind}/{id}` (the spec's semantic URI) and the short entity paths (`/informationobject/{slug}`, `/actor/{slug}`, `/place/{id}` and the rest) answer 303 with `Vary: Accept`.
+- A data client (`Accept` with JSON-LD, JSON, Turtle or RDF/XML) goes to `/api/ric/v1/{collection}/{id}`.
+- A browser goes to the record page in the Graph Explorer, `https://viewer.openric.org/?start=/{segment}/{id}`. `OPENRIC_RECORD_PAGE` in `.env` overrides the record page for both forms (from v0.18.8).
+- An unpublished record answers 404 on `/id/`, and the redirect never names its slug.
+- The `/{instance}/{type}/{key}` resolver behaves the same, but nginx does not pass it to the app on this host.
+
 ## 3. php-fpm and file permissions
 
 php-fpm runs with `ProtectSystem=full`, which makes `/usr` read-only for the worker. The drop-in `/etc/systemd/system/php8.3-fpm.service.d/openric-storage.conf` grants write access back:
