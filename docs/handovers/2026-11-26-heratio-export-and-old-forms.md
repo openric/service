@@ -1,6 +1,6 @@
 # Handover to heratio-dev and archive: export findings and the old forms (26 November 2026)
 
-Status: sent to heratio-dev on 26 November 2026, at Dr Johan Pieterse's request, from the OpenRiC session. No archive session was running, so the PSIS questions are not yet with archive. Nothing here changes Heratio or PSIS. heratio-dev owns Heratio's code, and archive owns PSIS. Any production release stays with Dr Johan Pieterse's approval.
+Status: sent to heratio-dev on 26 November 2026, at Dr Johan Pieterse's request, from the OpenRiC session. No archive session was running, so the PSIS questions went to the Video series creation session, which works on the PSIS plugins, also at his request. Nothing here changes Heratio or PSIS. heratio-dev owns Heratio's code, and archive owns PSIS. Any production release stays with Dr Johan Pieterse's approval.
 
 Read on heratio-dev at `fe929b902` (v1.167.11), `packages/ahg-ric`, on 26 November 2026. Every finding below comes from reading code. None has been reproduced on a running Heratio or PSIS site.
 
