@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.8 — 2026-11-26
+
+- Canonical identifiers resolve for browsers: /id/{kind}/{id} sends a browser to the Graph Explorer record page, as the short entity paths do, instead of admin pages and bare slugs that answer 404; an unpublished record answers 404 rather than a redirect naming its slug
 ## v0.18.7 — 2026-11-25
 
 - Security: the /admin/ric pages need a signed-in session or an API key with the admin scope; self-service keys never hold it; operator help on minting an admin key
