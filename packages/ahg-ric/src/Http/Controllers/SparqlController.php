@@ -75,6 +75,19 @@ class SparqlController
             ]);
         }
 
+        // SERVICE makes the store fetch an address the caller names, inside our
+        // network as easily as outside it (26 Nov 2026: a visitor's query made
+        // Fuseki GET http://127.0.0.1:9/). The profile needs no outbound calls.
+        if (preg_match('/\bSERVICE\b/i', $this->syntaxOnly($query))) {
+            return ProblemDetails::build(
+                ProblemDetails::TYPE_BASE . 'service-not-permitted',
+                'SPARQL SERVICE not permitted',
+                403,
+                'This endpoint answers from its own dataset only; federated SERVICE clauses are rejected.',
+                ['profile' => 'sparql-access', 'profile_version' => '0.1.0']
+            );
+        }
+
         if ($this->isUpdateQuery($query)) {
             return ProblemDetails::build(
                 ProblemDetails::TYPE_BASE . 'update-not-permitted',
@@ -110,7 +123,10 @@ class SparqlController
         // reported as an RFC 7807 problem document, as SPARQL Access §6 and
         // Core Discovery §4 require, with the backend's message as the detail.
         if ($backend['status'] >= 400) {
-            $detail = trim(mb_substr(strip_tags((string) $backend['body']), 0, 500)) ?: 'The SPARQL backend refused the query.';
+            // A parse error's message helps the caller; a backend failure's names internal addresses.
+            $detail = $backend['status'] < 500
+                ? (trim(mb_substr(strip_tags((string) $backend['body']), 0, 500)) ?: 'The SPARQL backend refused the query.')
+                : 'The SPARQL backend could not answer the query.';
             return ProblemDetails::build(
                 $backend['status'] < 500 ? ProblemDetails::BAD_REQUEST : ProblemDetails::TYPE_BASE . 'sparql-backend-unavailable',
                 $backend['status'] < 500 ? 'Bad Request' : 'SPARQL Backend Unavailable',
@@ -209,27 +225,29 @@ class SparqlController
     }
 
     /**
-     * Decide whether the query is a SPARQL Update vs a SPARQL Query.
-     * Strips block + line comments and quoted literals, then case-
-     * insensitively scans for the nine Update operation keywords.
+     * Decide whether the query is a SPARQL Update vs a SPARQL Query:
+     * case-insensitively scans the query's syntax for the nine Update
+     * operation keywords, so a literal or IRI holding "DELETE" is not blocked.
      */
     private function isUpdateQuery(string $query): bool
     {
-        // Remove # line comments and /* ... */ block comments. Note SPARQL
-        // doesn't really use block comments but Fuseki tolerates them so
-        // be defensive.
-        $stripped = preg_replace('!/\*.*?\*/!s', ' ', $query) ?? $query;
-        $stripped = preg_replace('/#[^\n]*/m', ' ', $stripped) ?? $stripped;
-
-        // Remove triple-quoted literals first, then single-quoted ones.
-        // Order matters: """abc""" must be matched before "abc".
-        $stripped = preg_replace('/"""(?:\\\\.|(?!""").)*"""/s', ' ', $stripped) ?? $stripped;
-        $stripped = preg_replace("/'''(?:\\\\.|(?!''').)*'''/s", ' ', $stripped) ?? $stripped;
-        $stripped = preg_replace('/"(?:\\\\.|[^"\\\\])*"/', ' ', $stripped) ?? $stripped;
-        $stripped = preg_replace("/'(?:\\\\.|[^'\\\\])*'/", ' ', $stripped) ?? $stripped;
-
         $pattern = '/\b(' . implode('|', self::UPDATE_OPS) . ')\b/i';
-        return (bool) preg_match($pattern, $stripped);
+        return (bool) preg_match($pattern, $this->syntaxOnly($query));
+    }
+
+    /**
+     * The query with its literals, IRIs and # comments blanked, read left to
+     * right in one pass, so that a # inside an IRI (rico:...#title) is not taken
+     * for a comment that hides the rest of the line. SPARQL has no block
+     * comments, so /* ... *\/ is left as the syntax it is.
+     */
+    private function syntaxOnly(string $query): string
+    {
+        return preg_replace(
+            '/"""(?:\\\\.|(?!""").)*"""|\'\'\'(?:\\\\.|(?!\'\'\').)*\'\'\'|"(?:\\\\.|[^"\\\\\n])*"|\'(?:\\\\.|[^\'\\\\\n])*\'|<[^<>"{}|^`\\\\\s]*>|#[^\n]*/s',
+            ' ',
+            $query
+        ) ?? $query;
     }
 
     /**

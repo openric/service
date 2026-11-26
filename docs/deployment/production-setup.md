@@ -76,6 +76,10 @@ Mint keys with `openric:issue-key` (or `ric:mint-service-key` for the Heratio se
 
 The `/admin/ric` pages (sync status, queue, orphans, entity browse and edit) need a signed-in session or a key with the `admin` scope, from v0.18.7; without one they answer 401, and a key without `admin` gets 403. The app has no login page, so mint an operator key with `ric:mint-service-key --scopes=read,admin` and send it as `X-API-Key`. Never grant `admin` to a key issued from a public key request. On ric.theahg.co.za nginx also answers 404 for `/admin`.
 
+The AtoM-compatible API (`/api/v1/*` and the legacy `/api/*` routes) and the `/api/v2` privacy, breach and audit reads need the same `admin` scope or a session, from v0.18.9. They read drafts, donors and accessions. nginx answers 404 for them on ric.theahg.co.za; a deployment that passes `/api` to the app gets the app's own refusal instead.
+
+SPARQL (`/api/ric/v1/sparql`) answers from its own dataset only: from v0.18.9 a query with a `SERVICE` clause gets 403, so the store never fetches an address a caller names. To refuse it in Fuseki as well, set `arq:httpServiceAllowed false` in the dataset's configuration.
+
 ## 8. Checks after a deployment
 
 ```

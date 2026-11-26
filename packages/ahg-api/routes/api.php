@@ -33,12 +33,16 @@ use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
 | API v1 Routes (read-only + CRUD)
+|
+| The v1 and legacy groups are the AtoM-compatible operator API: they read
+| drafts, donors and accessions, so they need an admin-scope key or a
+| signed-in session (26 Nov 2026; before then they answered anyone).
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('api/v1')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+Route::prefix('api/v1')->middleware(['throttle:60,1', 'api.cors', 'api.auth:admin'])->group(function () {
     // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
-    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*')->withoutMiddleware('api.auth:admin');
 
     // Information Objects — READ
     Route::get('informationobjects/search', [InformationObjectApiController::class, 'search']);
@@ -109,7 +113,7 @@ Route::prefix('api/v1')->middleware(['throttle:60,1', 'api.cors'])->group(functi
 
 Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit', 'api.log'])->group(function () {
     // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
-    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*')->withoutMiddleware('api.auth:admin');
 
     // Root — endpoint listing
     Route::get('/', [ApiRootController::class, 'index'])->withoutMiddleware('api.auth:read');
@@ -161,8 +165,8 @@ Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit
     Route::get('events/correlation/{id}', [EventController::class, 'correlation'])->where('id', '[0-9]+');
 
     // Audit (API request log)
-    Route::get('audit', [AuditController::class, 'index']);
-    Route::get('audit/{id}', [AuditController::class, 'show'])->where('id', '[0-9]+');
+    Route::get('audit', [AuditController::class, 'index'])->middleware('api.auth:admin');
+    Route::get('audit/{id}', [AuditController::class, 'show'])->where('id', '[0-9]+')->middleware('api.auth:admin');
 
     // Publishing
     Route::get('publish/readiness/{slug}', [PublishController::class, 'readiness']);
@@ -194,11 +198,11 @@ Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit
     Route::get('assets/{id}/valuations', [AssetController::class, 'assetValuations'])->where('id', '[0-9]+');
 
     // Privacy / DSAR / Breaches
-    Route::get('privacy/dsars', [PrivacyController::class, 'dsarIndex']);
+    Route::get('privacy/dsars', [PrivacyController::class, 'dsarIndex'])->middleware('api.auth:admin');
     Route::post('privacy/dsars', [PrivacyController::class, 'dsarStore'])->middleware('api.auth:write');
-    Route::get('privacy/dsars/{id}', [PrivacyController::class, 'dsarShow'])->where('id', '[0-9]+');
+    Route::get('privacy/dsars/{id}', [PrivacyController::class, 'dsarShow'])->where('id', '[0-9]+')->middleware('api.auth:admin');
     Route::match(['put', 'patch'], 'privacy/dsars/{id}', [PrivacyController::class, 'dsarUpdate'])->where('id', '[0-9]+')->middleware('api.auth:write');
-    Route::get('privacy/breaches', [PrivacyController::class, 'breachIndex']);
+    Route::get('privacy/breaches', [PrivacyController::class, 'breachIndex'])->middleware('api.auth:admin');
     Route::post('privacy/breaches', [PrivacyController::class, 'breachStore'])->middleware('api.auth:write');
 
     // Mobile Sync
@@ -220,9 +224,9 @@ Route::prefix('api/v2')->middleware(['api.cors', 'api.auth:read', 'api.ratelimit
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('api')->middleware(['throttle:60,1', 'api.cors'])->group(function () {
+Route::prefix('api')->middleware(['throttle:60,1', 'api.cors', 'api.auth:admin'])->group(function () {
     // Browser preflights: ApiCors answers them (see AhgApiServiceProvider).
-    Route::options('{any?}', fn () => response('', 204))->where('any', '.*');
+    Route::options('{any?}', fn () => response('', 204))->where('any', '.*')->withoutMiddleware('api.auth:admin');
     // Legacy routes for backward compatibility with tests
     // Writes carry the same auth as Heratio's copy of this group; they had none here.
     Route::get('actor', [ActorApiController::class, 'index'])->name('api.actor.index');
