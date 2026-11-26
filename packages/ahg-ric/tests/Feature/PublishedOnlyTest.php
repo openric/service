@@ -13,6 +13,8 @@
 
 namespace Tests\Feature;
 
+use AhgRic\Http\Controllers\LinkedDataApiController;
+use AhgRic\Services\RicSerializationService;
 use AhgRic\Support\Visibility;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,7 @@ class PublishedOnlyTest extends TestCase
     private const DRAFT = 102;
     private const NO_STATUS = 103;
     private const PUBLISHED_CHILD = 104;
-    private const DRAFT_IMAGE = 201;
+    public const DRAFT_IMAGE = 201;
 
     protected function setUp(): void
     {
@@ -122,6 +124,43 @@ class PublishedOnlyTest extends TestCase
         $file = $this->getJson('/api/ric/v1/hierarchy/' . self::PUBLISHED_CHILD)->assertOk();
         $this->assertSame('Published fonds', $file->json('parent.title'));
         $this->assertSame([], $file->json('siblings'));
+    }
+
+    /**
+     * A published record set's export holds its published descendants and none
+     * of its hidden ones, in every format. Turtle and RDF/XML are not JSON, so the
+     * middleware's scrub does not reach them; the controller scrubs before it
+     * converts. Heratio's export checks only the root (heratio-dev, 26 Nov 2026).
+     */
+    public function test_a_published_sets_export_leaves_out_hidden_descendants_in_every_format(): void
+    {
+        // The serializer reads some thirty AtoM tables; a stub hands the controller the
+        // graph it would build (every descendant, as getAllDescendants returns them).
+        $serializer = new class extends RicSerializationService {
+            public function __construct()
+            {
+            }
+
+            public function exportRecordSet(int $fondsId, array $options = []): array
+            {
+                $node = fn (string $slug) => ['@id' => url("/informationobject/{$slug}"), '@type' => 'rico:Record', 'rico:title' => $slug];
+                $draft = $node('draft-file') + ['rico:hasInstantiation' => ['@id' => url('/instantiation/'.PublishedOnlyTest::DRAFT_IMAGE), 'rico:title' => 'a.jpg']];
+
+                return ['@context' => ['rico' => 'https://www.ica.org/standards/RiC/ontology#'],
+                    '@graph' => [$node('published-fonds'), $node('published-file'), $draft, $node('unmarked-item')]];
+            }
+        };
+        $controller = new LinkedDataApiController();
+        \Closure::bind(fn () => $this->serializer = $serializer, $controller, LinkedDataApiController::class)();
+        $this->app->instance(LinkedDataApiController::class, $controller);
+
+        foreach (['jsonld', 'ttl', 'rdf'] as $format) {
+            $body = $this->get("/api/ric/v1/records/published-fonds/export?format={$format}")->assertOk()->getContent();
+            $this->assertStringContainsString('/published-file', $body, $format);
+            foreach (['/draft-file', '/unmarked-item', 'a.jpg'] as $hidden) {
+                $this->assertStringNotContainsString($hidden, $body, "{$format}: {$hidden}");
+            }
+        }
     }
 
     public function test_hidden_descriptions_answer_404_as_missing_ones_do(): void
