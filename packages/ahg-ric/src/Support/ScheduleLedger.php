@@ -45,6 +45,12 @@ class ScheduleLedger
         $file = self::file();
         $all = is_file($file) ? (json_decode((string) file_get_contents($file), true) ?: []) : [];
         $names = [];
+        // A web request never loads routes/console.php, so the schedule is empty there until the console kernel is
+        // bootstrapped (v0.18.13 went live with an empty list). The tests boot the console kernel, so they cannot
+        // show this; scratchpad check: count the events after an HTTP-only boot.
+        if (app(Schedule::class)->events() === []) {
+            app(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+        }
         foreach (app(Schedule::class)->events() as $event) {
             if ($name = self::commandName($event->command)) {
                 $names[$name] = true;
