@@ -211,6 +211,9 @@ class OntologyService
         }
         $entities = $this->listEntities($version);
 
+        // What the cited RiC-CM version changes on this relation against RiC-O 1.1 (array access: versions contain dots).
+        $row['versionNotes'] = (config('ahg-ric-model.versions.notes') ?? [])[$version ?? $this->latestVersion][$id] ?? [];
+
         // Resolve domain + range to {id, name}. Single entries — no expansion.
         // domain/range may be null (SPARQL OPTIONAL may not have bound them);
         // we default the derived fields so the view template always has the

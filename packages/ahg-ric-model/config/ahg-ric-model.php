@@ -48,8 +48,17 @@ return [
     | which one the unversioned browse URLs resolve to.
     */
     'versions' => [
-        'available' => ['1.0'],
-        'latest'    => '1.0',
+        // 1.0.1 (ICA EGAD, 30 September 2026) is the latest from 27 November 2026; 1.0 stays so cited addresses keep working.
+        'available' => ['1.0', '1.0.1'],
+        'latest'    => '1.0.1',
+        // What a version changes against RiC-O 1.1, which every page is read from: shown on the page it touches.
+        // Keys: version => relation id => domain|range => note.
+        'notes' => [
+            '1.0.1' => [
+                'RiC-R079' => ['domain' => 'RiC-CM 1.0.1 widens the domain to Record or Record Part (RiC-E05), section 1.9. RiC-O 1.1, which this page is read from, still declares Record only (RiC-O issue #177).'],
+                'RiC-R079i' => ['range' => 'RiC-CM 1.0.1 widens the range to Record or Record Part (RiC-E05), section 1.9. RiC-O 1.1, which this page is read from, still declares Record only (RiC-O issue #177).'],
+            ],
+        ],
     ],
 
     /*

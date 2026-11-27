@@ -38,6 +38,7 @@
             @else
                 <p class="text-muted small">Unspecified</p>
             @endif
+            @if (!empty($relation['versionNotes']['domain']))<p class="small" role="note">{{ $relation['versionNotes']['domain'] }}</p>@endif
         </div>
         <div class="col-md-6">
             <h2 class="h5">Declared range</h2>
@@ -46,6 +47,7 @@
             @else
                 <p class="text-muted small">Unspecified</p>
             @endif
+            @if (!empty($relation['versionNotes']['range']))<p class="small" role="note">{{ $relation['versionNotes']['range'] }}</p>@endif
         </div>
     </div>
 

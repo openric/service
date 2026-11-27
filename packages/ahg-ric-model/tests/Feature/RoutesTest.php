@@ -112,6 +112,18 @@ class RoutesTest extends TestCase
             ->assertSee('browsing aid');
     }
 
+    public function test_1_0_1_is_latest_shows_r079s_wider_domain_and_1_0_still_serves(): void
+    {
+        $this->assertSame('1.0.1', config('ahg-ric-model.versions.latest'));
+        $this->get('/reference/ric-cm/1.0.1/relations/RiC-R079')->assertOk()
+            ->assertSee('RiC-CM 1.0.1 widens the domain to Record or Record Part');
+        $this->get('/reference/ric-cm/1.0.1/relations/RiC-R079i')->assertOk()
+            ->assertSee('RiC-CM 1.0.1 widens the range to Record or Record Part');
+        // A cited 1.0 address keeps working, without the 1.0.1 note.
+        $this->get('/reference/ric-cm/1.0/relations/RiC-R079')->assertOk()
+            ->assertDontSee('RiC-CM 1.0.1 widens');
+    }
+
     public function test_attribution_is_rendered_on_pages(): void
     {
         $latest = (string) config('ahg-ric-model.versions.latest');
