@@ -249,6 +249,8 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', ProfileNeg
             'status' => 'ok',
             'service' => 'RIC-O Linked Data API',
             'version' => $release['version'] ?? 'unknown',
+            // When each scheduled command last succeeded; stale after 30 hours or if it never has.
+            'scheduled' => \AhgRic\Support\ScheduleLedger::report(),
         ]);
     });
     
@@ -277,8 +279,8 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', ProfileNeg
     // with 403 + application/problem+json.
     // See docs/drift-log.md and openric-spec audit/ric-o-1.1-audit.md.
     // `spec_version` states the spec revision this server has been VERIFIED
-    // against, not the newest one published: v0.61.2, by the read-only probe run of
-    // 25 November 2026 recorded in docs/status/2026-11-25-status.md. SpecVersionPinTest
+    // against, not the newest one published: v0.61.6, by the read-only probe run of
+    // 27 November 2026 recorded in docs/status/2026-11-27-status.md. SpecVersionPinTest
     // ties it to the newest "verified against spec" entry in CHANGELOG.md.
     // The spec moves independently; v0.43.0 added four draft profiles (governance,
     // portability, inferred-provenance, graph-grounding) that this server does
@@ -305,12 +307,12 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', ProfileNeg
             } catch (\Throwable $e) {
                 // fall through to the last known value
             }
-            return '0.61.2';
+            return '0.61.6';
         });
     };
 
     $openricConformance = [
-        'spec_version'        => '0.61.2',
+        'spec_version'        => '0.61.6',
         'latest_spec_version' => null, // filled per request below
         'spec_delta'          => 'https://openric.org/drift-log.html',
         'profiles' => [

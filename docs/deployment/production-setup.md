@@ -64,6 +64,8 @@ The service code in `packages/ahg-ric` is mirrored into `vendor/ahg/ric`, and on
 
 To see how current the public graph is, read `sparql_graph` in the service description: `built_at` is the last build that changed it, `checked_at` the last run that checked it (a run that finds nothing changed counts), and `stale` is true when no run has checked it for 30 hours. `storage/app/openric-graph/<dataset>/checked.json` holds the last check.
 
+`/api/ric/v1/health` lists every scheduled command under `scheduled`, with `last_success` and `stale` (true when it has not succeeded for 30 hours, or never has). It is recorded in `storage/app/openric-schedule/last-success.json` each time a scheduled command exits with 0, from v0.18.13.
+
 | Command | When (SAST) | What it does |
 |---|---|---|
 | `openric:rebuild-graph` | 03:00 daily | Rebuilds the public SPARQL graph from the API serializer. It refuses the build if a `rico:` term is not in RiC-O 1.1, an `openricx:` term is not in the published extension ontology, or the size moves outside half to double the last build. |
@@ -92,6 +94,7 @@ curl -sI http://ric.theahg.co.za/ | head -1                                   # 
 curl -sI https://ric.theahg.co.za/api/ric/v1/ | grep -ci x-frame-options        # 1
 curl -s https://ric.theahg.co.za/api/ric/v1/ | jq -c '{version, spec: .openric_conformance.spec_version}'
 curl -s https://ric.theahg.co.za/api/ric/v1/ | jq -c .sparql_graph                  # stale: false
+curl -s https://ric.theahg.co.za/api/ric/v1/health | jq -c .scheduled              # each stale: false after its first run
 curl -s -o /dev/null -w '%{http_code}\n' -X DELETE https://ric.theahg.co.za/api/ric/v1/places/1   # 401
 systemctl show php8.3-fpm | grep ReadWritePaths                                # includes OpenRiC
 /usr/share/nginx/openric-spec/conformance/probe.sh                             # read-only conformance probe

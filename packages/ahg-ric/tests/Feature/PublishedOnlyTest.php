@@ -9,6 +9,7 @@
  * a description with no publication status, is left out of lists and answers
  * 404 exactly as a missing one does, and nested references to it are removed.
  * On 26 October 2026 a draft was readable anonymously at /api/ric/v1/records/{slug}.
+ * From 27 November 2026 the same holds for OAI-PMH and for the document the SPARQL graph is rebuilt from.
  */
 
 namespace Tests\Feature;
@@ -207,5 +208,54 @@ class PublishedOnlyTest extends TestCase
         $this->assertSame('https://example.org/archive/draft-file', $clean['rdfs:seeAlso']);
         $this->assertNull(Visibility::scrub(['@id' => "{$base}/informationobject/draft-file"]));
         $this->assertNull(Visibility::scrub(['entity_id' => self::NO_STATUS, 'children' => []]));
+    }
+
+    /** OAI-PMH lists published descriptions only and answers for a hidden one as for a missing one (27 Nov 2026). */
+    public function test_oai_pmh_lists_and_serves_published_descriptions_only(): void
+    {
+        Schema::table('information_object_i18n', fn ($t) => $t->text('scope_and_content')->nullable());
+        Schema::table('object', fn ($t) => $t->nullableTimestamps());
+
+        $xml = $this->get('/api/ric/v1/oai?verb=ListIdentifiers&metadataPrefix=oai_dc')->assertOk()->getContent();
+        preg_match_all('#<identifier>oai:[^:<]+:(\d+)</identifier>#', $xml, $m);
+        $listed = array_map('intval', $m[1]);
+        $this->assertContains(self::PUBLISHED, $listed);
+        $this->assertContains(self::PUBLISHED_CHILD, $listed);
+        $this->assertNotContains(self::DRAFT, $listed);
+        $this->assertNotContains(self::NO_STATUS, $listed);
+
+        $host = parse_url(url('/'), PHP_URL_HOST);
+        $this->assertStringContainsString('idDoesNotExist',
+            $this->get("/api/ric/v1/oai?verb=GetRecord&metadataPrefix=oai_dc&identifier=oai:{$host}:".self::DRAFT)->getContent());
+    }
+
+    /**
+     * The document the public SPARQL graph is rebuilt from leaves out what the API hides: openric:rebuild-graph takes
+     * the API's lists and scrubs nested references to hidden descriptions, as HideUnpublished does (27 Nov 2026).
+     */
+    public function test_the_graph_rebuild_leaves_out_hidden_descriptions(): void
+    {
+        $api = \Mockery::mock(LinkedDataApiController::class);
+        $empty = fn () => response()->json(['openric:items' => []]);
+        foreach (['listAgents', 'listRepositories', 'listFunctions', 'listPlaces', 'listRules', 'listActivities', 'listInstantiations'] as $list) {
+            $api->shouldReceive($list)->andReturnUsing($empty);
+        }
+        $api->shouldReceive('listRecords')->andReturnUsing(fn () => response()->json(['openric:items' => [['@id' => url('/informationobject/published-fonds')]]]));
+        $api->shouldReceive('showRecord')->with('published-fonds')->andReturnUsing(fn () => response()->json([
+            '@context' => ['rico' => 'https://www.ica.org/standards/RiC/ontology#'],
+            '@id' => url('/informationobject/published-fonds'), '@type' => 'rico:RecordSet',
+            'rico:hasOrHadPart' => [['@id' => url('/informationobject/published-file')], ['@id' => url('/informationobject/draft-file')]],
+        ]));
+        $this->app->instance(LinkedDataApiController::class, $api);
+
+        $out = tempnam(sys_get_temp_dir(), 'graph');
+        $this->artisan('openric:rebuild-graph', ['--dry-run' => true, '--out' => $out, '--dataset' => 'test-published-only'])->assertExitCode(0);
+        $doc = (string) file_get_contents($out);
+        @unlink($out);
+        array_map('unlink', glob(storage_path('app/openric-graph/test-published-only/*')) ?: []);
+        @rmdir(storage_path('app/openric-graph/test-published-only'));
+
+        $this->assertStringContainsString('/informationobject/published-file', $doc);
+        $this->assertStringNotContainsString('/informationobject/draft-file', $doc);
     }
 }

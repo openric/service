@@ -73,6 +73,13 @@ class AhgRicServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Each scheduled command's last success, for /health (ScheduleLedger, 27 November 2026).
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\ScheduledTaskFinished::class, function ($e) {
+            if (($e->task->exitCode ?? 1) === 0 && ($name = \AhgRic\Support\ScheduleLedger::commandName($e->task->command))) {
+                \AhgRic\Support\ScheduleLedger::record($name);
+            }
+        });
+
         // Request validation on the OpenRiC API fails with an RFC 7807 problem
         // document (Core Discovery §4), not Laravel's default error shape.
         $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class)->renderable(
