@@ -13,6 +13,11 @@
 # Runs as www-data, not root. Running artisan as root creates root-owned files
 # under storage/ that the php-fpm worker then cannot write.
 #
+# The log goes to the app's own storage/logs, which www-data may write. Until 27 November 2026 it went to
+# /var/log/openric-schedule.log: www-data cannot create a file in /var/log (root:syslog 775), so the shell failed
+# the redirect before PHP started, every minute from 28 September, and neither the 03:00 graph rebuild nor the
+# daily digest ever ran. The service description's sparql_graph.stale now shows such a stop.
+#
 # flock keeps a slow run from stacking on the next minute's invocation.
 # Laravel's own withoutOverlapping() guards individual commands; this guards
 # the scheduler process itself.
@@ -26,4 +31,4 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=""
 
-* * * * * www-data flock -n /run/lock/openric-schedule.lock -c '/usr/bin/php8.3 /usr/share/nginx/OpenRiC/artisan schedule:run >> /var/log/openric-schedule.log 2>&1'
+* * * * * www-data flock -n /run/lock/openric-schedule.lock -c '/usr/bin/php8.3 /usr/share/nginx/OpenRiC/artisan schedule:run >> /usr/share/nginx/OpenRiC/storage/logs/schedule.log 2>&1'

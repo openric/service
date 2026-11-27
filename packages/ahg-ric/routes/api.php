@@ -347,6 +347,8 @@ Route::prefix('api/ric/v1')->middleware(['throttle:60,1', 'api.cors', ProfileNeg
             'docs' => url('/api/ric/v1/docs'),
             'openapi' => url('/api/ric/v1/openapi.json'),
             'openric_conformance' => $openricConformance,
+            // How current the public SPARQL graph is; "stale" when no rebuild has checked it for 30 hours.
+            'sparql_graph' => \AhgRic\Console\Commands\RebuildGraph::freshness((string) config('ahg-ric.fuseki.dataset')),
         ]);
     });
 

@@ -295,8 +295,30 @@ class RebuildGraph extends Command
         }
     }
 
+    /** A graph last checked longer ago than this is stale: the rebuild runs daily at 03:00 SAST. */
+    public const STALE_AFTER_HOURS = 30;
+
+    /**
+     * How current the public graph is, for the service description (27 Nov 2026): when it was last built, when a run
+     * last checked it (a "no change" run counts), and whether that check is too old. From 28 September to 27 November
+     * 2026 the scheduler never ran and nothing showed it; this is the signal that would have.
+     *
+     * @return array{dataset: string, built_at: ?string, checked_at: ?string, triples: ?int, stale: bool}
+     */
+    public static function freshness(string $dataset): array
+    {
+        $dir = storage_path('app/openric-graph/' . $dataset);
+        $read = fn (string $f) => is_file("$dir/$f") ? (json_decode((string) file_get_contents("$dir/$f"), true) ?: []) : [];
+        [$last, $checked] = [$read('last.json'), $read('checked.json')];
+        $at = $checked['checked_at'] ?? $last['built_at'] ?? null;
+
+        return ['dataset' => $dataset, 'built_at' => $last['built_at'] ?? null, 'checked_at' => $at, 'triples' => $last['triples'] ?? null,
+            'stale' => $at === null || strtotime($at) < time() - self::STALE_AFTER_HOURS * 3600];
+    }
+
     private function logOutcome(string $outcome, int $triples, string $checksum, float $started, ?string $backup = null): void
     {
+        file_put_contents($this->stateDir . '/checked.json', json_encode(['checked_at' => date('c'), 'outcome' => $outcome, 'triples' => $triples], JSON_PRETTY_PRINT));
         $line = sprintf('openric:rebuild-graph %s: %s, %d triples, sha256 %s, %.1fs%s',
             $this->dataset, $outcome, $triples, substr($checksum, 0, 12), microtime(true) - $started, $backup ? ", backup $backup" : '');
         Log::info($line);

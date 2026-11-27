@@ -60,7 +60,9 @@ The service code in `packages/ahg-ric` is mirrored into `vendor/ahg/ric`, and on
 
 ## 5. Scheduler
 
-`/etc/cron.d/openric-schedule` runs `schedule:run` every minute as `www-data`, under `flock`, logging to `/var/log/openric-schedule.log`. It is installed from `deploy/cron/openric-schedule`.
+`/etc/cron.d/openric-schedule` runs `schedule:run` every minute as `www-data`, under `flock`, logging to `storage/logs/schedule.log`. It is installed from `deploy/cron/openric-schedule`. Until 27 November 2026 it logged to `/var/log/openric-schedule.log`, which `www-data` cannot create, so the scheduler never started and neither command below ran from 28 September.
+
+To see how current the public graph is, read `sparql_graph` in the service description: `built_at` is the last build that changed it, `checked_at` the last run that checked it (a run that finds nothing changed counts), and `stale` is true when no run has checked it for 30 hours. `storage/app/openric-graph/<dataset>/checked.json` holds the last check.
 
 | Command | When (SAST) | What it does |
 |---|---|---|
@@ -89,6 +91,7 @@ SPARQL (`/api/ric/v1/sparql`) answers from its own dataset only: from v0.18.9 a 
 curl -sI http://ric.theahg.co.za/ | head -1                                   # 301
 curl -sI https://ric.theahg.co.za/api/ric/v1/ | grep -ci x-frame-options        # 1
 curl -s https://ric.theahg.co.za/api/ric/v1/ | jq -c '{version, spec: .openric_conformance.spec_version}'
+curl -s https://ric.theahg.co.za/api/ric/v1/ | jq -c .sparql_graph                  # stale: false
 curl -s -o /dev/null -w '%{http_code}\n' -X DELETE https://ric.theahg.co.za/api/ric/v1/places/1   # 401
 systemctl show php8.3-fpm | grep ReadWritePaths                                # includes OpenRiC
 /usr/share/nginx/openric-spec/conformance/probe.sh                             # read-only conformance probe
