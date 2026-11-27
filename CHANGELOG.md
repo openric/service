@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.13 — 2026-11-27
+
+- Conformance: verified against spec v0.61.6 (the throttled probe of 27 November passed every declared profile), so the service declares it; hardening: /health lists each scheduled command's last success, stale after 30 hours or if it never has
 ## v0.18.12 — 2026-11-27
 
 - Correction: the RiC-CM reference browser presents 1.0.1 as the latest version, notes RiC-R079 has author's wider domain and its inverse's range against RiC-O 1.1, and keeps 1.0 addresses working
