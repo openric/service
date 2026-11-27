@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.14 — 2026-11-27
+
+- Defect: /health listed no scheduled commands on live, because a web request never loads routes/console.php; the ledger now loads the schedule
 ## v0.18.13 — 2026-11-27
 
 - Conformance: verified against spec v0.61.6 (the throttled probe of 27 November passed every declared profile), so the service declares it; hardening: /health lists each scheduled command's last success, stale after 30 hours or if it never has
