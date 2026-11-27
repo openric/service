@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.11 — 2026-11-27
+
+- Defect: the scheduler's cron line logs to storage/logs, which www-data may write, so the 03:00 graph rebuild and the daily digest run again; the service description's sparql_graph says when the public graph was built and last checked and whether it is stale
 ## v0.18.10 — 2026-11-27
 
 - Hardening: the AI wizard masks email addresses and long digit runs before the gateway call, and a daily cap for the server (OPENRIC_AI_DAILY_CAP, default 200) answers 429 once reached
