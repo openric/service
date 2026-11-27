@@ -15,7 +15,8 @@
  * returned — an invalid suggestion is rejected, never shown.
  *
  * Inert until configured: returns 503 unless OPENRIC_AI_URL / OPENRIC_AI_KEY /
- * OPENRIC_AI_MODEL are set. Creates nothing — it only proposes a model the user
+ * OPENRIC_AI_MODEL are set. Email addresses and long digit runs are masked before the
+ * call, and OPENRIC_AI_DAILY_CAP (default 200) caps model calls per day for the server. Creates nothing — it only proposes a model the user
  * then walks (and optionally creates) in the wizard.
  */
 
@@ -26,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class WizardSuggestController extends Controller
 {
@@ -60,7 +62,18 @@ class WizardSuggestController extends Controller
         if (mb_strlen($desc) < 8) {
             return response()->json(['error' => 'too_short', 'message' => 'Describe the material in a sentence or two.'], 422);
         }
-        $desc = mb_substr($desc, 0, 1500);
+        $desc = self::mask(mb_substr($desc, 0, 1500));
+
+        // A cap on model calls per day for the whole server, on top of the 10 a minute per caller (AHG-AIIA-004).
+        $cap = max(0, (int) env('OPENRIC_AI_DAILY_CAP', 200));
+        $day = 'openric-wizard-suggest:'.now()->format('Y-m-d');
+        if (RateLimiter::tooManyAttempts($day, $cap)) {
+            return response()->json([
+                'error' => 'daily_cap',
+                'message' => 'Today\'s AI suggestions are used up. Try again tomorrow, or pick a curated scenario.',
+            ], 429);
+        }
+        RateLimiter::hit($day, 86400);
 
         try {
             $resp = Http::withToken($key)
@@ -120,6 +133,18 @@ class WizardSuggestController extends Controller
         \AhgRic\Support\UsageRecorder::bump('ai_suggest', $model);
 
         return response()->json($scenario);
+    }
+
+    /**
+     * Mask contact details before the description leaves the server: email addresses, and any run of ten or more
+     * digits (phone and ID numbers). Dates and year ranges have fewer digits and pass through.
+     * ponytail: pattern masking only, no names; a names pass would need the gateway's own NER.
+     */
+    public static function mask(string $text): string
+    {
+        $text = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email]', $text) ?? $text;
+
+        return preg_replace_callback('/\+?\d[\d ().-]*\d/', fn ($m) => preg_match_all('/\d/', $m[0]) >= 10 ? '[number]' : $m[0], $text) ?? $text;
     }
 
     private function buildPrompt(string $desc): string

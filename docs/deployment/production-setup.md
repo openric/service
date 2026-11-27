@@ -13,12 +13,15 @@ How the reference service at ric.theahg.co.za is set up, and what to check after
 | `LOG_LEVEL` | `info` | `debug` fills `storage/logs` with query detail |
 | `APP_URL` | `https://ric.theahg.co.za` | Used to build absolute IRIs |
 | `OPENRIC_OPEN_WRITE` | `false` | Anonymous writes stay off; the sandbox purge handles any that were made while it was on |
+| `OPENRIC_AI_DAILY_CAP` | `200` (the default when unset) | The most model calls the wizard's `/api/ric/v1/wizard/suggest` makes in a day for the whole server, on top of 10 a minute per caller; after that it answers 429. `0` stops it |
 
 : Environment settings for production
 
 Secrets kept in `.env` and nowhere else: `APP_KEY`, `DB_PASSWORD`, `FUSEKI_USER` and `FUSEKI_PASSWORD`, `OPENRIC_AI_KEY`, `OPENRIC_STATS_TOKEN`. Read them with `grep`, never print them.
 
 The configuration is not cached (`bootstrap/cache` holds only `packages.php` and `services.php`), so an edit to `.env` takes effect on the next request. If anyone ever runs `php artisan config:cache`, every later `.env` edit needs it run again.
+
+The AI wizard (`OPENRIC_AI_URL`, `OPENRIC_AI_KEY`, `OPENRIC_AI_MODEL`) calls the AHG gateway only. Before the call it masks email addresses and any run of ten or more digits (phone and ID numbers) in the description; names are not masked. A suggestion comes back marked `generated`, and the openric.org wizard shows it as suggested by an AI model on every step.
 
 Changing `APP_ENV` does not affect artisan: `bin/release` runs no artisan commands, and none of the `openric:` commands asks for confirmation in production.
 
