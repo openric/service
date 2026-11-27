@@ -70,7 +70,6 @@ jobs:
 
       # The package's feature tests and the export tests, on the in-memory SQLite database of phpunit.xml.
       # rdflib compares the three export formats, as the conformance probe does (openric/service#19).
-      # Not yet here: tests/Unit/RicSerializationServiceTest.php, which needs tables an empty database lacks.
       - name: Install rdflib for the export comparison
         run: python3 -m pip install --quiet rdflib
 
@@ -83,5 +82,6 @@ jobs:
           vendor/bin/phpunit --colors=never --exclude-group smoke \
             packages/ahg-ric/tests/Feature \
             packages/ahg-ric/tests/Unit/JsonLdConverterTest.php \
+            packages/ahg-ric/tests/Unit/RicSerializationServiceTest.php \
             packages/ahg-ric/tests/Unit/ShaclValidationServiceTest.php \
             packages/ahg-ric/tests/Unit/SparqlQueryServiceTest.php

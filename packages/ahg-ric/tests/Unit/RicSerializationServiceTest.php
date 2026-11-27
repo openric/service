@@ -25,16 +25,47 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
 use AhgRic\Services\RicSerializationService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 class RicSerializationServiceTest extends TestCase
 {
+    use RefreshDatabase;
+
     private RicSerializationService $service;
 
     protected function setUp(): void
     {
         parent::setUp();
+        // The empty AtoM tables these lookups read, so the not-found paths run on the in-memory
+        // test database as they do in CI (27 Nov 2026; until then the file was left out of CI).
+        $tables = [
+            'information_object' => ['source_culture', 'level_of_description_id'],
+            'actor' => ['entity_type_id'],
+            'function_object' => ['source_culture'],
+            'term' => [],
+        ];
+        foreach ($tables as $name => $columns) {
+            Schema::create($name, function ($t) use ($columns) {
+                $t->id();
+                foreach ($columns as $c) {
+                    $t->string($c)->nullable();
+                }
+            });
+        }
+        foreach (['information_object_i18n', 'actor_i18n', 'function_object_i18n', 'repository_i18n', 'term_i18n'] as $name) {
+            Schema::create($name, function ($t) {
+                $t->unsignedBigInteger('id');
+                $t->string('culture');
+                $t->string('name')->nullable();
+            });
+        }
+        Schema::create('slug', function ($t) {
+            $t->unsignedBigInteger('object_id');
+            $t->string('slug');
+        });
         $this->service = new RicSerializationService();
     }
 
