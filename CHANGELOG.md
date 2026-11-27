@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.12 — 2026-11-27
+
+- Correction: the RiC-CM reference browser presents 1.0.1 as the latest version, notes RiC-R079 has author's wider domain and its inverse's range against RiC-O 1.1, and keeps 1.0 addresses working
 ## v0.18.11 — 2026-11-27
 
 - Defect: the scheduler's cron line logs to storage/logs, which www-data may write, so the 03:00 graph rebuild and the daily digest run again; the service description's sparql_graph says when the public graph was built and last checked and whether it is stale
