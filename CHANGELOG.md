@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.18.10 — 2026-11-27
+
+- Hardening: the AI wizard masks email addresses and long digit runs before the gateway call, and a daily cap for the server (OPENRIC_AI_DAILY_CAP, default 200) answers 429 once reached
 ## v0.18.9 — 2026-11-26
 
 - Security: SPARQL refuses SERVICE clauses, so the store never fetches an address a caller names, and checks updates and SERVICE on the query's syntax alone; a backend failure's message is not passed on; the AtoM-compatible /api/v1 and /api routes and the /api/v2 privacy, breach and audit reads need the admin scope
